@@ -11,4 +11,4 @@ pytest==9.0.3
 pytest-django==4.11.1
 pytest-cov==7.1.0
 coverage==7.10.6
-django-coverage-plugin==3.1.0
+django-coverage-plugin==3.2.2
