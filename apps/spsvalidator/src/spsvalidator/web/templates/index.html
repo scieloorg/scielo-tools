@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="{{ t.html_lang }}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ app_display_name }}</title>
+    <link
+      rel="icon"
+      type="image/png"
+      href="{{ url_for('web.static', filename='img/icon.png') }}"
+    />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        color: #1a1a1a;
+        min-height: calc(100vh - 40px);
+        display: flex;
+        flex-direction: column;
+      }
+      h1, h2, h3 { margin: 0 0 12px 0; }
+      .top-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #ddd;
+      }
+      .app-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .app-header img {
+        height: 48px;
+        width: 48px;
+        object-fit: contain;
+      }
+      .app-header h1 { margin: 0; font-size: 1.5rem; }
+      .app-header p { margin: 4px 0 0 0; }
+      .lang-selector {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .lang-option {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 1.25rem;
+        background: #fff;
+      }
+      .lang-option.active {
+        border-color: #333;
+        box-shadow: inset 0 0 0 1px #333;
+      }
+      .content { flex: 1; }
+      .panel { border: 1px solid #ccc; border-radius: 8px; padding: 14px; margin-bottom: 16px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+      th { background: #f5f5f5; }
+      .error { color: #a30000; margin-top: 8px; }
+      .status-valid { color: #0b6b0b; font-weight: bold; }
+      .status-invalid, .status-error { color: #8a1f11; font-weight: bold; }
+      .muted { color: #666; }
+      form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+      .articles { margin-top: 10px; }
+      .app-footer {
+        margin-top: 24px;
+        padding-top: 12px;
+        border-top: 1px solid #ddd;
+        text-align: center;
+      }
+      .download-feedback {
+        margin-top: 10px;
+        color: #0b6b0b;
+      }
+      .download-feedback.error {
+        color: #a30000;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top-bar">
+      <header class="app-header">
+        <img
+          src="{{ url_for('web.static', filename='img/icon.png') }}"
+          alt="SciELO"
+        />
+        <div>
+          <h1>{{ app_display_name }}</h1>
+          <p class="muted">{{ t.subtitle }}</p>
+        </div>
+      </header>
+      <div class="lang-selector" aria-label="Language">
+        {% for option in language_options %}
+        <a
+          href="{{ url_for('web.set_language', language_code=option.code, next=request.full_path) }}"
+          class="lang-option{% if current_language == option.code %} active{% endif %}"
+          title="{{ option.label }}"
+        >{{ option.flag }}</a>
+        {% endfor %}
+      </div>
+    </div>
+
+    <main class="content">
+      <section class="panel">
+        <h2>{{ t.validate_package }}</h2>
+        <form method="post" action="/validate" enctype="multipart/form-data">
+          <input type="file" name="package_zip" accept=".zip" required />
+          <button type="submit">{{ t.validate }}</button>
+        </form>
+        {% if error_message %}
+        <p class="error">{{ error_message }}</p>
+        {% endif %}
+      </section>
+
+      <section class="panel">
+        <h2>{{ t.validated_packages }}</h2>
+        {% if history_items %}
+        <table>
+          <thead>
+            <tr>
+              <th>{{ t.date }}</th>
+              <th>{{ t.package }}</th>
+              <th>{{ t.status }}</th>
+              <th>{{ t.xmls }}</th>
+              <th>{{ t.issues }}</th>
+              <th>{{ t.exceptions }}</th>
+              <th>{{ t.download_csv }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in history_items %}
+            <tr>
+              <td><a href="/?history_id={{ item.id }}">{{ item.validated_at }}</a></td>
+              <td>{{ item.package_name }}</td>
+              <td class="status-{{ item.status }}">{{ item.status }}</td>
+              <td>{{ item.xml_count }}</td>
+              <td>{{ item.issues_count }}</td>
+              <td>{{ item.exceptions_count }}</td>
+              <td>
+                <a
+                  href="#"
+                  class="csv-download"
+                  data-history-id="{{ item.id }}"
+                  data-download-url="{{ url_for('web.download_csv', history_id=item.id) }}"
+                  data-download-filename="{{ item.package_name.rsplit('.', 1)[0] }}.validation.csv"
+                >{{ t.download_csv }}</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="muted">{{ t.no_packages_yet }}</p>
+        {% endif %}
+        <p id="download-feedback" class="download-feedback" hidden></p>
+      </section>
+
+      {% if latest_result %}
+      <section class="panel">
+        <h2>{{ t.validation_result }}</h2>
+        <p>
+          <strong>{{ t.status }}:</strong>
+          <span class="status-{{ latest_result.status }}">{{ latest_result.status }}</span>
+          <strong>| {{ t.xmls }}:</strong> {{ latest_result.xml_count }}
+          <strong>| {{ t.issues }}:</strong> {{ latest_result.issues_count }}
+          <strong>| {{ t.exceptions }}:</strong> {{ latest_result.exceptions_count }}
+        </p>
+        <div class="articles">
+          <h3>{{ t.articles_found }}</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>{{ t.xml_file }}</th>
+                <th>{{ t.title }}</th>
+                <th>{{ t.authors }}</th>
+                <th>DOI</th>
+                <th>PID</th>
+                <th>{{ t.status }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for article in latest_result.articles %}
+              <tr>
+                <td>{{ article.xml_path }}</td>
+                <td>{{ article.title }}</td>
+                <td>{{ article.authors_text }}</td>
+                <td>{{ article.doi }}</td>
+                <td>{{ article.pid }}</td>
+                <td>{{ article.article_status }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <h3>{{ t.validation_issues }}</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>group</th>
+              <th>title</th>
+              <th>parent</th>
+              <th>parent_id</th>
+              <th>parent_article_type</th>
+              <th>item</th>
+              <th>sub_item</th>
+              <th>attribute</th>
+              <th>validation_type</th>
+              <th>response</th>
+              <th>expected_value</th>
+              <th>got_value</th>
+              <th>advice</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in latest_result.rows %}
+            <tr>
+              <td>{{ row.group }}</td>
+              <td>{{ row.title }}</td>
+              <td>{{ row.parent }}</td>
+              <td>{{ row.parent_id }}</td>
+              <td>{{ row.parent_article_type }}</td>
+              <td>{{ row.item }}</td>
+              <td>{{ row.sub_item }}</td>
+              <td>{{ row.attribute }}</td>
+              <td>{{ row.validation_type }}</td>
+              <td>{{ row.response }}</td>
+              <td>{{ row.expected_value }}</td>
+              <td>{{ row.got_value }}</td>
+              <td>{{ row.advice }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <h3>{{ t.exceptions }}</h3>
+        {% if latest_result.exceptions %}
+        <table>
+          <thead>
+            <tr>
+              <th>response</th>
+              <th>title</th>
+              <th>group</th>
+              <th>{{ t.detail }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for exception in latest_result.exceptions %}
+            <tr>
+              <td>{{ exception.response }}</td>
+              <td>{{ exception.title }}</td>
+              <td>{{ exception.group }}</td>
+              <td>{{ exception.got_value or exception.detail or exception | tojson }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="muted">{{ t.no_exceptions }}</p>
+        {% endif %}
+      </section>
+      {% endif %}
+    </main>
+
+    <footer class="app-footer">
+      <p class="muted">{{ footer_build_label }}</p>
+    </footer>
+    <script>
+      var csvSavedTemplate = {{ t.csv_saved|tojson }};
+      var csvFailedMessage = {{ t.csv_download_failed|tojson }};
+
+      function showDownloadFeedback(message, isError) {
+        var feedback = document.getElementById("download-feedback");
+        feedback.textContent = message;
+        feedback.hidden = false;
+        feedback.classList.toggle("error", !!isError);
+      }
+
+      function downloadCsvInBrowser(link) {
+        fetch(link.dataset.downloadUrl)
+          .then(function (response) {
+            if (!response.ok) {
+              throw new Error("download failed");
+            }
+            return response.blob();
+          })
+          .then(function (blob) {
+            var objectUrl = URL.createObjectURL(blob);
+            var anchor = document.createElement("a");
+            anchor.href = objectUrl;
+            anchor.download = link.dataset.downloadFilename;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(objectUrl);
+            showDownloadFeedback(link.dataset.downloadFilename, false);
+          })
+          .catch(function () {
+            showDownloadFeedback(csvFailedMessage, true);
+          });
+      }
+
+      function downloadCsvWithNativeApi(link) {
+        return window.pywebview.api.save_validation_csv(link.dataset.historyId)
+          .then(function (result) {
+            if (result && result.ok) {
+              showDownloadFeedback(
+                csvSavedTemplate.replace("{path}", result.path),
+                false
+              );
+              return;
+            }
+            showDownloadFeedback(csvFailedMessage, true);
+          })
+          .catch(function () {
+            showDownloadFeedback(csvFailedMessage, true);
+          });
+      }
+
+      function bindCsvDownloads() {
+        if (window.csvDownloadsBound) {
+          return;
+        }
+        window.csvDownloadsBound = true;
+        document.addEventListener("click", function (event) {
+          var link = event.target.closest(".csv-download");
+          if (!link) {
+            return;
+          }
+          event.preventDefault();
+          if (window.pywebview && window.pywebview.api) {
+            downloadCsvWithNativeApi(link);
+            return;
+          }
+          downloadCsvInBrowser(link);
+        });
+      }
+
+      bindCsvDownloads();
+      window.addEventListener("pywebviewready", bindCsvDownloads);
+    </script>
+  </body>
+</html>

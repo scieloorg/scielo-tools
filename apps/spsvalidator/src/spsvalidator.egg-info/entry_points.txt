@@ -1,0 +1,2 @@
+[console_scripts]
+spsvalidator = spsvalidator.main:main

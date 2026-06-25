@@ -1,0 +1,13 @@
+Flask>=3.0.0
+lxml>=5.0.0
+packtools @ git+https://git@github.com/scieloorg/packtools@4.12.6
+pywebview>=5.1
+setuptools<82,>=68
+requests>=2.31.0
+tenacity>=8.2.0
+langdetect~=1.0.9
+
+[dev]
+black>=24.0.0
+isort>=5.13.0
+pytest>=8.0.0
