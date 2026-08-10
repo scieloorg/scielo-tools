@@ -6,7 +6,7 @@ hiredis==2.2.3  # https://github.com/redis/hiredis-py
 
 # Django
 # ------------------------------------------------------------------------------
-django==6.0.5
+django==6.0.6
 django-environ==0.13.0
 djangorestframework==3.17.1
 djangorestframework-simplejwt==5.5.1
