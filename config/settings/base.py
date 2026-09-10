@@ -81,6 +81,7 @@ LOCAL_APPS = [
     "core_settings",
     "xml_manager",
     "reference",
+    "front",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS + WAGTAIL
@@ -326,3 +327,11 @@ REFERENCE_TOKEN = env("REFERENCE_TOKEN", default="")
 REFERENCE_BATCH_SIZE = env.int("REFERENCE_BATCH_SIZE", default=10)
 REFERENCE_NUM_CTX = env.int("REFERENCE_NUM_CTX", default=8192)
 REFERENCE_KEEP_ALIVE = env("REFERENCE_KEEP_ALIVE", default="-1")
+
+FRONT_ENABLED = env.bool("FRONT_ENABLED", default=True)
+FRONT_URL = env("FRONT_URL", default="")
+FRONT_MODEL = env("FRONT_MODEL", default="llama3.2:3b")
+FRONT_TIMEOUT = env.int("FRONT_TIMEOUT", default=300)
+FRONT_TOKEN = env("FRONT_TOKEN", default="")
+FRONT_NUM_CTX = env.int("FRONT_NUM_CTX", default=8192)
+FRONT_KEEP_ALIVE = env("FRONT_KEEP_ALIVE", default="-1")

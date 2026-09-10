@@ -19,3 +19,13 @@ REFERENCE_MODEL=llama3.2:3b
 # REFERENCE_BATCH_SIZE=10
 # REFERENCE_NUM_CTX=8192
 # REFERENCE_KEEP_ALIVE=-1
+
+# Front (Llama via HTTP — serviço ollama no local.yml)
+# ------------------------------------------------------------------------------
+FRONT_ENABLED=true
+FRONT_URL=http://ollama:11434
+FRONT_MODEL=llama3.2:3b
+# FRONT_TOKEN=
+# FRONT_TIMEOUT=300
+# FRONT_NUM_CTX=8192
+# FRONT_KEEP_ALIVE=-1
