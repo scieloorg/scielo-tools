@@ -9,7 +9,7 @@ from front.utils import normalize_front_text
 
 class Front(models.Model):
     source_text = models.TextField(_("Source text"))
-    normalized_text = models.TextField(_("Normalized text"), blank=True, db_index=True)
+    normalized_text = models.TextField(_("Normalized text"), blank=True)
     checksum = models.CharField(_("SHA256"), max_length=64, blank=True, unique=True)
     marked = models.JSONField(_("Marked"), default=dict, blank=True)
     marked_xml = models.TextField(_("Marked XML"), blank=True)

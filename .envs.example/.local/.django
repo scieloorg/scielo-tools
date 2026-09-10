@@ -9,10 +9,10 @@ REDIS_URL=redis://redis:6379/0
 # Celery
 # ------------------------------------------------------------------------------
 
-# Reference (Llama via HTTP — serviço ollama no local.yml)
+# Reference (Llama via HTTP — Ollama no host)
 # ------------------------------------------------------------------------------
 REFERENCE_ENABLED=true
-REFERENCE_URL=http://ollama:11434
+REFERENCE_URL=http://host.docker.internal:11434
 REFERENCE_MODEL=llama3.2:3b
 # REFERENCE_TOKEN=
 # REFERENCE_TIMEOUT=300
@@ -20,10 +20,10 @@ REFERENCE_MODEL=llama3.2:3b
 # REFERENCE_NUM_CTX=8192
 # REFERENCE_KEEP_ALIVE=-1
 
-# Front (Llama via HTTP — serviço ollama no local.yml)
+# Front (Llama via HTTP — Ollama no host)
 # ------------------------------------------------------------------------------
 FRONT_ENABLED=true
-FRONT_URL=http://ollama:11434
+FRONT_URL=http://host.docker.internal:11434
 FRONT_MODEL=llama3.2:3b
 # FRONT_TOKEN=
 # FRONT_TIMEOUT=300

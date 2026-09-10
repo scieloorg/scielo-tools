@@ -69,12 +69,12 @@ class FrontViewSet(GenericViewSet):
         output_type = serializer.validated_data.get("type", "json")
         language = serializer.validated_data.get("language") or None
         try:
-            front_text = front_from_docx_upload(uploaded)
+            front_text, counts = front_from_docx_upload(uploaded)
         except FrontDocxError as exc:
             return JsonResponse({"error": str(exc)}, status=400)
-        return self.mark_and_respond(front_text, output_type, language)
+        return self.mark_and_respond(front_text, output_type, language, counts=counts)
 
-    def mark_and_respond(self, front_text, output_type, language):
+    def mark_and_respond(self, front_text, output_type, language, counts=None):
         if not str(front_text or "").strip():
             return JsonResponse({"error": "No front provided"}, status=400)
         try:
@@ -83,6 +83,7 @@ class FrontViewSet(GenericViewSet):
                 user=self.request.user,
                 output_type=output_type,
                 language=language,
+                counts=counts,
             )
         except (
             FrontLlamaDisabledError,
