@@ -63,6 +63,51 @@ def test_api_marks_front_json(monkeypatch):
 
 
 @pytest.mark.django_db
+def test_api_fills_journal_title_and_keywords_from_source_text(monkeypatch):
+    monkeypatch.setattr(
+        "front.data_utils.mark_front",
+        lambda _text: json.dumps(
+            {
+                "titles": [{"kind": "main", "text": "Título de teste"}],
+                "authors": [
+                    {"given_names": "Felipe", "surname": "Gonzatti"},
+                    {"given_names": "Olga", "surname": "Yano"},
+                ],
+            }
+        ),
+    )
+    User = get_user_model()
+    user = User.objects.create_user(username="fronttextfields", password="pass")
+    client = APIClient()
+    client.force_authenticate(user=user)
+    front = (
+        "Biota Neotropica 26(2): e20251870, 2026\n"
+        "www.scielo.br/bn\n"
+        "Felipe Gonzatti https://orcid.org/0000-0003-1971-0558\n"
+        "Olga Yano http://orcid.org/0009-0005-7077-5260\n"
+        "Keywords: amazon flora; mosses.\n"
+        "Palavras-chave: flora amazônica; musgos."
+    )
+    response = client.post(
+        "/api/v1/front/",
+        data=json.dumps(
+            {
+                "front": front,
+                "type": "json",
+            }
+        ),
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["journal"]["journal_title"] == "Biota Neotropica"
+    assert data["keywords"][0]["keywords"] == ["amazon flora", "mosses"]
+    assert data["keywords"][1]["keywords"] == ["flora amazônica", "musgos"]
+    assert data["authors"][0]["orcid"] == "0000-0003-1971-0558"
+    assert data["authors"][1]["orcid"] == "0009-0005-7077-5260"
+
+
+@pytest.mark.django_db
 def test_api_marks_front_xml(monkeypatch):
     monkeypatch.setattr(
         "front.data_utils.mark_front",
@@ -157,3 +202,18 @@ def test_api_reuses_checksum_cache(monkeypatch):
     assert second.status_code == 200
     assert calls.call_count == 1
     assert Front.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_front_saves_normalized_text_longer_than_btree_limit():
+    User = get_user_model()
+    user = User.objects.create_user(username="frontlong", password="pass")
+    long_text = "Título\n" + ("palavra " * 400)
+    record = Front.objects.create(
+        source_text=long_text,
+        marked={"titles": [{"kind": "main", "text": "Título"}]},
+        creator=user,
+    )
+    assert len(record.normalized_text.encode("utf-8")) > 2704
+    assert record.checksum
+    assert Front.objects.get(checksum=record.checksum).pk == record.pk

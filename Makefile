@@ -116,6 +116,15 @@ django_dump_auth: ## Dump auth data to fixtures/auth.json
 django_load_auth: ## Load auth data from fixtures/auth.json
 	docker compose -f $(COMPOSE_FILE) run --rm django python manage.py loaddata --database=default fixtures/auth.json
 
+remove_all_references: ## Delete all cached Reference / ElementCitation rows
+	docker compose -f $(COMPOSE_FILE) run --rm django python manage.py remove_all_references --no-input
+
+remove_all_front: ## Delete all cached Front rows
+	docker compose -f $(COMPOSE_FILE) run --rm django python manage.py remove_all_front --no-input
+
+remove_all_body: ## Delete all cached Body rows
+	docker compose -f $(COMPOSE_FILE) run --rm django python manage.py remove_all_body --no-input
+
 dump_data: ## Dump database into timestamped .sql file
 	docker compose -f $(COMPOSE_FILE) exec postgres pg_dumpall -c -U debug > dump_$$(date +%d-%m-%Y"_"%H_%M_%S).sql
 

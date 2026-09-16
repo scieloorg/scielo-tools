@@ -7,22 +7,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from front.api.v1.serializers import (
-    FrontDocxRequestSerializer,
-    FrontMarkRequestSerializer,
+from body.api.v1.serializers import BodyDocxRequestSerializer, BodyMarkRequestSerializer
+from body.data_utils import resolve_body_result
+from body.exceptions import (
+    BodyDocxError,
+    BodyLlamaDisabledError,
+    BodyLlamaMisconfiguredError,
+    BodyLlamaUnavailableError,
 )
-from front.data_utils import resolve_front_result
-from front.exceptions import (
-    FrontDocxError,
-    FrontLlamaDisabledError,
-    FrontLlamaMisconfiguredError,
-    FrontLlamaUnavailableError,
-)
-from front.utils import front_from_docx_upload
+from body.utils import body_from_docx_upload
 
 
-class FrontViewSet(GenericViewSet):
-    serializer_class = FrontMarkRequestSerializer
+class BodyViewSet(GenericViewSet):
+    serializer_class = BodyMarkRequestSerializer
     permission_classes = [IsAuthenticated]
     http_method_names = [
         "get",
@@ -33,8 +30,8 @@ class FrontViewSet(GenericViewSet):
 
     def get_serializer_class(self):
         if getattr(self, "action", None) == "docx":
-            return FrontDocxRequestSerializer
-        return FrontMarkRequestSerializer
+            return BodyDocxRequestSerializer
+        return BodyMarkRequestSerializer
 
     def create(self, request, *args, **kwargs):
         data = request.data
@@ -46,7 +43,7 @@ class FrontViewSet(GenericViewSet):
             return JsonResponse(serializer.errors, status=400)
 
         return self.mark_and_respond(
-            serializer.validated_data["front"],
+            serializer.validated_data["body"],
             serializer.validated_data.get("type", "json"),
             serializer.validated_data.get("language") or None,
         )
@@ -69,26 +66,31 @@ class FrontViewSet(GenericViewSet):
         output_type = serializer.validated_data.get("type", "json")
         language = serializer.validated_data.get("language") or None
         try:
-            front_text, counts = front_from_docx_upload(uploaded)
-        except FrontDocxError as exc:
+            body_text, tables, figures = body_from_docx_upload(uploaded)
+        except BodyDocxError as exc:
             return JsonResponse({"error": str(exc)}, status=400)
-        return self.mark_and_respond(front_text, output_type, language, counts=counts)
+        return self.mark_and_respond(
+            body_text, output_type, language, tables=tables, figures=figures
+        )
 
-    def mark_and_respond(self, front_text, output_type, language, counts=None):
-        if not str(front_text or "").strip():
-            return JsonResponse({"error": "No front provided"}, status=400)
+    def mark_and_respond(
+        self, body_text, output_type, language, tables=None, figures=None
+    ):
+        if not str(body_text or "").strip():
+            return JsonResponse({"error": "No body provided"}, status=400)
         try:
-            result = resolve_front_result(
-                front_text,
+            result = resolve_body_result(
+                body_text,
                 user=self.request.user,
                 output_type=output_type,
                 language=language,
-                counts=counts,
+                tables=tables,
+                figures=figures,
             )
         except (
-            FrontLlamaDisabledError,
-            FrontLlamaMisconfiguredError,
-            FrontLlamaUnavailableError,
+            BodyLlamaDisabledError,
+            BodyLlamaMisconfiguredError,
+            BodyLlamaUnavailableError,
         ) as exc:
             return JsonResponse(
                 {"error": f"Llama model is not available: {exc}"},

@@ -40,3 +40,14 @@ FRONT_MODEL=llama3.2:3b
 # FRONT_TIMEOUT=300
 # FRONT_NUM_CTX=8192
 # FRONT_KEEP_ALIVE=-1
+
+# Body (Llama via HTTP — Ollama-compatible API)
+# ------------------------------------------------------------------------------
+BODY_ENABLED=true
+BODY_URL=
+BODY_MODEL=llama3.2:3b
+# BODY_TOKEN=
+# BODY_TIMEOUT=300
+# BODY_NUM_CTX=32768
+# BODY_CHUNK_CHARS=8000
+# BODY_KEEP_ALIVE=-1

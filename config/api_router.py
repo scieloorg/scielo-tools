@@ -1,6 +1,7 @@
 from django.conf import settings
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
+from body.api.v1.views import BodyViewSet
 from front.api.v1.views import FrontViewSet
 from reference.api.v1.views import ReferenceViewSet
 
@@ -11,5 +12,6 @@ else:
 
 router.register("reference", ReferenceViewSet, basename="reference")
 router.register("front", FrontViewSet, basename="front")
+router.register("body", BodyViewSet, basename="body")
 
 urlpatterns = router.urls

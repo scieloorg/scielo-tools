@@ -82,6 +82,7 @@ LOCAL_APPS = [
     "xml_manager",
     "reference",
     "front",
+    "body",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS + WAGTAIL
@@ -335,3 +336,12 @@ FRONT_TIMEOUT = env.int("FRONT_TIMEOUT", default=300)
 FRONT_TOKEN = env("FRONT_TOKEN", default="")
 FRONT_NUM_CTX = env.int("FRONT_NUM_CTX", default=8192)
 FRONT_KEEP_ALIVE = env("FRONT_KEEP_ALIVE", default="-1")
+
+BODY_ENABLED = env.bool("BODY_ENABLED", default=True)
+BODY_URL = env("BODY_URL", default="")
+BODY_MODEL = env("BODY_MODEL", default="llama3.2:3b")
+BODY_TIMEOUT = env.int("BODY_TIMEOUT", default=300)
+BODY_TOKEN = env("BODY_TOKEN", default="")
+BODY_NUM_CTX = env.int("BODY_NUM_CTX", default=32768)
+BODY_KEEP_ALIVE = env("BODY_KEEP_ALIVE", default="-1")
+BODY_CHUNK_CHARS = env.int("BODY_CHUNK_CHARS", default=8000)
