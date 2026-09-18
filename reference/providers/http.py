@@ -78,6 +78,7 @@ class Provider:
             "messages": messages,
             "options": options,
             "stream": False,
+            "think": False,
         }
         if self.response_format and self.response_format.get("type") == "json_object":
             payload["format"] = "json"
@@ -96,7 +97,12 @@ class Provider:
                 timeout=self.timeout,
             )
             resp.raise_for_status()
-            response_text = resp.json().get("message", {}).get("content") or ""
+            message = resp.json().get("message") or {}
+            response_text = message.get("content") or ""
+            if not str(response_text).strip():
+                raise ReferenceLlamaUnavailableError(
+                    "Reference Llama returned empty content"
+                )
         except requests.RequestException as exc:
             logger.error("Reference Llama HTTP error: %s", exc)
             raise ReferenceLlamaUnavailableError(

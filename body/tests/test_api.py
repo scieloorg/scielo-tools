@@ -83,6 +83,7 @@ def test_api_marks_body_json(monkeypatch):
     payload = response.json()
     assert payload["data"]["sections"][0]["title"] == "INTRODUÇÃO"
     assert payload["data"]["sections"][0]["sec_type"] == "intro"
+    assert "href" not in payload["data"]["sections"][2]["content"][1]
     assert Body.objects.count() == 1
 
 
@@ -191,3 +192,122 @@ def test_api_reuses_checksum_cache(monkeypatch):
     assert second.status_code == 200
     assert calls.call_count == 1
     assert Body.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_api_multipart_attaches_fig_href(monkeypatch):
+    from body.tests.test_images import make_tiff_bytes, uploaded_image
+
+    monkeypatch.setattr(
+        "body.data_utils.mark_body",
+        lambda _text: json.dumps(SAMPLE_MARKED),
+    )
+    User = get_user_model()
+    user = User.objects.create_user(username="bodyimg", password="pass")
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.post(
+        "/api/v1/body/",
+        data={
+            "body": "INTRODUÇÃO\nO modelo está na Figura 1.",
+            "type": "json",
+            "images": uploaded_image("fig-1.tif", make_tiff_bytes()),
+        },
+        format="multipart",
+    )
+    assert response.status_code == 200
+    fig = response.json()["data"]["sections"][2]["content"][1]
+    assert fig["href"] == "fig-1.jpg"
+
+
+@pytest.mark.django_db
+def test_api_xml_multipart_emits_graphic_href(monkeypatch):
+    from body.tests.test_images import make_tiff_bytes, uploaded_image
+
+    monkeypatch.setattr(
+        "body.data_utils.mark_body",
+        lambda _text: json.dumps(SAMPLE_MARKED),
+    )
+    User = get_user_model()
+    user = User.objects.create_user(username="bodyimgxml", password="pass")
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.post(
+        "/api/v1/body/",
+        data={
+            "body": "INTRODUÇÃO\nO modelo está na Figura 1.",
+            "type": "xml",
+            "images": uploaded_image("fig-1.tif", make_tiff_bytes()),
+        },
+        format="multipart",
+    )
+    assert response.status_code == 200
+    xml = response.json()["data"]
+    assert 'xlink:href="fig-1.jpg"' in xml
+
+
+@pytest.mark.django_db
+def test_api_cache_overlays_hrefs_without_remarking(monkeypatch):
+    from body.tests.test_images import make_tiff_bytes, uploaded_image
+
+    calls = MagicMock(return_value=json.dumps(SAMPLE_MARKED))
+    monkeypatch.setattr("body.data_utils.mark_body", calls)
+    User = get_user_model()
+    user = User.objects.create_user(username="bodyimgcache", password="pass")
+    client = APIClient()
+    client.force_authenticate(user=user)
+    body_text = "INTRODUÇÃO\nO modelo está na Figura 1."
+
+    first = client.post(
+        "/api/v1/body/",
+        data=json.dumps({"body": body_text, "type": "json"}),
+        content_type="application/json",
+    )
+    second = client.post(
+        "/api/v1/body/",
+        data={
+            "body": body_text,
+            "type": "json",
+            "images": uploaded_image("fig-1.tif", make_tiff_bytes()),
+        },
+        format="multipart",
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert "href" not in first.json()["data"]["sections"][2]["content"][1]
+    assert second.json()["data"]["sections"][2]["content"][1]["href"] == "fig-1.jpg"
+    assert "href" not in Body.objects.get().marked["sections"][2]["content"][1]
+    assert calls.call_count == 1
+    assert Body.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_api_rejects_invalid_image_filename(monkeypatch):
+    from body.tests.test_images import make_jpeg_bytes, uploaded_image
+
+    monkeypatch.setattr(
+        "body.data_utils.mark_body",
+        lambda _text: json.dumps(SAMPLE_MARKED),
+    )
+    User = get_user_model()
+    user = User.objects.create_user(username="bodybadimg", password="pass")
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    response = client.post(
+        "/api/v1/body/",
+        data={
+            "body": "INTRODUÇÃO\nTexto.",
+            "type": "json",
+            "images": uploaded_image(
+                "photo.png", make_jpeg_bytes(), content_type="image/png"
+            ),
+        },
+        format="multipart",
+    )
+    assert response.status_code == 400
+    assert "Invalid image filename" in response.json()["error"]
+    assert Body.objects.count() == 0

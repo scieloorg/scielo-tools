@@ -2,7 +2,7 @@ from collections.abc import Mapping
 
 from django.http import JsonResponse
 from rest_framework.decorators import action
-from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -11,16 +11,19 @@ from body.api.v1.serializers import BodyDocxRequestSerializer, BodyMarkRequestSe
 from body.data_utils import resolve_body_result
 from body.exceptions import (
     BodyDocxError,
+    BodyImageError,
     BodyLlamaDisabledError,
     BodyLlamaMisconfiguredError,
     BodyLlamaUnavailableError,
 )
+from body.images import collect_image_hrefs
 from body.utils import body_from_docx_upload
 
 
 class BodyViewSet(GenericViewSet):
     serializer_class = BodyMarkRequestSerializer
     permission_classes = [IsAuthenticated]
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
     http_method_names = [
         "get",
         "post",
@@ -46,6 +49,8 @@ class BodyViewSet(GenericViewSet):
             serializer.validated_data["body"],
             serializer.validated_data.get("type", "json"),
             serializer.validated_data.get("language") or None,
+            images=serializer.validated_data.get("images"),
+            images_zip=serializer.validated_data.get("images_zip"),
         )
 
     @action(
@@ -70,14 +75,31 @@ class BodyViewSet(GenericViewSet):
         except BodyDocxError as exc:
             return JsonResponse({"error": str(exc)}, status=400)
         return self.mark_and_respond(
-            body_text, output_type, language, tables=tables, figures=figures
+            body_text,
+            output_type,
+            language,
+            tables=tables,
+            figures=figures,
+            images=serializer.validated_data.get("images"),
+            images_zip=serializer.validated_data.get("images_zip"),
         )
 
     def mark_and_respond(
-        self, body_text, output_type, language, tables=None, figures=None
+        self,
+        body_text,
+        output_type,
+        language,
+        tables=None,
+        figures=None,
+        images=None,
+        images_zip=None,
     ):
         if not str(body_text or "").strip():
             return JsonResponse({"error": "No body provided"}, status=400)
+        try:
+            image_hrefs = collect_image_hrefs(images, images_zip)
+        except BodyImageError as exc:
+            return JsonResponse({"error": str(exc)}, status=400)
         try:
             result = resolve_body_result(
                 body_text,
@@ -86,6 +108,7 @@ class BodyViewSet(GenericViewSet):
                 language=language,
                 tables=tables,
                 figures=figures,
+                image_hrefs=image_hrefs,
             )
         except (
             BodyLlamaDisabledError,

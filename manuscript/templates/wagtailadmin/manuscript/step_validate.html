@@ -1,0 +1,133 @@
+{% extends "wagtailadmin/manuscript/wizard_base.html" %}
+{% load i18n %}
+
+{% block wizard_editor %}
+    <section class="card">
+        <div class="card-header">
+            <h2>{% trans "Assembled XML" %}</h2>
+        </div>
+        <div class="card-body">
+            {% if manuscript.assembled_xml %}
+                <p><a href="{% url 'manuscript_preview_part' manuscript.pk 'article' %}" target="_blank" class="btn btn-sm btn-outline-primary">{% trans "Open article preview" %}</a></p>
+                <form method="post" id="manuscript-assembled-xml-form" class="manuscript-form">
+                    {% csrf_token %}
+                    <textarea name="assembled_xml" rows="12" class="form-control manuscript-xml-preview">{{ manuscript.assembled_xml }}</textarea>
+                    <div class="btn-group">
+                        <button type="submit" name="action" value="save_assembled_xml" class="btn btn-secondary">{% trans "Save assembled XML" %}</button>
+                    </div>
+                </form>
+            {% else %}
+                <p class="alert alert-info">{% trans "Approve the back step to assemble XML." %}</p>
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}
+
+{% block wizard_editor_extra %}
+    <section class="card">
+        <div class="card-header">
+            <h2>{% trans "SPS validation" %}</h2>
+        </div>
+        <div class="card-body">
+            <form method="post" class="manuscript-inline-form">
+                {% csrf_token %}
+                <button type="submit" name="action" value="validate" class="btn btn-primary"{% if manuscript.assembled_xml %} form="manuscript-assembled-xml-form"{% endif %}>{% trans "Validate SPS package" %}</button>
+            </form>
+
+            {% if summary.status %}
+                <p>
+                    <strong>{% trans "Status" %}:</strong>
+                    {% if summary.status == "done" %}
+                        <span class="badge bg-success">{{ summary.status }}</span>
+                    {% elif summary.status == "error" %}
+                        <span class="badge bg-danger">{{ summary.status }}</span>
+                    {% else %}
+                        <span class="badge bg-info">{{ summary.status }}</span>
+                    {% endif %}
+                </p>
+                {% if summary.error_message %}
+                    <p class="alert alert-danger">{{ summary.error_message }}</p>
+                {% endif %}
+                {% if summary.validation_document %}
+                    <p><a href="{{ summary.validation_document.url }}" target="_blank">{% trans "Download validation CSV" %}</a></p>
+                {% endif %}
+                {% if summary.exceptions_document %}
+                    <p><a href="{{ summary.exceptions_document.url }}" target="_blank">{% trans "Download exceptions JSON" %}</a></p>
+                {% endif %}
+                {% if summary.report_unreadable %}
+                    <p class="alert alert-danger">{% trans "The validation report file is missing. Run Validate SPS package again." %}</p>
+                {% elif summary.severities %}
+                <div class="manuscript-source-tabs manuscript-validation-tabs" data-manuscript-validation-tabs>
+                    <div class="manuscript-source-tabs__nav" role="tablist" aria-label="{% trans 'Validation severity' %}">
+                        {% for severity_data in summary.severities %}
+                            <button
+                                type="button"
+                                class="manuscript-source-tabs__tab{% if forloop.first %} is-active{% endif %}"
+                                role="tab"
+                                aria-selected="{% if forloop.first %}true{% else %}false{% endif %}"
+                                data-manuscript-validation-tab="{{ severity_data.response }}"
+                            >
+                                {{ severity_data.response }}
+                                <span class="badge manuscript-validation-tabs__badge manuscript-validation-tabs__badge--{{ severity_data.response|lower }}">{{ severity_data.rows|length }}</span>
+                            </button>
+                        {% endfor %}
+                    </div>
+                    {% for severity_data in summary.severities %}
+                        <div
+                            class="manuscript-source-tabs__panel{% if forloop.first %} is-active{% endif %}"
+                            role="tabpanel"
+                            data-manuscript-validation-panel="{{ severity_data.response }}"
+                            {% if not forloop.first %}hidden{% endif %}
+                        >
+                            <ul class="manuscript-validation-items">
+                                {% for row in severity_data.rows %}
+                                    <li>
+                                        <span class="manuscript-validation-items__group">{{ row.group }}</span>
+                                        {{ row.advice|default:row.item }}
+                                        {% if row.got_value %} — {{ row.got_value }}{% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endfor %}
+                </div>
+                <script>
+                    (function () {
+                        const root = document.querySelector("[data-manuscript-validation-tabs]");
+                        if (!root) {
+                            return;
+                        }
+                        const tabs = root.querySelectorAll("[data-manuscript-validation-tab]");
+                        const panels = root.querySelectorAll("[data-manuscript-validation-panel]");
+                        tabs.forEach((tab) => {
+                            tab.addEventListener("click", () => {
+                                const target = tab.getAttribute("data-manuscript-validation-tab");
+                                tabs.forEach((item) => {
+                                    const active = item === tab;
+                                    item.classList.toggle("is-active", active);
+                                    item.setAttribute("aria-selected", active ? "true" : "false");
+                                });
+                                panels.forEach((panel) => {
+                                    const active =
+                                        panel.getAttribute("data-manuscript-validation-panel") === target;
+                                    panel.classList.toggle("is-active", active);
+                                    panel.hidden = !active;
+                                });
+                            });
+                        });
+                    })();
+                </script>
+                {% elif summary.status == "done" %}
+                    <p class="alert alert-info">{% trans "No critical issues, errors or warnings." %}</p>
+                {% endif %}
+
+                {% if summary.status == "done" %}
+                    <form method="post" class="manuscript-inline-form">
+                        {% csrf_token %}
+                        <button type="submit" name="action" value="confirm" class="btn btn-outline-primary">{% trans "Confirm validation review" %}</button>
+                    </form>
+                {% endif %}
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}

@@ -11,14 +11,13 @@ MESSAGES = [
             "example; use only this input. "
             "JSON keys: journal, article_ids, categories, titles, authors, "
             "affiliations, author_notes, pub_dates, volume, issue, fpage, lpage, "
-            "elocation_id, abstracts, keywords, history, permissions, counts, funding. "
+            "elocation_id, abstracts, keywords, history, counts, funding. "
             "journal: journal_ids [{type: publisher-id|nlm-ta, value}], "
             "journal_title (masthead name only, before volume/issue, e.g. the first "
             "line Journal Name 26(2) -> Journal Name), "
-            "abbrev_journal_title, issns [{pub_type: epub|ppub, value}]; "
-            "emit every ISSN written: print/impresso/printed -> ppub, "
-            "online/eletrônico/on-line -> epub; if only one and unlabeled, "
-            "epub; never copy ISSN values from the example. "
+            "abbrev_journal_title. "
+            "issns: omit this key; ISSN print/online lines are copied from the "
+            "source. Never paste ISSN values into JSON. "
             "publisher_name (omit if not written; never SciELO SPS). "
             "article_ids: [{pub_id_type: doi|publisher-id|other, value}]; doi is the "
             "bare id without https://doi.org/. "
@@ -32,7 +31,15 @@ MESSAGES = [
             "translated. "
             "authors: [{contrib_type (default author), given_names, surname, collab, "
             "orcid (bare 0000-0000-0000-0000), affiliations [aff ids], corresp bool, "
-            "roles []}]. "
+            "roles [free text or CRediT terms]}]. Every author must include affiliations ids "
+            "(aff1) that match affiliations.id. Roles may appear under Author Contributions "
+            "lines (Name: role; role). Omit roles unless written in this input; do not copy "
+            "roles from the example. "
+            "When present, roles use CRediT: "
+            "Conceptualization, Data curation, Formal analysis, Funding "
+            "acquisition, Investigation, Methodology, Project administration, "
+            "Resources, Software, Supervision, Validation, Visualization, "
+            "Writing – original draft, Writing – review & editing. "
             "Portuguese/Spanish particles (de, da, do, dos, das, del) go in "
             "given_names, never in surname: Dimas M. do Carmo -> given_names "
             '"Dimas M. do", surname "Carmo". '
@@ -46,12 +53,19 @@ MESSAGES = [
             "campus or center in orgdiv1 or orgdiv2. "
             "author_notes: {corresp, fns:[{text}]}. "
             "pub_dates: [{type: pub|collection, day, month, year, season}]. "
-            "history: [{type: received|rev-recd|accepted, day, month, year}]. "
+            "Omit pub_dates unless a complete publication date is written "
+            "(year and month 01-12 and day 01-31); never emit month or day 00. "
+            "history: [{type: received|rev-request|rev-recd|accepted|pub, "
+            "day, month, year}]. "
             "Omit history entirely if Received/Recebido or Accepted/Aceito are "
             "absent; never fill day, month, or year with null. "
             "Use only dates written in this input (Received/Recebido/Recibido/"
-            "Submitted, Accepted/Aceito/Aceptado/Aprovado/Accepted for "
-            "publication, Revised/Revisado). Numeric dates are day/month/year, "
+            "Submitted, Revision requested/Revisions requested/Revisão "
+            "solicitada/Revisión solicitada, Accepted/Aceito/Aceptado/"
+            "Aprovado/Accepted for publication, Revised/Revisado, Published "
+            "online/Publicado online/Publicado en línea as history type pub). "
+            "Numeric dates are "
+            "day/month/year, "
             "never month/day: 22/12/2025 is day 22, month 12, year 2025, not "
             "January; 07/03/2024 is day 07, month 03, year 2024, not July; "
             "23 09 2025 is day 23, month 09. Also parse 23 Sept. 2025, "
@@ -68,12 +82,11 @@ MESSAGES = [
             "group only for headings in the text (Keywords, Palavras-chave, "
             "Palabras clave); do not add a language or term that is not written; "
             "keep capitalization as written. "
-            "permissions: {copyright_statement, copyright_year, copyright_holder, "
-            "license_href, license_p}. "
+            "permissions: omit this key; the application always adds CC BY 4.0. "
             "counts: {fig_count, table_count, equation_count, ref_count} as strings "
             "only when stated. "
-            "funding: {awards:[{funding_source, award_id}], funding_statement} "
-            "when FAPESP, CNPq, CAPES, Processo, or Grant appears; omit if absent."
+            "funding: omit this key; Funding/Financiamento paragraphs and grant lines "
+            "are copied from the source. Never paste funding into JSON."
         ),
     },
     {
@@ -81,8 +94,6 @@ MESSAGES = [
         "content": (
             "Revista Exemplo de Ciências 12(3): e20240099, 2024\n"
             "www.scielo.br/rec\n"
-            "ISSN 1111-2222 (Print)\n"
-            "ISSN 3333-4444 (Online)\n"
             "Original Article\n"
             "Seasonal rainfall and forest birds in the Cerrado\n"
             "Chuva sazonal e aves florestais no Cerrado\n"
@@ -108,9 +119,7 @@ MESSAGES = [
         "role": "assistant",
         "content": (
             '{"article_ids":[{"pub_id_type":"doi","value":"10.1590/rec-2024-0099"}],'
-            '"journal":{"journal_title":"Revista Exemplo de Ciências",'
-            '"issns":[{"pub_type":"ppub","value":"1111-2222"},'
-            '{"pub_type":"epub","value":"3333-4444"}]},'
+            '"journal":{"journal_title":"Revista Exemplo de Ciências"},'
             '"categories":[{"subj_group_type":"heading",'
             '"subject":"Original Article"}],'
             '"titles":[{"kind":"main","text":"Seasonal rainfall and forest birds in '
@@ -139,9 +148,7 @@ MESSAGES = [
             '"Bioindicators","Conservation"]},'
             '{"language":"pt","title":"Palavras-chave",'
             '"keywords":["Chuva sazonal","Aves florestais","Cerrado",'
-            '"Bioindicadores","Conservação"]}],'
-            '"funding":{"awards":[{"funding_source":"CNPq",'
-            '"award_id":"312345/2023-0"}]}}'
+            '"Bioindicadores","Conservação"]}]}'
         ),
     },
 ]

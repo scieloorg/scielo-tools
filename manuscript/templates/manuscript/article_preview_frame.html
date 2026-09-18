@@ -1,0 +1,23 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{{ manuscript.title }}</title>
+        <link rel="stylesheet" href="{% static 'vendor/scielo-ds/css/bootstrap.css' %}">
+        <link rel="stylesheet" href="{% static 'vendor/scielo-ds/css/article.css' %}">
+        <link rel="stylesheet" href="{% static 'manuscript/css/preview.css' %}">
+    </head>
+    <body>
+        <article class="article">
+            <div class="articleCtt">
+                <div class="container">
+                    <div class="articleTxt">
+                        {{ preview_html }}
+                    </div>
+                </div>
+            </div>
+        </article>
+    </body>
+</html>

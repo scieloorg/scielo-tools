@@ -1,0 +1,72 @@
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--scielo-bg-gray-1);
+    color: var(--scielo-text);
+    font-family: var(--scielo-font);
+}
+
+.scielo-home {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.scielo-home__header {
+    background: var(--scielo-white);
+    border-bottom: 3px solid var(--scielo-brand);
+    padding: 1rem 1.5rem;
+}
+
+.scielo-home__logo {
+    display: block;
+    height: 3rem;
+    width: auto;
+}
+
+.scielo-home__main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1.5rem;
+}
+
+.scielo-home__panel {
+    max-width: 40rem;
+    text-align: center;
+}
+
+.scielo-home__panel h1 {
+    margin: 0 0 0.75rem;
+    color: var(--scielo-text-emphasis);
+}
+
+.scielo-home__panel p {
+    margin: 0 0 1.5rem;
+    color: var(--scielo-text-subtle);
+    font-size: 1.1rem;
+}
+
+.scielo-home__footer {
+    padding: 1rem 1.5rem;
+    text-align: center;
+    color: var(--scielo-text-subtle);
+    font-size: 0.875rem;
+    background: var(--scielo-white);
+    border-top: 1px solid var(--scielo-border);
+}
+
+.scielo-error {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    text-align: center;
+}
+
+.scielo-error h1 {
+    color: var(--scielo-text-emphasis);
+    margin-bottom: 0.5rem;
+}

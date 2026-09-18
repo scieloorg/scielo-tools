@@ -217,6 +217,140 @@ def test_get_front_xml_normalizes_doi_orcid_and_country():
     assert country.text == "Brasil"
 
 
+def test_get_front_xml_maps_credit_role_and_defaults_aff_xref():
+    xml = get_front_xml(
+        {
+            "titles": [{"kind": "main", "text": "Title"}],
+            "authors": [
+                {
+                    "given_names": "Karoline A.F.",
+                    "surname": "Ribeiro",
+                    "roles": ["study design", "initial draft preparation"],
+                }
+            ],
+            "affiliations": [
+                {
+                    "id": "aff1",
+                    "label": "1",
+                    "orgname": "Instituto Mamirauá",
+                }
+            ],
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    contrib = root.find(".//contrib")
+    xref = contrib.find("xref[@ref-type='aff']")
+    assert xref.get("rid") == "aff1"
+    assert xref.find("sup").text == "1"
+    roles = contrib.findall("role")
+    assert [role.text for role in roles] == [
+        "Conceptualization",
+        "Writing – original draft",
+    ]
+    assert roles[0].get("content-type") == (
+        "https://credit.niso.org/contributor-roles/conceptualization/"
+    )
+    assert roles[1].get("content-type") == (
+        "https://credit.niso.org/contributor-roles/writing-original-draft/"
+    )
+
+
+def test_get_front_xml_resolves_numeric_affiliation_ids():
+    xml = get_front_xml(
+        {
+            "titles": [{"kind": "main", "text": "Title"}],
+            "authors": [
+                {
+                    "given_names": "Leonardo P.",
+                    "surname": "Reis",
+                    "affiliations": ["1", "aff2"],
+                }
+            ],
+            "affiliations": [
+                {"id": "aff1", "label": "1", "orgname": "IDSM"},
+                {"id": "aff2", "label": "2", "orgname": "UFRA"},
+            ],
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    rids = [
+        xref.get("rid") for xref in root.findall(".//contrib/xref[@ref-type='aff']")
+    ]
+    assert rids == ["aff1", "aff2"]
+
+
+def test_get_front_xml_fills_collection_year_without_placeholder_pub_date():
+    xml = get_front_xml(
+        {
+            "titles": [{"kind": "main", "text": "Title"}],
+            "history": [
+                {"type": "received", "day": "05", "month": "08", "year": "2025"},
+                {"type": "accepted", "day": "27", "month": "03", "year": "2026"},
+            ],
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    assert root.find(".//pub-date[@date-type='pub']") is None
+    collection = root.find(".//pub-date[@date-type='collection']")
+    assert collection.get("publication-format") == "electronic"
+    assert collection.find("year").text == "2026"
+    assert collection.find("month") is None
+    assert collection.find("day") is None
+
+
+def test_get_front_xml_omits_incomplete_electronic_pub_date():
+    xml = get_front_xml(
+        {
+            "titles": [{"kind": "main", "text": "Title"}],
+            "pub_dates": [
+                {"type": "pub", "day": "00", "month": "00", "year": "2025"},
+            ],
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    assert root.find(".//pub-date[@date-type='pub']") is None
+    collection = root.find(".//pub-date[@date-type='collection']")
+    assert collection.find("year").text == "2025"
+
+
+def test_get_front_xml_keeps_explicit_pub_dates():
+    xml = get_front_xml(SAMPLE_MARKED)
+    root = etree.fromstring(xml.encode("utf-8"))
+    pub = root.find(".//pub-date[@date-type='pub']")
+    assert pub.find("day").text == "01"
+    assert pub.find("month").text == "01"
+    assert pub.find("year").text == "2026"
+    roles = root.findall(".//contrib/role")
+    assert roles[0].text == "Writing – original draft"
+    assert roles[0].get("content-type") == (
+        "https://credit.niso.org/contributor-roles/writing-original-draft/"
+    )
+
+
+def test_get_front_xml_emits_history_rev_request_and_pub():
+    xml = get_front_xml(
+        {
+            "titles": [{"kind": "main", "text": "Title"}],
+            "history": [
+                {"type": "received", "day": "05", "month": "08", "year": "2025"},
+                {"type": "rev-request", "day": "10", "month": "10", "year": "2025"},
+                {"type": "rev-recd", "day": "01", "month": "02", "year": "2026"},
+                {"type": "accepted", "day": "27", "month": "03", "year": "2026"},
+                {"type": "pub", "day": "15", "month": "05", "year": "2026"},
+            ],
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    types = [el.get("date-type") for el in root.findall(".//history/date")]
+    assert types == [
+        "received",
+        "rev-request",
+        "rev-recd",
+        "accepted",
+        "pub",
+    ]
+
+
 def test_get_front_xml_emits_counts_including_zero():
     xml = get_front_xml(
         {
@@ -394,6 +528,40 @@ def test_get_front_xml_uses_subj_group_type_from_marked():
     assert group.find("subject").text == "Short Communication"
 
 
+def test_get_front_xml_always_emits_cc_by_40_permissions():
+    xml = get_front_xml({"titles": [{"kind": "main", "text": "Title"}]})
+    root = etree.fromstring(xml.encode("utf-8"))
+    license_el = root.find(".//article-meta/permissions/license")
+    xml_lang = "{http://www.w3.org/XML/1998/namespace}lang"
+    xlink_href = "{http://www.w3.org/1999/xlink}href"
+    assert license_el.get("license-type") == "open-access"
+    assert license_el.get(xlink_href) == "https://creativecommons.org/licenses/by/4.0/"
+    assert license_el.get(xml_lang) == "en"
+    assert license_el.find("license-p").text == (
+        "This is an Open Access article distributed under the terms of the "
+        "Creative Commons Attribution License, which permits unrestricted use, "
+        "distribution, and reproduction in any medium, provided the original "
+        "work is properly cited."
+    )
+
+
+def test_get_front_xml_ignores_marked_license_text():
+    xml = get_front_xml(
+        {
+            "titles": [{"kind": "main", "text": "Title"}],
+            "permissions": {
+                "license_href": "https://creativecommons.org/licenses/by-nc/4.0/",
+                "license_p": "This is an Open Access article.",
+            },
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    license_el = root.find(".//article-meta/permissions/license")
+    xlink_href = "{http://www.w3.org/1999/xlink}href"
+    assert license_el.get(xlink_href) == "https://creativecommons.org/licenses/by/4.0/"
+    assert "properly cited" in license_el.find("license-p").text
+
+
 def test_get_front_xml_omits_missing_optional_tags():
     xml = get_front_xml(
         {
@@ -408,6 +576,7 @@ def test_get_front_xml_omits_missing_optional_tags():
     assert root.find(".//funding-group") is None
     assert root.find(".//counts") is None
     assert root.find(".//abstract") is None
+    assert root.find(".//article-meta/permissions/license") is not None
 
 
 def test_get_front_xml_ignores_unknown_journal_id_type():
@@ -474,6 +643,69 @@ def test_apply_text_fields_reads_journal_name_before_issn():
     marked = apply_text_fields({}, text)
     assert marked["journal"]["journal_title"] == "Revista Exemplo de Ciências"
     assert marked["journal"]["issns"] == [{"pub_type": "epub", "value": "1111-2222"}]
+
+
+def test_apply_text_fields_replaces_llm_issns_with_source():
+    text = (
+        "Biota Neotropica 26(2): e20251878, 2025\n"
+        "https://doi.org/10.1590/1676-0611-BN-2025-1878\n"
+        "Short Communication\n"
+    )
+    marked = apply_text_fields(
+        {
+            "journal": {
+                "journal_title": "Biota Neotropica",
+                "issns": [
+                    {"pub_type": "ppub", "value": "1111-2222"},
+                    {"pub_type": "epub", "value": "3333-4444"},
+                ],
+            }
+        },
+        text,
+    )
+    assert marked["journal"]["issns"] == [{"pub_type": "epub", "value": "1676-0611"}]
+
+
+def test_apply_text_fields_drops_llm_issns_absent_from_source():
+    text = "Original Article\nSeasonal rainfall and forest birds in the Cerrado\n"
+    marked = apply_text_fields(
+        {
+            "journal": {
+                "journal_title": "Biota Neotropica",
+                "issns": [
+                    {"pub_type": "ppub", "value": "1111-2222"},
+                    {"pub_type": "epub", "value": "3333-4444"},
+                ],
+            }
+        },
+        text,
+    )
+    assert "issns" not in marked["journal"]
+    assert marked["journal"]["journal_title"] == "Biota Neotropica"
+
+
+def test_apply_text_fields_reads_print_and_online_issn_from_source():
+    text = (
+        "Revista Exemplo de Ciências\n"
+        "ISSN 1414-8145 (Print)\n"
+        "ISSN 2177-9465 (Online)\n"
+        "Original Article\n"
+    )
+    marked = apply_text_fields(
+        {
+            "journal": {
+                "issns": [
+                    {"pub_type": "ppub", "value": "1111-2222"},
+                    {"pub_type": "epub", "value": "3333-4444"},
+                ]
+            }
+        },
+        text,
+    )
+    assert marked["journal"]["issns"] == [
+        {"pub_type": "ppub", "value": "1414-8145"},
+        {"pub_type": "epub", "value": "2177-9465"},
+    ]
 
 
 def test_apply_text_fields_does_not_use_article_title_as_journal():
@@ -700,12 +932,78 @@ def test_apply_text_fields_fills_issn_abstracts_and_affiliations():
             ],
         ),
         (
-            "Received: 05/08/2025Accepted: 27/03/2026Published online: dd/mm/2026",
+            "Received: 05/08/2025Accepted: 27/03/2026Published online: 17/09/2026",
             [
                 {
                     "type": "received",
                     "day": "05",
                     "month": "08",
+                    "year": "2025",
+                },
+                {
+                    "type": "accepted",
+                    "day": "27",
+                    "month": "03",
+                    "year": "2026",
+                },
+                {
+                    "type": "pub",
+                    "day": "17",
+                    "month": "09",
+                    "year": "2026",
+                },
+            ],
+        ),
+        (
+            "Received: 05/08/2025. Revision requested: 20/09/2025. "
+            "Revised: 29/11/2025. Accepted: 27/03/2026.",
+            [
+                {
+                    "type": "received",
+                    "day": "05",
+                    "month": "08",
+                    "year": "2025",
+                },
+                {
+                    "type": "rev-request",
+                    "day": "20",
+                    "month": "09",
+                    "year": "2025",
+                },
+                {
+                    "type": "rev-recd",
+                    "day": "29",
+                    "month": "11",
+                    "year": "2025",
+                },
+                {
+                    "type": "accepted",
+                    "day": "27",
+                    "month": "03",
+                    "year": "2026",
+                },
+            ],
+        ),
+        (
+            "Recebido em 05/08/2025. Revisão solicitada em 20/09/2025. "
+            "Revisado em 29/11/2025. Aceito em 27/03/2026.",
+            [
+                {
+                    "type": "received",
+                    "day": "05",
+                    "month": "08",
+                    "year": "2025",
+                },
+                {
+                    "type": "rev-request",
+                    "day": "20",
+                    "month": "09",
+                    "year": "2025",
+                },
+                {
+                    "type": "rev-recd",
+                    "day": "29",
+                    "month": "11",
                     "year": "2025",
                 },
                 {
@@ -747,6 +1045,29 @@ def test_apply_text_fields_reads_history_dates(text, expected):
     assert marked["history"] == expected
 
 
+def test_apply_text_fields_reads_published_online_into_history_and_pub_date():
+    text = (
+        "Received: 18/06/2025. Accepted: 11/12/2025. " "Published online: 17/09/2026."
+    )
+    marked = apply_text_fields({}, text)
+    assert marked["history"][-1] == {
+        "type": "pub",
+        "day": "17",
+        "month": "09",
+        "year": "2026",
+    }
+    xml = get_front_xml(marked)
+    root = etree.fromstring(xml.encode("utf-8"))
+    history_pub = root.find(".//history/date[@date-type='pub']")
+    assert history_pub.find("day").text == "17"
+    assert history_pub.find("month").text == "09"
+    assert history_pub.find("year").text == "2026"
+    pub = root.find(".//pub-date[@date-type='pub']")
+    assert pub.find("day").text == "17"
+    assert pub.find("month").text == "09"
+    assert pub.find("year").text == "2026"
+
+
 def test_apply_text_fields_ignores_received_in_running_text():
     text = (
         "This research received no specific grants from any funding agency.\n"
@@ -759,6 +1080,127 @@ def test_apply_text_fields_ignores_received_in_running_text():
 def test_parse_marked_extracts_json_object_from_noise():
     marked = parse_marked('prefix {"titles":[{"kind":"main","text":"T"}]} suffix')
     assert marked == {"titles": [{"kind": "main", "text": "T"}]}
+
+
+def test_parse_marked_strips_thinking_and_fenced_json():
+    marked = parse_marked(
+        "<think>slow reasoning</think>\n"
+        '```json\n{"titles":[{"kind":"main","text":"T"}]}\n```'
+    )
+    assert marked == {"titles": [{"kind": "main", "text": "T"}]}
+
+
+def test_parse_marked_uses_raw_decode_before_trailing_garbage():
+    marked = parse_marked('{"titles":[{"kind":"main","text":"T"}]}]}]}]}')
+    assert marked == {"titles": [{"kind": "main", "text": "T"}]}
+
+
+def test_apply_text_fields_extracts_funding_from_heading_and_inline_grant():
+    text = (
+        "Funding\n"
+        "This study was supported by FAPEAM under calls no. 008/2022 and no. 038/2022. "
+        "CAPES process no. 303106-2025-5.\n"
+        "Competing interests\n"
+        "None.\n"
+        "Acknowledgments\n"
+        "CNPq 312345/2023-0"
+    )
+    marked = apply_text_fields({}, text)
+    funding = marked["funding"]
+    assert "FAPEAM" in funding["funding_statement"]
+    sources = {item["funding_source"] for item in funding["awards"]}
+    assert sources >= {"FAPEAM", "CAPES"}
+
+
+def test_apply_text_fields_extracts_simple_grant_line():
+    marked = apply_text_fields({}, "Title\nCNPq 312345/2023-0")
+    assert marked["funding"]["awards"] == [
+        {"funding_source": "CNPq", "award_id": "312345/2023-0"}
+    ]
+
+
+def test_apply_text_fields_reads_author_contributions_and_editorial_notes():
+    text = (
+        "Biota Neotropica\n"
+        "Title\n"
+        "Associate Editor\n"
+        "Alexander Vibrans\n"
+        "Author Contributions\n"
+        "Karoline A. F. Ribeiro: study design; field data collection; data analysis\n"
+        "Leonardo P. Reis: study design; leadership of field expeditions\n"
+        "Conflicts of Interest\n"
+        "The author(s) declare(s) that they have no conflict of interest.\n"
+        "Ethics\n"
+        "This study did not involve human beings.\n"
+    )
+    marked = apply_text_fields(
+        {
+            "authors": [
+                {
+                    "given_names": "Karoline A.F.",
+                    "surname": "Ribeiro",
+                },
+                {
+                    "given_names": "Leonardo P.",
+                    "surname": "Reis",
+                },
+            ]
+        },
+        text,
+    )
+    karoline = marked["authors"][0]
+    leonardo = marked["authors"][1]
+    assert karoline["roles"] == [
+        "study design",
+        "field data collection",
+        "data analysis",
+    ]
+    assert leonardo["roles"] == [
+        "study design",
+        "leadership of field expeditions",
+    ]
+    fns = marked["author_notes"]["fns"]
+    assert fns[0] == {
+        "fn_type": "edited-by",
+        "label": "Associate Editor",
+        "text": "Alexander Vibrans",
+    }
+    assert fns[1]["fn_type"] == "coi-statement"
+    assert "no conflict of interest" in fns[1]["text"]
+    assert fns[2]["fn_type"] == "other"
+    assert fns[2]["label"] == "Ethics"
+
+
+def test_get_front_xml_renders_structured_author_notes():
+    xml = get_front_xml(
+        {
+            "titles": [{"kind": "main", "text": "Title"}],
+            "author_notes": {
+                "corresp": "* Corresponding author: ana@example.com",
+                "fns": [
+                    {
+                        "fn_type": "edited-by",
+                        "label": "Associate Editor",
+                        "text": "Alexander Vibrans",
+                    },
+                    {
+                        "fn_type": "coi-statement",
+                        "label": "Conflicts of Interest",
+                        "text": "The authors declare no conflict.",
+                    },
+                ],
+            },
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    notes = root.find(".//author-notes")
+    corresp = notes.find("corresp")
+    assert corresp.get("id") == "c01"
+    edited = notes.find('fn[@fn-type="edited-by"]')
+    assert edited.find("label").text == "Associate Editor"
+    assert edited.find("p").text == "Alexander Vibrans"
+    coi = notes.find('fn[@fn-type="coi-statement"]')
+    assert coi.find("label").text == "Conflicts of Interest"
 
 
 def test_parse_marked_rejects_invalid_json():

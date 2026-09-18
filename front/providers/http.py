@@ -78,6 +78,7 @@ class Provider:
             "messages": messages,
             "options": options,
             "stream": False,
+            "think": False,
         }
         if self.response_format and self.response_format.get("type") == "json_object":
             payload["format"] = "json"

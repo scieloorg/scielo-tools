@@ -11,6 +11,8 @@ def test_prompt_instructs_sps_body_contract():
     assert "materials|methods" in system
     assert "results|discussion" in system
     assert "Do not pipe supplementary-material" in system
+    assert "acknowledgments" in system
+    assert "always sets specific_use" in system
     assert "f1" in system
     assert "t1" in system
     assert "Do not extract front matter" in system

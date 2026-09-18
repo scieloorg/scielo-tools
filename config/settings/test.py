@@ -25,4 +25,13 @@ CELERY_TASK_EAGER_PROPAGATES = True
 
 COMPRESS_ENABLED = False
 
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 MEDIA_ROOT = tempfile.mkdtemp(prefix="scielo_tools_test_media_")

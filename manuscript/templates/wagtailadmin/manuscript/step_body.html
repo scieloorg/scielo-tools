@@ -1,0 +1,117 @@
+{% extends "wagtailadmin/manuscript/wizard_base.html" %}
+{% load i18n static %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script>
+        window.manuscriptEditorConfig = {
+            step: "body",
+            manuscriptId: {{ manuscript.pk }},
+            marked: {{ marked_json|safe }},
+            saveUrl: "{% url 'manuscript_api_save_body' manuscript.pk %}",
+            previewUrl: "{% url 'manuscript_preview_part' manuscript.pk 'body' %}",
+            csrfToken: "{{ csrf_token }}"
+        };
+    </script>
+    <script src="{% static 'manuscript/js/body-editor.js' %}" defer></script>
+{% endblock %}
+
+{% block wizard_editor %}
+    <section class="card">
+        <div class="card-header">
+            <h2>{% trans "Body source" %}</h2>
+        </div>
+        <div class="card-body">
+            {% if manuscript.body_marked_xml %}
+                <div class="manuscript-source-tabs" data-manuscript-source-tabs>
+                    <div class="manuscript-source-tabs__nav" role="tablist" aria-label="{% trans 'Body source' %}">
+                        <button type="button" class="manuscript-source-tabs__tab is-active" role="tab" aria-selected="true" data-manuscript-source-tab="source">{% trans "Source text" %}</button>
+                        <button type="button" class="manuscript-source-tabs__tab" role="tab" aria-selected="false" data-manuscript-source-tab="marked">{% trans "Marked text" %}</button>
+                    </div>
+                    <div class="manuscript-source-tabs__panel is-active" role="tabpanel" data-manuscript-source-panel="source">
+                        <form method="post" enctype="multipart/form-data" class="manuscript-form">
+                            {% csrf_token %}
+                            {% include "wagtailadmin/manuscript/source_form_fields.html" %}
+                            {% include "wagtailadmin/manuscript/body_image_fields.html" %}
+                            <div class="btn-group">
+                                <button type="submit" name="action" value="save_source" class="btn btn-secondary">{% trans "Save source" %}</button>
+                                <button type="submit" name="action" value="mark" class="btn btn-primary">{% trans "Mark body" %}</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="manuscript-source-tabs__panel" role="tabpanel" data-manuscript-source-panel="marked" hidden>
+                        <form method="post" class="manuscript-form">
+                            {% csrf_token %}
+                            <textarea name="body_marked_xml" rows="16" class="form-control manuscript-xml-preview">{{ manuscript.body_marked_xml }}</textarea>
+                            <div class="btn-group">
+                                <button type="submit" name="action" value="save_marked_xml" class="btn btn-secondary">{% trans "Save marked text" %}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <script>
+                    (function () {
+                        const root = document.querySelector("[data-manuscript-source-tabs]");
+                        if (!root) {
+                            return;
+                        }
+                        const tabs = root.querySelectorAll("[data-manuscript-source-tab]");
+                        const panels = root.querySelectorAll("[data-manuscript-source-panel]");
+                        tabs.forEach((tab) => {
+                            tab.addEventListener("click", () => {
+                                const target = tab.getAttribute("data-manuscript-source-tab");
+                                tabs.forEach((item) => {
+                                    const active = item === tab;
+                                    item.classList.toggle("is-active", active);
+                                    item.setAttribute("aria-selected", active ? "true" : "false");
+                                });
+                                panels.forEach((panel) => {
+                                    const active =
+                                        panel.getAttribute("data-manuscript-source-panel") === target;
+                                    panel.classList.toggle("is-active", active);
+                                    panel.hidden = !active;
+                                });
+                            });
+                        });
+                    })();
+                </script>
+            {% else %}
+                <form method="post" enctype="multipart/form-data" class="manuscript-form">
+                    {% csrf_token %}
+                    {% include "wagtailadmin/manuscript/source_form_fields.html" %}
+                    {% include "wagtailadmin/manuscript/body_image_fields.html" %}
+                    <div class="btn-group">
+                        <button type="submit" name="action" value="save_source" class="btn btn-secondary">{% trans "Save source" %}</button>
+                        <button type="submit" name="action" value="mark" class="btn btn-primary">{% trans "Mark body" %}</button>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}
+
+{% block wizard_editor_extra %}
+    <section class="card">
+        <div class="card-header">
+            <h2>{% trans "Body editor" %}</h2>
+        </div>
+        <div class="card-body">
+            <div id="body-wysiwyg-editor" class="manuscript-wysiwyg"></div>
+            <div class="manuscript-actions btn-group">
+                <button type="button" id="body-save-draft" class="btn btn-primary">{% trans "Save draft" %}</button>
+            </div>
+        </div>
+    </section>
+{% endblock %}
+
+{% block wizard_footer %}
+    <footer class="footer">
+        <div class="footer__container manuscript-wizard__footer">
+            <form method="post" class="manuscript-inline-form">
+                {% csrf_token %}
+                <button type="submit" name="action" value="back" class="btn btn-sm btn-secondary">{% trans "Back to front" %}</button>
+                <button type="submit" name="action" value="approve" class="btn btn-outline-primary">{% trans "Approve and continue" %}</button>
+            </form>
+        </div>
+    </footer>
+{% endblock %}

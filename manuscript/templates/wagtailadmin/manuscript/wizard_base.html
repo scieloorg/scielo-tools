@@ -1,0 +1,99 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n static %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'manuscript/css/wizard.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    {% include "wagtailadmin/manuscript/i18n_script.html" %}
+    <script src="{% static 'manuscript/js/wizard.js' %}"></script>
+{% endblock %}
+
+{% block main_content %}
+    {% if step == "front" %}
+        {% url 'manuscript_preview_part' manuscript.pk 'front' as preview_src %}
+    {% elif step == "body" %}
+        {% url 'manuscript_preview_part' manuscript.pk 'body' as preview_src %}
+    {% elif step == "back" %}
+        {% url 'manuscript_preview_part' manuscript.pk 'back' as preview_src %}
+    {% else %}
+        {% url 'manuscript_preview_part' manuscript.pk 'article' as preview_src %}
+    {% endif %}
+
+    <div class="scielo-ds manuscript-wizard">
+        {% if step == "front" %}
+            <div class="progress" role="progressbar" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 20%"></div>
+            </div>
+        {% elif step == "body" %}
+            <div class="progress" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 40%"></div>
+            </div>
+        {% elif step == "back" %}
+            <div class="progress" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 60%"></div>
+            </div>
+        {% elif step == "validate" %}
+            <div class="progress" role="progressbar" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 80%"></div>
+            </div>
+        {% else %}
+            <div class="progress" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 100%"></div>
+            </div>
+        {% endif %}
+
+        <div class="manuscript-wizard__layout">
+            <div class="manuscript-wizard__toolbar">
+                <nav aria-label="{% trans 'Marking steps' %}">
+                    <ul class="nav nav-pills manuscript-wizard__steps">
+                        <li class="nav-item">
+                            <a href="{% url 'manuscript_step_front' manuscript.pk %}" class="nav-link{% if step == 'front' %} active{% endif %}{% if 'front' in completed_steps %} is-complete{% endif %}">Front</a>
+                        </li>
+                        <li class="manuscript-wizard__step-arrow" aria-hidden="true"></li>
+                        <li class="nav-item">
+                            <a href="{% url 'manuscript_step_body' manuscript.pk %}" class="nav-link{% if step == 'body' %} active{% endif %}{% if 'body' in completed_steps %} is-complete{% endif %}">Body</a>
+                        </li>
+                        <li class="manuscript-wizard__step-arrow" aria-hidden="true"></li>
+                        <li class="nav-item">
+                            <a href="{% url 'manuscript_step_back' manuscript.pk %}" class="nav-link{% if step == 'back' %} active{% endif %}{% if 'back' in completed_steps %} is-complete{% endif %}">Back</a>
+                        </li>
+                        <li class="manuscript-wizard__step-arrow" aria-hidden="true"></li>
+                        <li class="nav-item">
+                            <a href="{% url 'manuscript_step_validate' manuscript.pk %}" class="nav-link{% if step == 'validate' %} active{% endif %}{% if 'validate' in completed_steps %} is-complete{% endif %}">Validar</a>
+                        </li>
+                        <li class="manuscript-wizard__step-arrow" aria-hidden="true"></li>
+                        <li class="nav-item">
+                            <a href="{% url 'manuscript_step_package' manuscript.pk %}" class="nav-link{% if step == 'package' %} active{% endif %}{% if 'package' in completed_steps %} is-complete{% endif %}">Pacote</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            <h2 class="manuscript-wizard__preview-title">{% trans "Preview" %}</h2>
+            <div class="manuscript-wizard__editor">
+                {% block wizard_editor %}{% endblock %}
+            </div>
+            <aside class="manuscript-wizard__preview">
+                <iframe
+                    id="manuscript-preview-frame"
+                    class="manuscript-wizard__preview-frame"
+                    src="{% if step == 'validate' or step == 'package' %}{{ preview_src }}?renderer=packtools{% else %}{{ preview_src }}{% endif %}"
+                    title="{% trans 'Preview' %}"
+                ></iframe>
+            </aside>
+            <div class="manuscript-wizard__editor-extra">{% block wizard_editor_extra %}{% endblock %}</div>
+        </div>
+        {% block wizard_footer %}{% endblock %}
+    </div>
+    <div id="manuscript-marking-overlay" class="manuscript-marking-overlay" hidden>
+        <div class="manuscript-marking-overlay__dialog" role="status" aria-live="polite">
+            <span class="manuscript-marking-overlay__spinner" aria-hidden="true"></span>
+            <p id="manuscript-marking-message" class="manuscript-marking-overlay__message"></p>
+            <p id="manuscript-marking-timer" class="manuscript-marking-overlay__timer" aria-hidden="true">00:00</p>
+            <p class="manuscript-marking-overlay__elapsed">{% trans "Elapsed time" %}</p>
+        </div>
+    </div>
+{% endblock %}

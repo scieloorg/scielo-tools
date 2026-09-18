@@ -23,10 +23,27 @@ _UNSET = object()
 def parse_marked_choice(choice):
     if isinstance(choice, dict):
         return choice
-    try:
-        return json.loads(choice)
-    except (TypeError, json.JSONDecodeError):
+    if not isinstance(choice, str):
         return {"raw": choice}
+    text = choice.strip()
+    if not text:
+        return {"raw": choice}
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        parsed = None
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            parsed = json.loads(text[start : end + 1])
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+    return {"raw": choice}
 
 
 def is_non_reference(marked_data):

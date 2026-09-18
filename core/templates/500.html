@@ -4,10 +4,34 @@
         <meta charset="utf-8" />
         <title>Internal server error</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <style>
+            :root {
+                --scielo-text-emphasis: #00314c;
+                --scielo-bg-gray-1: #f7f6f4;
+                --scielo-interaction: #3867ce;
+                --scielo-font: "Noto Sans", sans-serif;
+            }
+            body {
+                margin: 0;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: var(--scielo-bg-gray-1);
+                color: var(--scielo-text-emphasis);
+                font-family: var(--scielo-font);
+                text-align: center;
+                padding: 2rem;
+            }
+            h1 { color: var(--scielo-text-emphasis); }
+            a { color: var(--scielo-interaction); }
+        </style>
     </head>
     <body>
-        <h1>Internal server error</h1>
-
-        <h2>Sorry, there seems to be an error. Please try again soon.</h2>
+        <div>
+            <h1>Internal server error</h1>
+            <h2>Sorry, there seems to be an error. Please try again soon.</h2>
+            <p><a href="/">SciELO Tools</a></p>
+        </div>
     </body>
 </html>

@@ -10,11 +10,140 @@ from lxml import etree
 from front.exceptions import FrontLlamaUnavailableError
 from front.marking import mark_front
 from front.models import Front
-from front.utils import HISTORY_LABEL_RE, normalize_front_text
+from front.utils import HISTORY_LABEL_RE, PUBLICATION_HISTORY_RE, normalize_front_text
 
 logger = logging.getLogger(__name__)
 
 XLINK_NS = "http://www.w3.org/1999/xlink"
+XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
+CC_BY_HREF = "https://creativecommons.org/licenses/by/4.0/"
+CC_BY_LICENSE_P = (
+    "This is an Open Access article distributed under the terms of the "
+    "Creative Commons Attribution License, which permits unrestricted use, "
+    "distribution, and reproduction in any medium, provided the original "
+    "work is properly cited."
+)
+CREDIT_URL = "https://credit.niso.org/contributor-roles/{}/"
+CREDIT_ROLES = (
+    (
+        "writing-original-draft",
+        "Writing – original draft",
+        (
+            "writing original draft",
+            "writing the original draft",
+            "original draft",
+            "initial draft",
+            "draft preparation",
+            "wrote the manuscript",
+            "wrote the paper",
+            "redacao do manuscrito",
+            "redacao original",
+            "escrita do manuscrito",
+        ),
+    ),
+    (
+        "writing-review-editing",
+        "Writing – review & editing",
+        (
+            "writing review editing",
+            "writing review",
+            "review and editing",
+            "manuscript revision",
+            "revision and approval",
+            "revisao do manuscrito",
+            "revisao e aprovacao",
+            "approved the manuscript",
+        ),
+    ),
+    (
+        "formal-analysis",
+        "Formal analysis",
+        (
+            "formal analysis",
+            "data analysis",
+            "statistical analysis",
+            "analise formal",
+            "analise de dados",
+        ),
+    ),
+    (
+        "investigation",
+        "Investigation",
+        (
+            "investigation",
+            "data collection",
+            "field data",
+            "field work",
+            "fieldwork",
+            "botanical identification",
+            "coleta de dados",
+            "trabalho de campo",
+        ),
+    ),
+    (
+        "methodology",
+        "Methodology",
+        ("methodology", "metodos", "metodologia"),
+    ),
+    (
+        "conceptualization",
+        "Conceptualization",
+        (
+            "conceptualization",
+            "study design",
+            "conception",
+            "concepcao",
+            "desenho do estudo",
+        ),
+    ),
+    (
+        "supervision",
+        "Supervision",
+        ("supervision", "leadership", "supervisao", "lideranca"),
+    ),
+    (
+        "project-administration",
+        "Project administration",
+        ("project administration", "administracao do projeto"),
+    ),
+    (
+        "funding-acquisition",
+        "Funding acquisition",
+        ("funding acquisition", "funding", "financiamento"),
+    ),
+    (
+        "data-curation",
+        "Data curation",
+        ("data curation", "curadoria de dados"),
+    ),
+    (
+        "resources",
+        "Resources",
+        ("resources", "recursos"),
+    ),
+    (
+        "software",
+        "Software",
+        ("software",),
+    ),
+    (
+        "validation",
+        "Validation",
+        ("validation", "validacao"),
+    ),
+    (
+        "visualization",
+        "Visualization",
+        ("visualization", "visualizacao"),
+    ),
+)
+HISTORY_DATE_TYPES = (
+    "received",
+    "rev-request",
+    "rev-recd",
+    "accepted",
+    "pub",
+)
 
 COUNTRY_CODES = {
     "brasil": "BR",
@@ -144,6 +273,11 @@ HISTORY_TYPE_MAP = {
     "aceptado": "accepted",
     "aprovado": "accepted",
     "approved": "accepted",
+    "revision requested": "rev-request",
+    "revisions requested": "rev-request",
+    "revisão solicitada": "rev-request",
+    "revisões solicitadas": "rev-request",
+    "revisión solicitada": "rev-request",
     "revised": "rev-recd",
     "revisado": "rev-recd",
 }
@@ -213,6 +347,50 @@ ORCID_RE = re.compile(
     r"(?:https?://orcid\.org/)?(\d{4}-\d{4}-\d{4}-\d{3}[\dX])",
     re.IGNORECASE,
 )
+FUNDING_HEADING_RE = re.compile(
+    r"^(?:funding|financiamento|financial support)\:?\s*$",
+    re.IGNORECASE,
+)
+FUNDING_STOP_RE = re.compile(
+    r"^(?:competing interests|conflicts? of interest|conflict of interest|"
+    r"acknowledg(?:e?ments?)?|agradecimentos?|authors?'?\s+contributions|"
+    r"ethics|associate editor|references|refer[eê]ncias)\:?\s*$",
+    re.IGNORECASE,
+)
+FUNDING_INLINE_RE = re.compile(
+    r"^(?:this study was supported|financed by|supported by|"
+    r"este trabalho foi apoiado|financiado por)\b",
+    re.IGNORECASE,
+)
+SIMPLE_FUNDING_AWARD_RE = re.compile(
+    r"\b(FAPESP|CNPq|CAPES|FAPEAM)\s+([\d][\d./-]*)",
+    re.IGNORECASE,
+)
+FUNDING_AWARD_ID_RE = re.compile(
+    r"(?:process(?:o|\s+no\.?)?|calls?\s+no\.?|no\.?|grant\s+no\.?)"
+    r"\s*([\d]{2,4}/[\d]{4}(?:/[\d]+)?|[\d]{3,}-[\d]{4}-[\d]+|[\d]{3,}/[\d]{4}-[\d]+)",
+    re.IGNORECASE,
+)
+AUTHOR_CONTRIB_HEADING_RE = re.compile(
+    r"^(?:authors?'?\s+contributions?|contribui[cç][aã]o\s+dos\s+autores)\s*:?\s*$",
+    re.IGNORECASE,
+)
+ASSOCIATE_EDITOR_HEADING_RE = re.compile(r"^associate\s+editor\s*:?\s*$", re.IGNORECASE)
+COI_HEADING_RE = re.compile(
+    r"^(?:conflicts?\s+of\s+interest|conflitos?\s+de\s+interesses?)\s*:?\s*$",
+    re.IGNORECASE,
+)
+ETHICS_HEADING_RE = re.compile(r"^ethics\s*:?\s*$", re.IGNORECASE)
+EDITORIAL_SECTION_STOP_RE = re.compile(
+    r"^(?:authors?'?\s+contributions?|contribui[cç][aã]o\s+dos\s+autores|"
+    r"associate\s+editor|conflicts?\s+of\s+interest|conflitos?\s+de\s+interesses?|"
+    r"ethics|references|refer[eê]ncias|bibliography|bibliografia|"
+    r"acknowledg(?:e?ments?)?|agradecimentos?|funding|financiamento|"
+    r"received|accepted|recebido|aceito)\b",
+    re.IGNORECASE,
+)
+AUTHOR_ROLE_LINE_RE = re.compile(r"^([^:]{3,}):\s*(.+)$")
+NAME_PARTICLES = frozenset({"de", "da", "do", "dos", "das", "del"})
 DOI_PREFIXES = (
     "https://doi.org/",
     "http://doi.org/",
@@ -427,21 +605,39 @@ def parse_marked(choice):
         return choice
     if not isinstance(choice, str) or not choice.strip():
         return None
-    try:
-        parsed = json.loads(choice)
-    except json.JSONDecodeError:
-        parsed = None
-    if isinstance(parsed, dict):
-        return parsed
-    start = choice.find("{")
-    end = choice.rfind("}")
-    if start < 0 or end <= start:
-        return None
-    try:
-        parsed = json.loads(choice[start : end + 1])
-    except json.JSONDecodeError:
-        return None
-    return parsed if isinstance(parsed, dict) else None
+    text = choice.strip()
+    text = re.sub(
+        r"<think>.*?</think>",
+        "",
+        text,
+        flags=re.DOTALL | re.IGNORECASE,
+    ).strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s*```.*$", "", text, flags=re.DOTALL).strip()
+    text = re.sub(r"(\}\]\}){2,}$", "", text)
+    start = text.find("{")
+    end = text.rfind("}")
+    snippet = text[start : end + 1] if start >= 0 and end > start else text
+    previous = None
+    while previous != snippet:
+        previous = snippet
+        snippet = re.sub(r",+\s*([}\]])", r"\1", snippet)
+        snippet = re.sub(r",+\s*$", "", snippet)
+    for candidate in (text, snippet):
+        try:
+            parsed = json.loads(candidate)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+        try:
+            parsed, _ = json.JSONDecoder().raw_decode(candidate)
+            if isinstance(parsed, dict):
+                return parsed
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return None
 
 
 def apply_language_fallback(data, language):
@@ -556,34 +752,38 @@ def apply_text_fields(data, front_text):
                 used.add(best)
             filled.append(author)
         marked["authors"] = filled
-    issn_value = None
+    source_issns = []
+    seen_issn = set()
     for line in lines:
         match = ISSN_VALUE_RE.search(line)
-        if match:
-            issn_value = match.group(1).upper()
-            break
-    if not issn_value:
+        if not match:
+            continue
+        issn_value = match.group(1).upper()
+        if issn_value in seen_issn:
+            continue
+        seen_issn.add(issn_value)
+        folded = line.lower()
+        if re.search(r"print|impresso|printed|ppub", folded):
+            pub_type = "ppub"
+        elif re.search(r"online|eletr[oô]nico|on-line|epub", folded):
+            pub_type = "epub"
+        else:
+            pub_type = "epub"
+        source_issns.append({"pub_type": pub_type, "value": issn_value})
+    if not source_issns:
         match = SCIELO_DOI_ISSN_RE.search(" ".join(lines))
         if match:
-            issn_value = match.group(1)
-    if issn_value:
-        journal = (
-            dict(marked["journal"]) if isinstance(marked.get("journal"), dict) else {}
-        )
-        issns = [
-            dict(item)
-            for item in (journal.get("issns") or [])
-            if isinstance(item, dict)
-        ]
-        existing = {
-            str(item.get("value") or "").strip()
-            for item in issns
-            if not _blank(item.get("value"))
-        }
-        if issn_value not in existing:
-            issns.append({"pub_type": "epub", "value": issn_value})
-        journal["issns"] = issns
+            source_issns.append({"pub_type": "epub", "value": match.group(1)})
+    journal = dict(marked["journal"]) if isinstance(marked.get("journal"), dict) else {}
+    if source_issns:
+        journal["issns"] = source_issns
         marked["journal"] = journal
+    elif "issns" in journal:
+        journal.pop("issns")
+        if journal:
+            marked["journal"] = journal
+        else:
+            marked.pop("journal", None)
     abstracts = []
     index = 0
     while index < len(lines):
@@ -703,17 +903,265 @@ def apply_text_fields(data, front_text):
         marked["affiliations"] = affiliations
     history = []
     seen = set()
-    for match in HISTORY_LABEL_RE.finditer("\n".join(lines)):
+    history_text = "\n".join(lines)
+    for match in HISTORY_LABEL_RE.finditer(history_text):
         date_type = HISTORY_TYPE_MAP.get(match.group("label").lower())
         if not date_type or date_type in seen:
             continue
-        parsed = _parse_date_text(match.string[match.end() : match.end() + 80])
+        parsed = _parse_date_text(history_text[match.end() : match.end() + 80])
         if _blank(parsed.get("year")):
             continue
         history.append({"type": date_type, **parsed})
         seen.add(date_type)
+    for match in PUBLICATION_HISTORY_RE.finditer(history_text):
+        if "pub" in seen:
+            continue
+        parsed = _parse_date_text(history_text[match.end() : match.end() + 80])
+        if (
+            _blank(parsed.get("year"))
+            or _blank(parsed.get("month"))
+            or _blank(parsed.get("day"))
+        ):
+            continue
+        history.append({"type": "pub", **parsed})
+        seen.add("pub")
     if history:
         marked["history"] = history
+        for item in history:
+            if str(item.get("type")).strip() != "pub":
+                continue
+            if (
+                _blank(item.get("day"))
+                or _blank(item.get("month"))
+                or _blank(item.get("year"))
+            ):
+                continue
+            pub_dates = [
+                entry
+                for entry in (marked.get("pub_dates") or [])
+                if isinstance(entry, dict)
+            ]
+            have_pub = any(
+                str(entry.get("type")).strip() == "pub" for entry in pub_dates
+            )
+            if not have_pub:
+                pub_dates.append(
+                    {
+                        "type": "pub",
+                        "day": item["day"],
+                        "month": item["month"],
+                        "year": item["year"],
+                    }
+                )
+                marked["pub_dates"] = pub_dates
+            break
+    funding_lines = []
+    capture_funding = False
+    for line in lines:
+        if FUNDING_HEADING_RE.match(line):
+            capture_funding = True
+            continue
+        if capture_funding:
+            if FUNDING_STOP_RE.match(line):
+                break
+            funding_lines.append(line)
+            continue
+        if FUNDING_INLINE_RE.match(line):
+            funding_lines.append(line)
+    if not funding_lines:
+        for line in lines:
+            if SIMPLE_FUNDING_AWARD_RE.search(line) and not KEYWORD_LINE_RE.match(line):
+                funding_lines.append(line)
+    funding_statement = " ".join(funding_lines).strip()
+    if funding_statement:
+        awards = []
+        seen_awards = set()
+        for agency, award_id in SIMPLE_FUNDING_AWARD_RE.findall(funding_statement):
+            source = "CNPq" if agency.upper() == "CNPQ" else agency.upper()
+            key = (source, award_id.strip())
+            if key in seen_awards:
+                continue
+            seen_awards.add(key)
+            awards.append({"funding_source": source, "award_id": award_id.strip()})
+        if re.search(r"\bFAPEAM\b", funding_statement, re.IGNORECASE):
+            fapeam_part = funding_statement
+            if re.search(r"\bCAPES\b", funding_statement, re.IGNORECASE):
+                fapeam_part = re.split(
+                    r"\bCAPES\b", funding_statement, maxsplit=1, flags=re.IGNORECASE
+                )[0]
+            for award_id in FUNDING_AWARD_ID_RE.findall(fapeam_part):
+                key = ("FAPEAM", award_id)
+                if key in seen_awards:
+                    continue
+                seen_awards.add(key)
+                awards.append({"funding_source": "FAPEAM", "award_id": award_id})
+        if re.search(r"\bCAPES\b", funding_statement, re.IGNORECASE):
+            capes_part = re.split(
+                r"\bCAPES\b", funding_statement, maxsplit=1, flags=re.IGNORECASE
+            )[-1]
+            for award_id in FUNDING_AWARD_ID_RE.findall(capes_part):
+                key = ("CAPES", award_id)
+                if key in seen_awards:
+                    continue
+                seen_awards.add(key)
+                awards.append({"funding_source": "CAPES", "award_id": award_id})
+        marked["funding"] = {
+            "awards": awards,
+            "funding_statement": funding_statement,
+        }
+    contrib_role_lines = []
+    capture_contrib = False
+    associate_editor_name = None
+    capture_editor = False
+    coi_lines = []
+    capture_coi = False
+    ethics_lines = []
+    capture_ethics = False
+    for line in lines:
+        if AUTHOR_CONTRIB_HEADING_RE.match(line):
+            capture_contrib = True
+            capture_editor = False
+            capture_coi = False
+            capture_ethics = False
+            continue
+        if ASSOCIATE_EDITOR_HEADING_RE.match(line):
+            capture_editor = True
+            capture_contrib = False
+            capture_coi = False
+            capture_ethics = False
+            continue
+        if COI_HEADING_RE.match(line):
+            capture_coi = True
+            capture_contrib = False
+            capture_editor = False
+            capture_ethics = False
+            continue
+        if ETHICS_HEADING_RE.match(line):
+            capture_ethics = True
+            capture_contrib = False
+            capture_editor = False
+            capture_coi = False
+            continue
+        if capture_contrib:
+            if EDITORIAL_SECTION_STOP_RE.match(line):
+                capture_contrib = False
+                continue
+            role_match = AUTHOR_ROLE_LINE_RE.match(line)
+            if role_match:
+                contrib_role_lines.append(
+                    (role_match.group(1).strip(), role_match.group(2).strip())
+                )
+            continue
+        if capture_editor:
+            if EDITORIAL_SECTION_STOP_RE.match(line):
+                capture_editor = False
+                continue
+            associate_editor_name = line
+            capture_editor = False
+            continue
+        if capture_coi:
+            if EDITORIAL_SECTION_STOP_RE.match(line):
+                capture_coi = False
+                continue
+            coi_lines.append(line)
+            continue
+        if capture_ethics:
+            if EDITORIAL_SECTION_STOP_RE.match(line):
+                capture_ethics = False
+                continue
+            ethics_lines.append(line)
+    if contrib_role_lines:
+        authors_for_roles = [
+            dict(item)
+            for item in (marked.get("authors") or [])
+            if isinstance(item, dict)
+        ]
+        if authors_for_roles:
+            updated_authors = []
+            for author in authors_for_roles:
+                item = dict(author)
+                surname = _fold_name(item.get("surname")).strip()
+                given = _fold_name(item.get("given_names"))
+                given_tokens = [
+                    token
+                    for token in re.findall(r"[a-z]+", given)
+                    if token not in NAME_PARTICLES
+                ]
+                best_roles = None
+                best_score = 0
+                for name_part, roles_text in contrib_role_lines:
+                    folded = _fold_name(name_part)
+                    if not surname or not re.search(
+                        r"(?<!\w)" + re.escape(surname) + r"(?!\w)", folded
+                    ):
+                        continue
+                    score = 2
+                    for token in given_tokens:
+                        if len(token) == 1:
+                            if re.search(
+                                r"(?<!\w)" + re.escape(token) + r"(?!\w)", folded
+                            ):
+                                score += 1
+                        elif re.search(
+                            r"(?<!\w)" + re.escape(token) + r"(?!\w)", folded
+                        ):
+                            score += 2
+                        elif token[:1] and re.search(
+                            r"(?<!\w)" + re.escape(token[:1]) + r"(?!\w)", folded
+                        ):
+                            score += 1
+                    if score > best_score:
+                        best_score = score
+                        best_roles = [
+                            part.strip().rstrip(".")
+                            for part in re.split(r"\s*;\s*", roles_text)
+                            if part.strip()
+                        ]
+                if best_roles:
+                    item["roles"] = best_roles
+                updated_authors.append(item)
+            marked["authors"] = updated_authors
+    editorial_fns = []
+    if associate_editor_name:
+        editorial_fns.append(
+            {
+                "fn_type": "edited-by",
+                "label": "Associate Editor",
+                "text": associate_editor_name,
+            }
+        )
+    coi_text = " ".join(coi_lines).strip()
+    if coi_text:
+        editorial_fns.append(
+            {
+                "fn_type": "coi-statement",
+                "label": "Conflicts of Interest",
+                "text": coi_text,
+            }
+        )
+    ethics_text = " ".join(ethics_lines).strip()
+    if ethics_text:
+        editorial_fns.append(
+            {
+                "fn_type": "other",
+                "label": "Ethics",
+                "text": ethics_text,
+            }
+        )
+    if editorial_fns:
+        notes = (
+            dict(marked["author_notes"])
+            if isinstance(marked.get("author_notes"), dict)
+            else {}
+        )
+        replace_types = {fn["fn_type"] for fn in editorial_fns}
+        existing = [
+            item
+            for item in (notes.get("fns") or [])
+            if not (isinstance(item, dict) and item.get("fn_type") in replace_types)
+        ]
+        notes["fns"] = existing + editorial_fns
+        marked["author_notes"] = notes
     return marked
 
 
@@ -840,6 +1288,21 @@ def get_front_xml(data):
             )
             _text_el(group, "trans-title", item.get("text"))
 
+    affiliations = [
+        item
+        for item in (data.get("affiliations") or [])
+        if isinstance(item, dict) and not _blank(item.get("id"))
+    ]
+    aff_by_id = {}
+    aff_by_label = {}
+    for affiliation in affiliations:
+        aff_id = str(affiliation.get("id")).strip()
+        aff_by_id[aff_id] = affiliation
+        label = str(affiliation.get("label") or "").strip()
+        if label:
+            aff_by_label[label] = affiliation
+    default_aff_id = next(iter(aff_by_id), None)
+
     authors = [item for item in (data.get("authors") or []) if isinstance(item, dict)]
     if authors:
         contrib_group = etree.SubElement(article_meta, "contrib-group")
@@ -879,30 +1342,70 @@ def get_front_xml(data):
                 name = etree.SubElement(contrib, "name")
                 _text_el(name, "surname", author.get("surname"))
                 _text_el(name, "given-names", author.get("given_names"))
+            resolved_affs = []
+            seen_affs = set()
             for aff_id in author.get("affiliations") or []:
-                if _blank(aff_id):
+                key = str(aff_id).strip()
+                if _blank(key):
                     continue
+                if key in aff_by_id:
+                    resolved = key
+                elif key in aff_by_label:
+                    resolved = str(aff_by_label[key].get("id")).strip()
+                elif f"aff{key}" in aff_by_id:
+                    resolved = f"aff{key}"
+                else:
+                    resolved = key
+                if resolved in seen_affs:
+                    continue
+                seen_affs.add(resolved)
+                resolved_affs.append(resolved)
+            if not resolved_affs and default_aff_id:
+                resolved_affs = [default_aff_id]
+            for aff_id in resolved_affs:
                 xref = etree.SubElement(
                     contrib,
                     "xref",
-                    attrib={"ref-type": "aff", "rid": str(aff_id).strip()},
+                    attrib={"ref-type": "aff", "rid": aff_id},
                 )
-                label = None
-                for affiliation in data.get("affiliations") or []:
-                    if (
-                        isinstance(affiliation, dict)
-                        and affiliation.get("id") == aff_id
-                    ):
-                        label = affiliation.get("label")
-                        break
+                affiliation = aff_by_id.get(aff_id)
+                label = affiliation.get("label") if affiliation else None
                 if not _blank(label):
                     _text_el(xref, "sup", label)
             if author.get("corresp"):
                 etree.SubElement(
                     contrib, "xref", attrib={"ref-type": "corresp", "rid": "c01"}
                 )
+            role_texts = []
             for role in author.get("roles") or []:
-                _text_el(contrib, "role", role)
+                if _blank(role):
+                    continue
+                text = str(role).strip().rstrip(".")
+                if ";" in text:
+                    role_texts.extend(
+                        part.strip().rstrip(".")
+                        for part in text.split(";")
+                        if part.strip()
+                    )
+                else:
+                    role_texts.append(text)
+            for role_text in role_texts:
+                folded = _fold_name(role_text)
+                matched = None
+                for slug, term, aliases in CREDIT_ROLES:
+                    if any(alias in folded for alias in aliases):
+                        matched = (slug, term)
+                        break
+                if matched:
+                    slug, term = matched
+                    _text_el(
+                        contrib,
+                        "role",
+                        term,
+                        attrib={"content-type": CREDIT_URL.format(slug)},
+                    )
+                else:
+                    _text_el(contrib, "role", role_text)
 
     for affiliation in data.get("affiliations") or []:
         if not isinstance(affiliation, dict):
@@ -956,19 +1459,71 @@ def get_front_xml(data):
     author_notes = data.get("author_notes")
     if isinstance(author_notes, dict):
         notes = etree.Element("author-notes")
-        _text_el(notes, "corresp", author_notes.get("corresp"), attrib={"id": "c01"})
+        corresp = author_notes.get("corresp")
+        if not _blank(corresp):
+            _text_el(notes, "corresp", corresp, attrib={"id": "c01"})
         for fn_item in author_notes.get("fns") or []:
-            text = fn_item.get("text") if isinstance(fn_item, dict) else fn_item
-            _text_el(notes, "fn", text)
+            if isinstance(fn_item, dict):
+                fn_type = str(fn_item.get("fn_type") or "").strip()
+                label = fn_item.get("label")
+                text = fn_item.get("text")
+                fn_id = fn_item.get("id")
+                attrib = {}
+                if fn_type:
+                    attrib["fn-type"] = fn_type
+                if not _blank(fn_id):
+                    attrib["id"] = str(fn_id).strip()
+                if not attrib and _blank(label) and _blank(text):
+                    continue
+                fn = etree.SubElement(notes, "fn", attrib=attrib)
+                _text_el(fn, "label", label)
+                _text_el(fn, "p", text)
+            elif not _blank(fn_item):
+                _text_el(notes, "fn", fn_item)
         if list(notes):
             article_meta.append(notes)
 
-    for item in data.get("pub_dates") or []:
-        if not isinstance(item, dict):
-            continue
+    pub_dates = [
+        item
+        for item in (data.get("pub_dates") or [])
+        if isinstance(item, dict)
+        and str(item.get("type") or "").strip() in ("pub", "collection")
+    ]
+    have_collection = any(
+        str(item.get("type")).strip() == "collection" for item in pub_dates
+    )
+    pub_year = None
+    for item in pub_dates:
+        parts = _date_parts(item)
+        if not _blank(parts.get("year")):
+            pub_year = parts["year"]
+            break
+    if not pub_year:
+        history_source = data.get("history") or data.get("dates") or []
+        preferred = []
+        others = []
+        for item in history_source:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("type") or "").strip() == "accepted":
+                preferred.append(item)
+            else:
+                others.append(item)
+        for item in preferred + others:
+            parts = _date_parts(item)
+            if not _blank(parts.get("year")):
+                pub_year = parts["year"]
+                break
+    if not pub_year:
+        permissions = data.get("permissions")
+        if isinstance(permissions, dict) and not _blank(
+            permissions.get("copyright_year")
+        ):
+            pub_year = str(permissions.get("copyright_year")).strip()
+    if pub_year and not have_collection:
+        pub_dates.append({"type": "collection", "year": pub_year})
+    for item in pub_dates:
         date_type = str(item.get("type") or "").strip()
-        if date_type not in ("pub", "collection"):
-            continue
         pub_date = etree.SubElement(
             article_meta,
             "pub-date",
@@ -977,7 +1532,18 @@ def get_front_xml(data):
                 "publication-format": "electronic",
             },
         )
-        if not _append_date_parts(pub_date, item):
+        parts = _date_parts(item)
+        if date_type == "pub":
+            year = parts.get("year")
+            month = parts.get("month")
+            day = parts.get("day")
+            if _blank(year) or _blank(month) or _blank(day):
+                article_meta.remove(pub_date)
+                continue
+            _text_el(pub_date, "day", day)
+            _text_el(pub_date, "month", month)
+            _text_el(pub_date, "year", year)
+        elif not _append_date_parts(pub_date, item):
             article_meta.remove(pub_date)
 
     _text_el(article_meta, "volume", data.get("volume"))
@@ -992,7 +1558,7 @@ def get_front_xml(data):
         item
         for item in (data.get("history") or data.get("dates") or [])
         if isinstance(item, dict)
-        and str(item.get("type") or "").strip() in ("received", "rev-recd", "accepted")
+        and str(item.get("type") or "").strip() in HISTORY_DATE_TYPES
     ]
     if history_items:
         history = etree.SubElement(article_meta, "history")
@@ -1007,22 +1573,23 @@ def get_front_xml(data):
         if not list(history):
             article_meta.remove(history)
 
+    perm = etree.Element("permissions")
     permissions = data.get("permissions")
     if isinstance(permissions, dict):
-        perm = etree.Element("permissions")
         _text_el(perm, "copyright-statement", permissions.get("copyright_statement"))
         _text_el(perm, "copyright-year", permissions.get("copyright_year"))
         _text_el(perm, "copyright-holder", permissions.get("copyright_holder"))
-        href = permissions.get("license_href")
-        license_p = permissions.get("license_p")
-        if not _blank(href) or not _blank(license_p):
-            attrib = {"license-type": "open-access"}
-            if not _blank(href):
-                attrib["{%s}href" % XLINK_NS] = str(href).strip()
-            license_el = etree.SubElement(perm, "license", attrib=attrib)
-            _text_el(license_el, "license-p", license_p)
-        if list(perm):
-            article_meta.append(perm)
+    license_el = etree.SubElement(
+        perm,
+        "license",
+        attrib={
+            "license-type": "open-access",
+            "{%s}href" % XLINK_NS: CC_BY_HREF,
+            XML_LANG: "en",
+        },
+    )
+    _text_el(license_el, "license-p", CC_BY_LICENSE_P)
+    article_meta.append(perm)
 
     abstracts = [
         item for item in (data.get("abstracts") or []) if isinstance(item, dict)
@@ -1110,15 +1677,20 @@ def resolve_front_result(
     try:
         record = Front.objects.get(checksum=checksum)
     except Front.DoesNotExist:
-        raw = mark_front(front_text)
-        marked = parse_marked(raw)
-        if marked is None:
-            preview = str(raw or "")
+        marked = None
+        raw = ""
+        for attempt in range(3):
+            raw = mark_front(front_text)
+            marked = parse_marked(raw)
+            if marked is not None:
+                break
             logger.warning(
-                "Front Llama invalid JSON (%d chars): %r",
-                len(preview),
-                preview[:500],
+                "Front Llama invalid JSON attempt %d/3 (%d chars): %r",
+                attempt + 1,
+                len(str(raw or "")),
+                str(raw or "")[:500],
             )
+        if marked is None:
             raise FrontLlamaUnavailableError("Front Llama returned invalid JSON")
         marked = apply_language_fallback(marked, language)
         marked = apply_text_fields(marked, front_text)

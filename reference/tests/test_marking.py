@@ -207,6 +207,7 @@ def test_prompt_instructs_skip_for_figures():
     assert "bare id" in system.lower() or "without https://doi.org/" in system
     assert "do not emit uri" in system
     assert "2013a" in system or "letter suffix" in system.lower()
+    assert "disambiguation" in system.lower()
     assert "vol(num)" in system or "parentheses" in system.lower()
     assert ITEM_PROPERTIES["date"]["type"] == "string"
     assert RESPONSE_FORMAT["schema"].get("required") is None
@@ -226,7 +227,15 @@ def test_prompt_instructs_skip_for_figures():
         assert key in ITEM_PROPERTIES
 
     pairs = list(zip(MESSAGES[1::2], MESSAGES[2::2]))
-    assert len(pairs) == 6
+    assert len(pairs) == 7
+
+    alvares_a = next(
+        assistant["content"]
+        for user, assistant in pairs
+        if "2013a" in user["content"] and "monthly mean air temperature" in user["content"]
+    )
+    assert '"date":"2013a"' in alvares_a
+    assert '"doi":"10.1007/s00704-012-0796-6"' in alvares_a
 
     journal_example = next(
         assistant["content"]

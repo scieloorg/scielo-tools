@@ -44,7 +44,27 @@ BACK_HEADING_RE = re.compile(
     re.IGNORECASE,
 )
 
+EDITORIAL_BACK_HEADING_RE = re.compile(
+    r"^(?:\d+[.\)]\s*)?(?:"
+    r"authors?'?\s+contributions?|"
+    r"contribui[cç][aã]o\s+dos\s+autores|"
+    r"conflicts?\s+of\s+interest|"
+    r"conflitos?\s+de\s+interesses?|"
+    r"ethics|associate\s+editor"
+    r")\s*:?\s*$",
+    re.IGNORECASE,
+)
+
+REFERENCE_HEADING_RE = re.compile(
+    r"^(?:\d+[.\)]\s*)?(?:references?|referências?|referencias?|"
+    r"bibliography|bibliografia)\s*$",
+    re.IGNORECASE,
+)
+
 HISTORY_LABELS = (
+    "revision requested|revisions requested|"
+    "revisão solicitada|revisões solicitadas|"
+    "revisión solicitada|"
     "received|recebido|recibido|submitted|"
     "accepted|aceito|aceptado|aprovado|approved|"
     "revised|revisado"
@@ -57,6 +77,13 @@ HISTORY_LABEL_RE = re.compile(
     rf"(?<![A-Za-z])(?P<label>{HISTORY_LABELS})"
     r"(?:\s+for\s+publication)?"
     r"(?:\s+(?:on|em))?"
+    r"\s*[:.]?\s*",
+    re.IGNORECASE,
+)
+PUBLICATION_HISTORY_RE = re.compile(
+    r"(?<![A-Za-z])(?:published\s+online|publicado\s+online|"
+    r"publicado\s+en\s+línea|publicado\s+en\s+linea|"
+    r"publicação\s+online|publicacao\s+online)\b"
     r"\s*[:.]?\s*",
     re.IGNORECASE,
 )
@@ -215,7 +242,29 @@ def extract_front_section(text):
                     extras.append(nxt)
                     index += 1
                 continue
-            if HISTORY_LINE_RE.match(stripped):
+            if EDITORIAL_BACK_HEADING_RE.match(stripped):
+                extras.append(stripped)
+                index += 1
+                while index < len(lines):
+                    nxt = lines[index].strip()
+                    if not nxt:
+                        index += 1
+                        continue
+                    if (
+                        EDITORIAL_BACK_HEADING_RE.match(nxt)
+                        or REFERENCE_HEADING_RE.match(nxt)
+                        or ACK_HEADING_RE.match(nxt)
+                        or HISTORY_LINE_RE.match(nxt)
+                        or PUBLICATION_HISTORY_RE.match(nxt)
+                        or BODY_HEADING_RE.match(nxt)
+                    ):
+                        break
+                    extras.append(nxt)
+                    index += 1
+                continue
+            if HISTORY_LINE_RE.match(stripped) or PUBLICATION_HISTORY_RE.match(
+                stripped
+            ):
                 extras.append(stripped)
             index += 1
         selected = list(selected) + extras

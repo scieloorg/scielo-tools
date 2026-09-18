@@ -11,6 +11,8 @@ from wagtail.admin.widgets.button import Button
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import CreateView, EditView, SnippetViewSet
 
+from config.menu import get_menu_order
+
 from . import urls
 from .forms import SPSPackageValidationForm
 from .models import SPSPackageValidation, SPSPackageValidationStatus
@@ -67,6 +69,8 @@ class SPSPackageValidationEditView(EditView):
         validation = form.instance
         zip_upload = form.cleaned_data.get("zip_upload")
         if zip_upload:
+            if validation.package_document.file:
+                validation.package_document.file.delete(save=False)
             validation.package_document.file.save(
                 zip_upload.name, zip_upload, save=True
             )
@@ -103,7 +107,7 @@ class SPSPackageValidationSnippetViewSet(SnippetViewSet):
     menu_name = "sps_package_validation"
     menu_label = _("Validar SPS")
     menu_icon = "sps-package-validation"
-    menu_order = 100
+    menu_order = get_menu_order("sps_package_validation")
     add_to_admin_menu = True
 
     list_display = (

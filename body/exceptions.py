@@ -12,3 +12,7 @@ class BodyLlamaUnavailableError(Exception):
 
 class BodyDocxError(Exception):
     pass
+
+
+class BodyImageError(Exception):
+    pass

@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import re
@@ -6,9 +7,11 @@ from django.db import IntegrityError
 from lxml import etree
 
 from body.exceptions import BodyLlamaUnavailableError
+from body.images import attach_figure_hrefs
 from body.marking import mark_body
 from body.models import Body
 from body.utils import (
+    ACK_SECTION_RE,
     apply_body_rules,
     body_checksum,
     normalize_body_text,
@@ -75,6 +78,7 @@ XREF_TYPES = {
 ID_PREFIX = {
     "sec": "sec",
     "fig": "f",
+    "graphic": "g",
     "table-wrap": "t",
     "disp-formula": "e",
     "media": "md",
@@ -266,13 +270,15 @@ def append_fig(parent, block, counters):
         title_el.text = caption
     href = str(block.get("href") or "").strip()
     alt_text = str(block.get("alt_text") or "").strip()
-    if href or alt_text:
-        graphic = etree.SubElement(fig, "graphic")
-        if href:
-            graphic.set("{%s}href" % XLINK_NS, href)
-        if alt_text:
-            alt_el = etree.SubElement(graphic, "alt-text")
-            alt_el.text = alt_text
+    if not href:
+        digits = re.search(r"(\d+)", fig.get("id") or "")
+        href = f"fig-{digits.group(1)}.jpg" if digits else "fig-1.jpg"
+    graphic = etree.SubElement(fig, "graphic")
+    graphic.set("id", take_id(counters, "graphic", None))
+    graphic.set("{%s}href" % XLINK_NS, href)
+    if alt_text:
+        alt_el = etree.SubElement(graphic, "alt-text")
+        alt_el.text = alt_text
     attrib = str(block.get("attrib") or "").strip()
     if attrib:
         attrib_el = etree.SubElement(fig, "attrib")
@@ -421,6 +427,7 @@ def append_block(parent, block, counters):
                 media.set("{%s}href" % XLINK_NS, href)
         elif href:
             graphic = etree.SubElement(suppl, "graphic")
+            graphic.set("id", take_id(counters, "graphic", None))
             graphic.set("{%s}href" % XLINK_NS, href)
     elif kind == "disp-quote":
         quote = etree.SubElement(parent, "disp-quote")
@@ -449,7 +456,50 @@ def append_sec(parent, section, counters, first_level):
         kind = "transcript" if sec_type == "transcript" else "sec"
         sec_el.set("id", take_id(counters, kind, section.get("id")))
         specific = str(section.get("specific_use") or "").strip()
-        if sec_type == "data-availability" and specific in SPECIFIC_USE:
+        if sec_type == "data-availability":
+            if specific not in SPECIFIC_USE:
+                pieces = []
+                stack = [section]
+                while stack:
+                    current = stack.pop()
+                    if not isinstance(current, dict):
+                        continue
+                    pieces.append(str(current.get("title") or ""))
+                    for block in current.get("content") or []:
+                        if isinstance(block, dict):
+                            pieces.append(str(block.get("text") or ""))
+                    stack.extend(current.get("sections") or [])
+                folded = " ".join(pieces).casefold()
+                if (
+                    "upon request" in folded
+                    or "a pedido" in folded
+                    or "corresponding author" in folded
+                    or "autor correspondente" in folded
+                ):
+                    specific = "data-available-upon-request"
+                elif (
+                    "not available" in folded
+                    or "não disponível" in folded
+                    or "nao disponivel" in folded
+                ):
+                    specific = "data-not-available"
+                elif (
+                    "in the article" in folded
+                    or "in this article" in folded
+                    or "no próprio artigo" in folded
+                    or "neste artigo" in folded
+                ):
+                    specific = "data-in-article"
+                elif "uninformed" in folded or "não informado" in folded:
+                    specific = "uninformed"
+                elif re.search(
+                    r"https?://|doi\.org|repository|reposit[oó]rio|"
+                    r"available at|dispon[ií]ve",
+                    folded,
+                ):
+                    specific = "data-available"
+                else:
+                    specific = "uninformed"
             sec_el.set("specific-use", specific)
     else:
         sec_id = str(section.get("id") or "").strip()
@@ -460,22 +510,86 @@ def append_sec(parent, section, counters, first_level):
     title_el = etree.SubElement(sec_el, "title")
     title_el.text = title
     for block in section.get("content") or []:
+        if (
+            first_level
+            and sec_type == "supplementary-material"
+            and isinstance(block, dict)
+        ):
+            block = {key: value for key, value in block.items() if key != "parts"}
         append_block(sec_el, block, counters)
     for child in section.get("sections") or []:
         append_sec(sec_el, child, counters, first_level=False)
+
+
+def is_ack_section(section):
+    if not isinstance(section, dict):
+        return False
+    sec_type = str(section.get("sec_type") or "").strip()
+    if sec_type == "acknowledgments":
+        return True
+    title = str(section.get("title") or "").strip()
+    return bool(ACK_SECTION_RE.match(title))
+
+
+def append_ack(parent, section, counters):
+    ack = etree.SubElement(parent, "ack")
+    title = str(section.get("title") or "").strip()
+    if title:
+        title_el = etree.SubElement(ack, "title")
+        title_el.text = title
+    for block in section.get("content") or []:
+        append_block(ack, block, counters)
+
+
+def body_section_kind(section):
+    if is_ack_section(section):
+        return "ack"
+    title = str(section.get("title") or "").strip()
+    sec_type = str(section.get("sec_type") or sec_type_from_title(title) or "").strip()
+    if sec_type == "supplementary-material":
+        return "supplementary-material"
+    if sec_type == "data-availability":
+        return "data-availability"
+    return "regular"
 
 
 def get_body_xml(data):
     marked = data if isinstance(data, dict) else {}
     body = etree.Element("body", nsmap={"xlink": XLINK_NS})
     counters = {}
+    regular = []
+    acks = []
+    data_availability = []
+    supplementary = []
     for section in marked.get("sections") or []:
+        kind = body_section_kind(section)
+        if kind == "ack":
+            acks.append(section)
+        elif kind == "data-availability":
+            data_availability.append(section)
+        elif kind == "supplementary-material":
+            supplementary.append(section)
+        else:
+            regular.append(section)
+    for section in regular:
+        append_sec(body, section, counters, first_level=True)
+    for section in acks:
+        append_ack(body, section, counters)
+    for section in data_availability:
+        append_sec(body, section, counters, first_level=True)
+    for section in supplementary:
         append_sec(body, section, counters, first_level=True)
     return etree.tostring(body, pretty_print=True, encoding="unicode")
 
 
 def resolve_body_result(
-    body_text, user=None, output_type="json", language=None, tables=None, figures=None
+    body_text,
+    user=None,
+    output_type="json",
+    language=None,
+    tables=None,
+    figures=None,
+    image_hrefs=None,
 ):
     normalized = normalize_body_text(body_text)
     checksum = body_checksum(normalized)
@@ -518,8 +632,14 @@ def resolve_body_result(
             record.marked_xml = xml
             record.save(update_fields=["marked", "marked_xml", "updated"])
 
+    marked = record.marked
+    xml = record.marked_xml
+    if image_hrefs:
+        marked = copy.deepcopy(record.marked)
+        attach_figure_hrefs(marked, image_hrefs)
+        xml = get_body_xml(marked)
     if output_type == "xml":
-        data = record.marked_xml
+        data = xml
     else:
-        data = record.marked
+        data = marked
     return {"data": data}

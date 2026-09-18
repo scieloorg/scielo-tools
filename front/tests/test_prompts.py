@@ -33,12 +33,16 @@ def test_prompt_instructs_particles_dates_city_and_no_default_subject():
     assert "do not add a language or term that is not written" in system
     assert "never SciELO SPS" in system
     assert "Omit history entirely" in system
-    assert "FAPESP" in system and "CNPq" in system
-    assert "print/impresso/printed -> ppub" in system
-    assert "online/eletrônico/on-line -> epub" in system
-    assert "never copy ISSN values from the example" in system
-    assert "omit this key" in system
+    assert "Omit roles unless written in this input" in system
+    assert "never emit month or day 00" in system
+    assert "Every author must include affiliations" in system
+    assert "Published online/Publicado online/" in system
+    assert "Never paste funding into JSON" in system
+    assert "issns: omit this key" in system
+    assert "Never paste ISSN values into JSON" in system
     assert "Never paste abstract text" in system
+    assert "permissions: omit this key" in system
+    assert "CC BY 4.0" in system
     assert "Keep the JSON compact" in system
     assert RESPONSE_FORMAT == {"type": "json_object"}
 
@@ -59,19 +63,20 @@ def test_few_shot_is_not_the_bn_2025_1870_fixture():
 
 def test_few_shot_shows_particles_two_authors_city_and_funding():
     user = MESSAGES[1]["content"]
-    marked = json.loads(MESSAGES[2]["content"])
+    assistant = MESSAGES[2]["content"]
+    marked = json.loads(assistant)
     assert "Ana P. da Silva" in user
     assert "Carlos R. do Nascimento" in user
     assert "Itirapina" in user
     assert "Campus do Interior" in user
     assert "CNPq 312345/2023-0" in user
     assert "12(3): e20240099" in user
-    assert "ISSN 1111-2222 (Print)" in user
-    assert "ISSN 3333-4444 (Online)" in user
-    assert marked["journal"]["issns"] == [
-        {"pub_type": "ppub", "value": "1111-2222"},
-        {"pub_type": "epub", "value": "3333-4444"},
-    ]
+    assert "ISSN" not in user
+    assert "1111-2222" not in user
+    assert "3333-4444" not in user
+    assert "issns" not in marked.get("journal", {})
+    assert "1111-2222" not in assistant
+    assert "3333-4444" not in assistant
     assert (
         "Keywords: Seasonal rainfall; Forest birds; Cerrado; "
         "Bioindicators; Conservation"
@@ -105,6 +110,7 @@ def test_few_shot_shows_particles_two_authors_city_and_funding():
     assert authors[0]["given_names"] == "Ana P. da"
     assert authors[0]["surname"] == "Silva"
     assert authors[0]["corresp"] is True
+    assert "roles" not in authors[0]
     assert authors[1]["given_names"] == "Carlos R. do"
     assert authors[1]["surname"] == "Nascimento"
     assert "corresp" not in authors[1]
@@ -122,7 +128,8 @@ def test_few_shot_shows_particles_two_authors_city_and_funding():
         "month": "11",
         "year": "2024",
     }
-    assert marked["funding"]["awards"][0]["funding_source"] == "CNPq"
+    assert "funding" not in marked
+    assert "permissions" not in marked
     assert "Original Article" in user
     assert marked["categories"] == [
         {"subj_group_type": "heading", "subject": "Original Article"}

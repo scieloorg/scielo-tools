@@ -27,13 +27,9 @@ def run_sps_package_validation(validation_pk):
             base_name = os.path.splitext(validation.package_document.title)[0]
             csv_path = os.path.join(tmpdir, f"{base_name}.validation.csv")
             utils.write_csv(rows, csv_path)
-
-            if validation.validation_document:
-                validation.validation_document.delete()
-                validation.validation_document = None
-
             validation.validation_document = (
-                SPSPackageValidationForm.save_wagtail_document_from_path(
+                SPSPackageValidationForm.save_or_replace_wagtail_document(
+                    validation.validation_document,
                     csv_path,
                     title=f"{base_name}.validation.csv",
                 )
@@ -41,13 +37,9 @@ def run_sps_package_validation(validation_pk):
 
             exceptions_path = os.path.join(tmpdir, f"{base_name}.exceptions.json")
             utils.write_exceptions_json(exceptions, exceptions_path)
-
-            if validation.exceptions_document:
-                validation.exceptions_document.delete()
-                validation.exceptions_document = None
-
             validation.exceptions_document = (
-                SPSPackageValidationForm.save_wagtail_document_from_path(
+                SPSPackageValidationForm.save_or_replace_wagtail_document(
+                    validation.exceptions_document,
                     exceptions_path,
                     title=f"{base_name}.exceptions.json",
                 )

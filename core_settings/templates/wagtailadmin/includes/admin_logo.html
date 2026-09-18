@@ -1,9 +1,15 @@
+{% load static %}
+<span class="custom-admin-branding">
 {% if settings.core_settings.customsettings.admin_logo %}
     <img
         src="{{ settings.core_settings.customsettings.admin_logo.file.url }}"
-        alt="{{ settings.core_settings.customsettings.name|default:'SciELO XML Tools' }}"
+        alt="{{ settings.core_settings.customsettings.name|default:'SciELO Tools' }}"
         class="custom-admin-logo"
+        width="216"
+        height="200"
     />
 {% else %}
-    {% include "wagtailadmin/logo.html" %}
+    {% include "wagtailadmin/includes/scielo_logo_mark.html" with logo_class="custom-admin-logo" %}
 {% endif %}
+    <span class="custom-admin-logo-label">Tools</span>
+</span>

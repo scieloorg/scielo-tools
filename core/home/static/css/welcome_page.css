@@ -14,7 +14,7 @@ body {
     margin: 0 auto;
     padding: 0 15px;
     color: #231f20;
-    font-family: 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+    font-family: var(--scielo-font);
     line-height: 1.25;
 }
 

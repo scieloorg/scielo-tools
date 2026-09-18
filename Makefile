@@ -2,7 +2,7 @@ COMPOSE_FILE ?= local.yml
 
 export SCMS_BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 export SCMS_VCS_REF := $(shell git rev-parse --short HEAD)
-export SCMS_WEBAPP_VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+export SCMS_WEBAPP_VERSION := v0.0.3-qa
 
 default: build
 
@@ -124,6 +124,9 @@ remove_all_front: ## Delete all cached Front rows
 
 remove_all_body: ## Delete all cached Body rows
 	docker compose -f $(COMPOSE_FILE) run --rm django python manage.py remove_all_body --no-input
+
+remove_all_manuscript: ## Delete all Manuscript rows
+	docker compose -f $(COMPOSE_FILE) run --rm django python manage.py remove_all_manuscript --no-input
 
 dump_data: ## Dump database into timestamped .sql file
 	docker compose -f $(COMPOSE_FILE) exec postgres pg_dumpall -c -U debug > dump_$$(date +%d-%m-%Y"_"%H_%M_%S).sql

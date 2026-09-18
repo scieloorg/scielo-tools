@@ -80,6 +80,7 @@ LOCAL_APPS = [
     "core",
     "core_settings",
     "xml_manager",
+    "manuscript",
     "reference",
     "front",
     "body",
@@ -113,6 +114,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "wagtail.contrib.settings.context_processors.settings",
+                "core_settings.context_processors.webapp_version",
             ],
         },
     },
@@ -345,3 +347,8 @@ BODY_TOKEN = env("BODY_TOKEN", default="")
 BODY_NUM_CTX = env.int("BODY_NUM_CTX", default=32768)
 BODY_KEEP_ALIVE = env("BODY_KEEP_ALIVE", default="-1")
 BODY_CHUNK_CHARS = env.int("BODY_CHUNK_CHARS", default=8000)
+
+LIBREOFFICE_BINARY = env("LIBREOFFICE_BINARY", default="")
+PACKTOOLS_PDF_LAYOUT = env("PACKTOOLS_PDF_LAYOUT", default="")
+
+WEBAPP_VERSION = env("SCMS_WEBAPP_VERSION", default="v0.0.3-qa")

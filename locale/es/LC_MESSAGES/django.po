@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-06-23 06:09+0000\n"
+"POT-Creation-Date: 2026-09-15 15:48-0300\n"
 "PO-Revision-Date: 2025-10-27 HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Spanish <es@li.org>\n"
@@ -17,6 +17,128 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
 "1 : 2;\n"
+
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/sps/pid_provider/xml_sps_lib.py:77
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/sps/pid_provider/xml_sps_lib.py:77
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/sps/pid_provider/xml_sps_lib.py:77
+msgid "{} must be xml file or zip file containing xml"
+msgstr ""
+
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/sps/pid_provider/xml_sps_lib.py:85
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/sps/pid_provider/xml_sps_lib.py:91
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/sps/pid_provider/xml_sps_lib.py:85
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/sps/pid_provider/xml_sps_lib.py:91
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/sps/pid_provider/xml_sps_lib.py:85
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/sps/pid_provider/xml_sps_lib.py:91
+msgid "Unable to get xml items from {}: {} {}"
+msgstr ""
+
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/sps/pid_provider/xml_sps_lib.py:172
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/sps/pid_provider/xml_sps_lib.py:172
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/sps/pid_provider/xml_sps_lib.py:172
+msgid "Unable to get xml items from zip file {}: {} {}"
+msgstr ""
+
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/sps/pid_provider/xml_sps_lib.py:336
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/sps/pid_provider/xml_sps_lib.py:336
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/sps/pid_provider/xml_sps_lib.py:336
+msgid "Unable to get xml from {}"
+msgstr ""
+
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/sps/pid_provider/xml_sps_lib.py:921
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/sps/pid_provider/xml_sps_lib.py:921
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/sps/pid_provider/xml_sps_lib.py:921
+msgid "Unable to get XMLWithPre.article_publication_date {} {} {}"
+msgstr ""
+
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/sps/validation/xml_structure.py:88
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/sps/validation/xml_structure.py:88
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/sps/validation/xml_structure.py:88
+msgid "Unknown {}: {}"
+msgstr ""
+
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/sps/validation/xml_structure.py:98
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/sps/validation/xml_structure.py:98
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/sps/validation/xml_structure.py:98
+msgid "Unmatched {}: {}. Expected one of {}"
+msgstr ""
+
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/sps/validation/xml_structure.py:110
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/sps/validation/xml_structure.py:119
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/sps/validation/xml_structure.py:110
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/sps/validation/xml_structure.py:119
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/sps/validation/xml_structure.py:110
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/sps/validation/xml_structure.py:119
+msgid "Unmatched {}: {}. Expected {}"
+msgstr ""
+
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/webapp/forms.py:10
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/webapp/forms.py:10
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/webapp/forms.py:10
+msgid "URL to statics files"
+msgstr ""
+
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/webapp/forms.py:11
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/webapp/forms.py:11
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/webapp/forms.py:11
+msgid "File"
+msgstr "Archivo"
+
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Frameworks/packtools/webapp/forms.py:18
+#: apps/spsvalidator/dist/spsvalidator.app/Contents/Resources/packtools/webapp/forms.py:18
+#: apps/spsvalidator/dist/spsvalidator/_internal/packtools/webapp/forms.py:18
+msgid "This type of file is not allowed! Please select another file."
+msgstr ""
+
+#: body/models.py:9 front/models.py:11 manuscript/forms.py:80
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:28
+#, fuzzy
+#| msgid "Source"
+msgid "Source text"
+msgstr "Fuente"
+
+#: body/models.py:10 front/models.py:12
+msgid "Normalized text"
+msgstr ""
+
+#: body/models.py:11 front/models.py:13 reference/models.py:53
+msgid "SHA256"
+msgstr ""
+
+#: body/models.py:12 front/models.py:14 manuscript/models.py:179
+#: reference/models.py:91
+msgid "Marked"
+msgstr "Marcado"
+
+#: body/models.py:13 front/models.py:15 manuscript/models.py:180
+#: reference/models.py:92
+msgid "Marked XML"
+msgstr "XML Marcado"
+
+#: body/models.py:14 front/models.py:16 reference/models.py:18
+msgid "Creation date"
+msgstr "Fecha de creación"
+
+#: body/models.py:15 front/models.py:17 reference/models.py:19
+msgid "Last update date"
+msgstr "Fecha de última actualización"
+
+#: body/models.py:18 front/models.py:20 manuscript/models.py:138
+#: reference/models.py:22
+msgid "Creator"
+msgstr "Creador"
+
+#: body/models.py:34 manuscript/models.py:56
+#, fuzzy
+#| msgid "DOCX Body"
+msgid "Body"
+msgstr "Cuerpo de DOCX"
+
+#: body/models.py:35
+#, fuzzy
+#| msgid "DOCX Bodies"
+msgid "Bodies"
+msgstr "Cuerpos de DOCX"
 
 #: core/celery_wagtail.py:37
 msgid "Run"
@@ -73,37 +195,15 @@ msgstr "tarea \"{0}\" no encontrada"
 msgid "Task {0} was successfully run"
 msgstr "{0} tarea{1} {2} ejecutada{1} exitosamente"
 
-#: core/choices.py:10
-msgid "by"
-msgstr "por"
+#: core/home/templates/home/home_page.html:18
+msgid ""
+"Editorial platform for marking, validating and tracking research "
+"communication objects."
+msgstr ""
 
-#: core/choices.py:11
-msgid "by-sa"
-msgstr "by-sa"
-
-#: core/choices.py:12
-msgid "by-nc"
-msgstr "by-nc"
-
-#: core/choices.py:13
-msgid "by-nc-sa"
-msgstr "by-nc-sa"
-
-#: core/choices.py:14
-msgid "by-nd"
-msgstr "by-nd"
-
-#: core/choices.py:15
-msgid "by-nc-nd"
-msgstr "by-nc-nd"
-
-#: core/choices.py:19
-msgid "Male"
-msgstr "Masculino"
-
-#: core/choices.py:20
-msgid "Female"
-msgstr "Femenino"
+#: core/home/templates/home/home_page.html:19
+msgid "Open admin"
+msgstr ""
 
 #: core/home/templates/home/welcome_page.html:6
 msgid "Visit the Wagtail website"
@@ -148,106 +248,25 @@ msgstr "Interfaz de Administración"
 msgid "Create your superuser first!"
 msgstr "¡Crea tu superusuario primero!"
 
-#: core/models.py:29
-msgid "Creation date"
-msgstr "Fecha de creación"
+#: core/templates/404.html:4 core/templates/404.html:16
+#, fuzzy
+#| msgid "task \"{0}\" not found"
+msgid "Page not found"
+msgstr "tarea \"{0}\" no encontrada"
 
-#: core/models.py:32
-msgid "Last update date"
-msgstr "Fecha de última actualización"
+#: core/templates/404.html:17
+msgid "Sorry, this page could not be found."
+msgstr ""
 
-#: core/models.py:37
-msgid "Creator"
-msgstr "Creador"
+#: core/templates/404.html:18
+msgid "Back to home"
+msgstr ""
 
-#: core/models.py:47
-msgid "Updater"
-msgstr "Actualizador"
-
-#: core/models.py:67
-msgid "Code"
-msgstr "Código"
-
-#: core/models.py:69
-msgid "Sex"
-msgstr "Sexo"
-
-#: core/models.py:132
-msgid "Language Name"
-msgstr "Nombre del Idioma"
-
-#: core/models.py:133
-msgid "Language code 2"
-msgstr "Código de idioma 2"
-
-#: core/models.py:141 core/models.py:190 core/models.py:207 core/models.py:254
-#: core/models.py:526
-msgid "Language"
-msgstr "Idioma"
-
-#: core/models.py:142
-msgid "Languages"
-msgstr "Idiomas"
-
-#: core/models.py:186
-msgid "Text"
-msgstr "Texto"
-
-#: core/models.py:202 core/models.py:250
-msgid "Rich Text"
-msgstr "Texto Enriquecido"
-
-#: core/models.py:203
-msgid "Plain Text"
-msgstr "Texto Plano"
-
-#: core/models.py:271
-msgid "Year"
-msgstr "Año"
-
-#: core/models.py:272
-msgid "Month"
-msgstr "Mes"
-
-#: core/models.py:273
-msgid "Day"
-msgstr "Día"
-
-#: core/models.py:304 core/models.py:384
-msgid "License"
-msgstr "Licencia"
-
-#: core/models.py:305 core/models.py:385
-msgid "Licenses"
-msgstr "Licencias"
-
-#: core/models.py:518
-msgid "File"
-msgstr "Archivo"
-
-#: core/templates/admin/djcelery/change_list.html:6
+#: core/templates/admin/djcelery/change_list.html:6 manuscript/views.py:89
 msgid "Home"
 msgstr ""
 
-#: core/wagtail_hooks.py:32
-msgid "Pages"
-msgstr ""
-
-#: core/wagtail_hooks.py:39
-msgid "Images"
-msgstr ""
-
-#: core/wagtail_hooks.py:46
-msgid "Documents"
-msgstr "Documentos"
-
-#: core/wagtail_hooks.py:56
-#, fuzzy
-#| msgid "Content type"
-msgid "Content Manager"
-msgstr "Tipo de contenido"
-
-#: core/wagtail_hooks.py:82
+#: core/wagtail_hooks.py:28
 msgid "Project Wiki"
 msgstr ""
 
@@ -262,6 +281,995 @@ msgstr "Configuración del sitio"
 #: core_settings/models.py:67
 msgid "Admin settings"
 msgstr "Configuración de administración"
+
+#: core_settings/templates/wagtailadmin/home.html:14
+msgid "Pesquisar por manuscritos, documentos(docx), imagens"
+msgstr ""
+
+#: core_settings/templates/wagtailadmin/home.html:46
+#, fuzzy
+#| msgid "March"
+msgid "Search"
+msgstr "Marzo"
+
+#: core_settings/templates/wagtailadmin/home.html:57
+msgid ""
+"This is your dashboard on which helpful information about content you've "
+"created will be displayed."
+msgstr ""
+
+#: core_settings/templates/wagtailadmin/home/account_summary.html:9
+#: core_settings/wagtail_hooks.py:72
+msgid "Account"
+msgstr ""
+
+#: core_settings/wagtail_hooks.py:37
+msgid "Buscar"
+msgstr ""
+
+#: core_settings/wagtail_hooks.py:82
+msgid "Log out"
+msgstr ""
+
+#: front/models.py:36 manuscript/models.py:55
+#, fuzzy
+#| msgid "crontab"
+msgid "Front"
+msgstr "crontab"
+
+#: front/models.py:37
+#, fuzzy
+#| msgid "crontabs"
+msgid "Fronts"
+msgstr "crontabs"
+
+#: manuscript/forms.py:21 reference/create_forms.py:31
+msgid "Only .docx files are accepted."
+msgstr ""
+
+#: manuscript/forms.py:23 reference/create_forms.py:33
+#, fuzzy
+#| msgid "Exceptions file"
+msgid "Empty file."
+msgstr "Archivo de excepciones"
+
+#: manuscript/forms.py:58 manuscript/models.py:78
+#: manuscript/wagtail_hooks.py:146
+#, fuzzy
+#| msgid "Source"
+msgid "Source DOCX"
+msgstr "Fuente"
+
+#: manuscript/forms.py:60
+msgid "Optional. Extracts front, body and references sections."
+msgstr ""
+
+#: manuscript/forms.py:85 reference/create_forms.py:13
+#, fuzzy
+#| msgid "DOCX File"
+msgid "DOCX file"
+msgstr "Archivo DOCX"
+
+#: manuscript/forms.py:105
+msgid "Provide front text or a .docx file."
+msgstr ""
+
+#: manuscript/forms.py:120
+msgid "Provide body text or a .docx file."
+msgstr ""
+
+#: manuscript/forms.py:135
+msgid "Provide references text or a .docx file."
+msgstr ""
+
+#: manuscript/i18n.py:5
+#, fuzzy
+#| msgid "Short title"
+msgid "Article title"
+msgstr "Título corto"
+
+#: manuscript/i18n.py:6
+msgid "DOI"
+msgstr "DOI"
+
+#: manuscript/i18n.py:7
+msgid "Authors"
+msgstr ""
+
+#: manuscript/i18n.py:8
+msgid "Add author"
+msgstr ""
+
+#: manuscript/i18n.py:9
+msgid "Abstracts"
+msgstr ""
+
+#: manuscript/i18n.py:10
+msgid "Add abstract"
+msgstr ""
+
+#: manuscript/i18n.py:11
+msgid "Abstract"
+msgstr ""
+
+#: manuscript/i18n.py:12
+msgid "Keywords"
+msgstr ""
+
+#: manuscript/i18n.py:13
+msgid "Add keyword group"
+msgstr ""
+
+#: manuscript/i18n.py:14
+#, fuzzy
+#| msgid "Previous title"
+msgid "Group title"
+msgstr "Título anterior"
+
+#: manuscript/i18n.py:15
+msgid "Keywords (comma separated)"
+msgstr ""
+
+#: manuscript/i18n.py:16
+msgid "History"
+msgstr "Histórico"
+
+#: manuscript/i18n.py:17
+msgid "Add date"
+msgstr "Añadir fecha"
+
+#: manuscript/i18n.py:18
+msgid "Date type"
+msgstr "Tipo de fecha"
+
+#: manuscript/i18n.py:19
+msgid "Received"
+msgstr "Recibido"
+
+#: manuscript/i18n.py:20
+msgid "Revised"
+msgstr "Revisado"
+
+#: manuscript/i18n.py:21
+msgid "Accepted"
+msgstr "Aceptado"
+
+#: manuscript/i18n.py:22
+msgid "Day"
+msgstr "Día"
+
+#: manuscript/i18n.py:23
+msgid "Month"
+msgstr "Mes"
+
+#: manuscript/i18n.py:24
+msgid "Year"
+msgstr "Año"
+
+#: manuscript/i18n.py:25
+msgid "Counts"
+msgstr "Conteos"
+
+#: manuscript/i18n.py:26
+msgid "Figures"
+msgstr "Figuras"
+
+#: manuscript/i18n.py:27
+msgid "Tables"
+msgstr "Tablas"
+
+#: manuscript/i18n.py:28
+msgid "Equations"
+msgstr "Ecuaciones"
+
+#: manuscript/i18n.py:30
+msgid "Surname"
+msgstr ""
+
+#: manuscript/i18n.py:17
+#, fuzzy
+#| msgid "City name"
+msgid "Given names"
+msgstr "Nombre de la ciudad"
+
+#: manuscript/i18n.py:18
+msgid "Language"
+msgstr "Idioma"
+
+#: manuscript/i18n.py:19 manuscript/models.py:65
+msgid "Title"
+msgstr "Título"
+
+#: manuscript/i18n.py:20
+msgid "Text"
+msgstr "Texto"
+
+#: manuscript/i18n.py:21
+msgid "Section title"
+msgstr "Título de sección"
+
+#: manuscript/i18n.py:22
+msgid "Paragraphs"
+msgstr "Párrafos"
+
+#: manuscript/i18n.py:23
+#, fuzzy
+#| msgid "Paragraph"
+msgid "Add paragraph"
+msgstr "Párrafo"
+
+#: manuscript/i18n.py:24
+#, fuzzy
+#| msgid "Action"
+msgid "Add section"
+msgstr "Acción"
+
+#: manuscript/i18n.py:25 manuscript/models.py:178
+#, fuzzy
+#| msgid "Mixed Citation"
+msgid "Mixed citation"
+msgstr "Cita mixta"
+
+#: manuscript/i18n.py:26
+#, fuzzy
+#| msgid "Structured document"
+msgid "Structured marked (JSON)"
+msgstr "Documento estructurado"
+
+#: manuscript/i18n.py:27
+msgid "Re-mark"
+msgstr ""
+
+#: manuscript/i18n.py:28
+msgid "Remove"
+msgstr ""
+
+#: manuscript/i18n.py:29
+msgid "Save references before re-marking individual items"
+msgstr ""
+
+#: manuscript/i18n.py:30
+msgid "Re-mark failed"
+msgstr ""
+
+#: manuscript/i18n.py:31
+#, fuzzy
+#| msgid "Reference ready"
+msgid "Reference re-marked"
+msgstr "Referencia lista"
+
+#: manuscript/i18n.py:32
+msgid "Front draft saved"
+msgstr ""
+
+#: manuscript/i18n.py:33
+msgid "Body draft saved"
+msgstr ""
+
+#: manuscript/i18n.py:34
+#, fuzzy
+#| msgid "Reference ready"
+msgid "References draft saved"
+msgstr "Referencia lista"
+
+#: manuscript/i18n.py:35
+msgid "Save failed"
+msgstr ""
+
+#: manuscript/i18n.py:36
+#, fuzzy
+#| msgid "Publisher name"
+msgid "Publish failed"
+msgstr "Nombre del editor"
+
+#: manuscript/i18n.py:37
+#, fuzzy
+#| msgid "Publication level"
+msgid "Publication stub created"
+msgstr "Nivel de publicación"
+
+#: manuscript/i18n.py:38
+msgid "Marking front..."
+msgstr "Marcando el front..."
+
+#: manuscript/i18n.py:39
+msgid "Marking body..."
+msgstr "Marcando el cuerpo..."
+
+#: manuscript/i18n.py:40
+msgid "Marking references..."
+msgstr "Marcando las referencias..."
+
+#: manuscript/i18n.py:41
+#: manuscript/templates/wagtailadmin/manuscript/wizard_base.html:96
+msgid "Elapsed time"
+msgstr "Tiempo transcurrido"
+
+#: manuscript/models.py:12 manuscript/models.py:34
+msgid "Code"
+msgstr "Código"
+
+#: manuscript/models.py:13 manuscript/models.py:35
+msgid "Name"
+msgstr "Nombre"
+
+#: manuscript/models.py:14
+msgid "Description"
+msgstr "Descripción"
+
+#: manuscript/models.py:15 manuscript/models.py:36
+msgid "Sort order"
+msgstr "Orden"
+
+#: manuscript/models.py:28 manuscript/models.py:81
+#: manuscript/wagtail_hooks.py:147
+msgid "Article type"
+msgstr "Tipo de artículo"
+
+#: manuscript/models.py:29 manuscript/wagtail_hooks.py:109
+msgid "Article types"
+msgstr "Tipos de artículo"
+
+#: manuscript/models.py:48 manuscript/models.py:87
+#: manuscript/wagtail_hooks.py:148
+msgid "Original language"
+msgstr "Idioma original"
+
+#: manuscript/models.py:49 manuscript/wagtail_hooks.py:123
+msgid "Original languages"
+msgstr "Idiomas originales"
+
+#: manuscript/models.py:54
+msgid "Draft"
+msgstr ""
+
+#: manuscript/models.py:57
+msgid "Back"
+msgstr ""
+
+#: manuscript/models.py:58
+#, fuzzy
+#| msgid "enabled"
+msgid "Assembled"
+msgstr "habilitado"
+
+#: manuscript/models.py:59
+#, fuzzy
+#| msgid "Validation File"
+msgid "Validated"
+msgstr "Archivo de Validación"
+
+#: manuscript/models.py:60
+msgid "Ready"
+msgstr ""
+
+#: manuscript/models.py:61
+#, fuzzy
+#| msgid "Publisher name"
+msgid "Published"
+msgstr "Nombre del editor"
+
+#: manuscript/models.py:67 manuscript/models.py:209
+#: manuscript/templates/wagtailadmin/manuscript/step_validate.html:33
+#: manuscript/wagtail_hooks.py:145 xml_manager/models.py:58
+#, fuzzy
+#| msgid "States"
+msgid "Status"
+msgstr "Estados"
+
+#: manuscript/models.py:84
+msgid "Closed list of SciELO PS 1.10 @article-type values."
+msgstr "Lista cerrada de valores @article-type de SciELO PS 1.10."
+
+#: manuscript/models.py:91
+msgid "Closed list of ISO 639-1 codes for the article original language."
+msgstr "Lista cerrada de códigos ISO 639-1 del idioma original del artículo."
+
+#: manuscript/models.py:95
+msgid "SPS version"
+msgstr "Versión SPS"
+
+#: manuscript/models.py:99
+msgid "Front source text"
+msgstr ""
+
+#: manuscript/models.py:100
+msgid "Front marked"
+msgstr ""
+
+#: manuscript/models.py:101
+#, fuzzy
+#| msgid "Marked XML"
+msgid "Front marked XML"
+msgstr "XML Marcado"
+
+#: manuscript/models.py:102
+msgid "Body source text"
+msgstr ""
+
+#: manuscript/models.py:103
+msgid "Body marked"
+msgstr ""
+
+#: manuscript/models.py:104
+#, fuzzy
+#| msgid "Marked XML"
+msgid "Body marked XML"
+msgstr "XML Marcado"
+
+#: manuscript/models.py:105
+msgid "Body tables"
+msgstr ""
+
+#: manuscript/models.py:106
+#, fuzzy
+#| msgid "Figures"
+msgid "Body figures"
+msgstr "Figuras"
+
+#: manuscript/models.py:107
+#, fuzzy
+#| msgid "Reference status"
+msgid "References source text"
+msgstr "Estado de referencia"
+
+#: manuscript/models.py:108
+#: manuscript/templates/wagtailadmin/manuscript/step_package.html:7
+#: manuscript/templates/wagtailadmin/manuscript/step_validate.html:7
+msgid "Assembled XML"
+msgstr ""
+
+#: manuscript/models.py:115
+msgid "SPS package"
+msgstr ""
+
+#: manuscript/models.py:123
+#, fuzzy
+#| msgid "Validation File"
+msgid "Validation"
+msgstr "Archivo de Validación"
+
+#: manuscript/models.py:126
+msgid "Front approved at"
+msgstr ""
+
+#: manuscript/models.py:129
+msgid "Body approved at"
+msgstr ""
+
+#: manuscript/models.py:132
+msgid "Back approved at"
+msgstr ""
+
+#: manuscript/models.py:134
+#, fuzzy
+#| msgid "Creator"
+msgid "Created"
+msgstr "Creador"
+
+#: manuscript/models.py:135
+#, fuzzy
+#| msgid "Updater"
+msgid "Updated"
+msgstr "Actualizador"
+
+#: manuscript/models.py:146
+#, fuzzy
+#| msgid "Updater"
+msgid "Updated by"
+msgstr "Actualizador"
+
+#: manuscript/models.py:167 manuscript/models.py:204
+msgid "Manuscript"
+msgstr ""
+
+#: manuscript/models.py:168 manuscript/views.py:92
+#: manuscript/wagtail_hooks.py:139
+msgid "Manuscripts"
+msgstr ""
+
+msgid "%(total)s Manuscript <span class=\"w-sr-only\">created in %(site_name)s</span>"
+msgid_plural "%(total)s Manuscripts <span class=\"w-sr-only\">created in %(site_name)s</span>"
+msgstr[0] "%(total)s manuscrito <span class=\"w-sr-only\">creado en %(site_name)s</span>"
+msgstr[1] "%(total)s manuscritos <span class=\"w-sr-only\">creados en %(site_name)s</span>"
+
+#: manuscript/models.py:195
+#, fuzzy
+#| msgid "Creating reference"
+msgid "Manuscript reference"
+msgstr "Creando referencia"
+
+#: manuscript/models.py:196
+#, fuzzy
+#| msgid "Creating reference"
+msgid "Manuscript references"
+msgstr "Creando referencia"
+
+#: manuscript/models.py:206
+msgid "External ID"
+msgstr ""
+
+#: manuscript/models.py:207
+msgid "Preview URL"
+msgstr ""
+
+#: manuscript/models.py:208
+#, fuzzy
+#| msgid "Publisher state"
+msgid "Published at"
+msgstr "Estado del editor"
+
+#: manuscript/models.py:212
+msgid "Manuscript publication"
+msgstr ""
+
+#: manuscript/models.py:213
+msgid "Manuscript publications"
+msgstr ""
+
+#: manuscript/preview.py:19
+msgid "No front markup yet."
+msgstr ""
+
+#: manuscript/preview.py:25 manuscript/views.py:133
+msgid "Invalid front XML."
+msgstr ""
+
+#: manuscript/preview.py:74
+msgid "No body markup yet."
+msgstr ""
+
+#: manuscript/preview.py:80
+msgid "Invalid body XML."
+msgstr ""
+
+#: manuscript/preview.py:110
+#, fuzzy
+#| msgid "Reference ready"
+msgid "No references marked yet."
+msgstr "Referencia lista"
+
+#: manuscript/preview.py:115 reference/models.py:81
+#: reference/wagtail_hooks.py:64
+#, fuzzy
+#| msgid "Reference"
+msgid "References"
+msgstr "Referencia"
+
+#: manuscript/preview.py:129
+msgid "No assembled XML yet."
+msgstr ""
+
+#: manuscript/preview.py:138
+msgid "Invalid article XML."
+msgstr ""
+
+#: manuscript/publishers/scielo_upload.py:14
+msgid "Assembled XML is required before publishing."
+msgstr ""
+
+#: manuscript/services/assembly.py:19
+msgid "Front XML is missing"
+msgstr ""
+
+#: manuscript/services/assembly.py:21
+msgid "Body XML is missing"
+msgstr ""
+
+#: manuscript/services/assembly.py:24
+msgid "Reference list XML is missing"
+msgstr ""
+
+#: manuscript/services/intake.py:42
+msgid "No content extracted from DOCX"
+msgstr ""
+
+#: manuscript/services/marking.py:48
+msgid "Front source text is empty"
+msgstr ""
+
+#: manuscript/services/marking.py:72
+msgid "Front marked data must be a JSON object"
+msgstr ""
+
+#: manuscript/services/marking.py:86
+msgid "Body source text is empty"
+msgstr ""
+
+#: manuscript/services/marking.py:111
+msgid "Body marked data must be a JSON object"
+msgstr ""
+
+#: manuscript/services/marking.py:139
+msgid "References source text is empty"
+msgstr ""
+
+#: manuscript/services/marking.py:142
+msgid "No references found in source text"
+msgstr ""
+
+#: manuscript/services/marking.py:178
+#, fuzzy
+#| msgid "Reference status"
+msgid "Reference citation is empty"
+msgstr "Estado de referencia"
+
+#: manuscript/services/marking.py:184
+#, fuzzy
+#| msgid "No reference"
+msgid "Could not mark reference"
+msgstr "Sin referencia"
+
+#: manuscript/services/validation.py:90
+#, fuzzy
+#| msgid "XML Validation Error"
+msgid "No validation record"
+msgstr "Error de Validación XML"
+
+#: manuscript/services/validation.py:92
+#, fuzzy
+#| msgid "Validation File"
+msgid "Validation is not complete"
+msgstr "Archivo de Validación"
+
+#: manuscript/services/workflow.py:40
+#, python-format
+msgid "Invalid step: %(step)s"
+msgstr ""
+
+#: manuscript/services/workflow.py:62
+msgid "Cannot approve front from current status"
+msgstr ""
+
+#: manuscript/services/workflow.py:73
+msgid "Cannot approve body from current status"
+msgstr ""
+
+#: manuscript/services/workflow.py:84
+msgid "Cannot approve back from current status"
+msgstr ""
+
+#: manuscript/services/workflow.py:98
+msgid "Cannot mark validated from current status"
+msgstr ""
+
+#: manuscript/services/workflow.py:108
+msgid "Cannot mark ready from current status"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/create.html:10
+#: manuscript/templates/wagtailadmin/manuscript/create.html:17
+msgid "Create manuscript"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_back.html:23
+#, fuzzy
+#| msgid "Reference ready"
+msgid "References source"
+msgstr "Referencia lista"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_back.html:30
+#: manuscript/templates/wagtailadmin/manuscript/step_body.html:29
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:36
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:82
+#, fuzzy
+#| msgid "Source"
+msgid "Save source"
+msgstr "Fuente"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_back.html:31
+#, fuzzy
+#| msgid "No reference"
+msgid "Mark references"
+msgstr "Sin referencia"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_back.html:41
+#, fuzzy
+#| msgid "Reference ready"
+msgid "References editor"
+msgstr "Referencia lista"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_back.html:46
+#, fuzzy
+#| msgid "No reference"
+msgid "Add reference"
+msgstr "Sin referencia"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_back.html:47
+#: manuscript/templates/wagtailadmin/manuscript/step_body.html:45
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:99
+msgid "Save draft"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_back.html:58
+msgid "Back to body"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_back.html:59
+msgid "Approve and validate"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_body.html:22
+msgid "Body source"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_body.html:30
+#, fuzzy
+#| msgid "Marked"
+msgid "Mark body"
+msgstr "Marcado"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_body.html:40
+msgid "Body editor"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_body.html:56
+msgid "Back to front"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_body.html:57
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:110
+msgid "Approve and continue"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:22
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:27
+msgid "Front source"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:29
+msgid "Marked text"
+msgstr "Texto marcado"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:30
+msgid "XML tags"
+msgstr "tags XML"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:58
+msgid "Tag"
+msgstr "Tag"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:59
+msgid "Count"
+msgstr "Cantidad"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:71
+msgid "Total"
+msgstr "Total"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:78
+msgid "No tag statistics available."
+msgstr "No hay estadísticas de etiquetas disponibles."
+
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:37
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:114
+msgid "Mark front"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:46
+msgid "Save marked text"
+msgstr "Guardar texto marcado"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_front.html:94
+msgid "Front editor"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_package.html:11
+#: manuscript/templates/wagtailadmin/manuscript/step_validate.html:11
+msgid "Open article preview"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_package.html:14
+#: manuscript/templates/wagtailadmin/manuscript/step_validate.html:14
+msgid "Approve the back step to assemble XML."
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_package.html:28
+msgid "Build SPS package"
+msgstr "Generar paquete SPS"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_package.html:32
+msgid "Download SPS package"
+msgstr "Descargar paquete SPS"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_package.html:40
+#, fuzzy
+#| msgid "Publication level"
+msgid "Publication"
+msgstr "Nivel de publicación"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_package.html:44
+msgid "Send to SciELO (stub)"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_package.html:46
+msgid ""
+"Configure SCIELO_PREVIEW_BASE_URL to enable preview and publication stubs."
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_validate.html:23
+#, fuzzy
+#| msgid "Validation File"
+msgid "SPS validation"
+msgstr "Archivo de Validación"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_validate.html:16
+msgid "Save assembled XML"
+msgstr "Guardar XML ensamblado"
+
+#: manuscript/templates/wagtailadmin/manuscript/step_validate.html:34
+msgid "Validate SPS package"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_validate.html:46
+msgid "Download validation CSV"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_validate.html:49
+msgid "Download exceptions JSON"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_validate.html:71
+msgid "Go to step"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/step_validate.html:82
+#, fuzzy
+#| msgid "Validation File"
+msgid "Confirm validation review"
+msgstr "Archivo de Validación"
+
+#: manuscript/templates/wagtailadmin/manuscript/wizard_base.html:51
+msgid "Marking steps"
+msgstr ""
+
+#: manuscript/templates/wagtailadmin/manuscript/wizard_base.html:75
+#: manuscript/templates/wagtailadmin/manuscript/wizard_base.html:84
+msgid "Preview"
+msgstr ""
+
+#: manuscript/views.py:118
+msgid "Front source saved."
+msgstr ""
+
+#: manuscript/views.py:124
+msgid "Front marked successfully."
+msgstr ""
+
+#: manuscript/views.py:140
+msgid "Marked text saved."
+msgstr "Texto marcado guardado."
+
+#: manuscript/views.py:145
+msgid "Front approved."
+msgstr ""
+
+#: manuscript/views.py:180
+msgid "Body source saved."
+msgstr ""
+
+#: manuscript/views.py:185
+msgid "Body marked successfully."
+msgstr ""
+
+#: manuscript/views.py:192
+msgid "Body approved."
+msgstr ""
+
+#: manuscript/views.py:218
+#, fuzzy
+#| msgid "Reference ready"
+msgid "References source saved."
+msgstr "Referencia lista"
+
+#: manuscript/views.py:223
+#, fuzzy
+#| msgid "Reference ready"
+msgid "References marked successfully."
+msgstr "Referencia lista"
+
+#: manuscript/views.py:231
+msgid "Back approved and XML assembled."
+msgstr ""
+
+#: manuscript/views.py:402
+msgid "Invalid assembled XML."
+msgstr "XML ensamblado inválido."
+
+#: manuscript/views.py:411
+msgid "Assembled XML saved."
+msgstr "XML ensamblado guardado."
+
+#: manuscript/views.py:416
+#, fuzzy
+#| msgid "Validation File"
+msgid "Validation completed."
+msgstr "Archivo de Validación"
+
+#: manuscript/views.py:271
+#, fuzzy
+#| msgid "Validation file"
+msgid "Validation review confirmed."
+msgstr "Archivo de validación"
+
+#: manuscript/views.py:312
+msgid "SPS package built."
+msgstr "Paquete SPS generado."
+
+#: manuscript/views.py:355 manuscript/views.py:377 manuscript/views.py:399
+msgid "Invalid JSON"
+msgstr ""
+
+#: manuscript/wagtail_hooks.py:64
+#, python-format
+msgid "Manuscript “%(title)s” created."
+msgstr ""
+
+#: manuscript/wagtail_hooks.py:187
+msgid "Continue marking"
+msgstr ""
+
+#: reference/create_forms.py:16
+msgid ""
+"Optional. If provided, references are extracted from the file (takes "
+"precedence over the text field)."
+msgstr ""
+
+#: reference/create_forms.py:46
+msgid "Provide reference text or a .docx file."
+msgstr ""
+
+#: reference/models.py:30
+msgid "Updater"
+msgstr "Actualizador"
+
+#: reference/models.py:43
+msgid "No reference"
+msgstr "Sin referencia"
+
+#: reference/models.py:44
+msgid "Creating reference"
+msgstr "Creando referencia"
+
+#: reference/models.py:45
+msgid "Reference ready"
+msgstr "Referencia lista"
+
+#: reference/models.py:49
+msgid "Mixed Citation"
+msgstr "Cita mixta"
+
+#: reference/models.py:51
+#, fuzzy
+#| msgid "Mixed Citation"
+msgid "Normalized citation"
+msgstr "Cita mixta"
+
+#: reference/models.py:56
+msgid "Reference status"
+msgstr "Estado de referencia"
+
+#: reference/models.py:64 reference/wagtail_hooks.py:25
+msgid "Cited Elements"
+msgstr "Elementos Citados"
+
+#: reference/models.py:80
+msgid "Reference"
+msgstr "Referencia"
+
+#: reference/models.py:101
+msgid "Rating from 1 to 10"
+msgstr "Calificación del 1 al 10"
+
+#: reference/wagtail_hooks.py:47
+#, python-format
+msgid "Llama model is not available: %(error)s"
+msgstr ""
+
+#: reference/wagtail_hooks.py:54
+#, python-format
+msgid "Marked %(count)s reference(s)."
+msgstr ""
 
 #: users/admin.py:14
 msgid "Personal info"
@@ -283,6 +1291,171 @@ msgstr "Este nombre de usuario ya ha sido tomado."
 msgid "Name of User"
 msgstr "Nombre del Usuario"
 
+#: xml_manager/forms.py:13
+msgid "SPS package (.zip)"
+msgstr ""
+
+#: xml_manager/forms.py:16
+msgid ""
+"On edit, leave empty to revalidate the current package without replacing the "
+"file."
+msgstr ""
+
+#: xml_manager/forms.py:30
+msgid "Only .zip files are allowed."
+msgstr ""
+
+#: xml_manager/forms.py:32
+msgid "The file is empty."
+msgstr ""
+
+#: xml_manager/forms.py:38
+#, fuzzy
+#| msgid "Model file is required."
+msgid "A .zip file is required."
+msgstr "El archivo del modelo es obligatorio."
+
+#: xml_manager/models.py:8
+msgid "Pending"
+msgstr "Pendiente"
+
+#: xml_manager/models.py:9
+msgid "Running"
+msgstr ""
+
+#: xml_manager/models.py:10
+msgid "Done"
+msgstr "Completado"
+
+#: xml_manager/models.py:11
+#, fuzzy
+#| msgid "error"
+msgid "Error"
+msgstr "error"
+
+#: xml_manager/models.py:19
+#, fuzzy
+#| msgid "Structured document"
+msgid "SPS package document"
+msgstr "Documento estructurado"
+
+#: xml_manager/models.py:27 xml_manager/wagtail_hooks.py:118
+msgid "Validation file"
+msgstr "Archivo de validación"
+
+#: xml_manager/models.py:35 xml_manager/wagtail_hooks.py:119
+msgid "Exceptions file"
+msgstr "Archivo de excepciones"
+
+#: xml_manager/models.py:38
+msgid "ZIP size (bytes)"
+msgstr ""
+
+#: xml_manager/models.py:44
+msgid "Validated at"
+msgstr ""
+
+#: xml_manager/models.py:52
+msgid "Validated by"
+msgstr ""
+
+#: xml_manager/models.py:62
+#, fuzzy
+#| msgid "Error Type"
+msgid "Error message"
+msgstr "Tipo de Error"
+
+#: xml_manager/models.py:80 xml_manager/wagtail_hooks.py:102
+msgid "SPS package validation"
+msgstr ""
+
+#: xml_manager/models.py:81
+msgid "SPS package validations"
+msgstr ""
+
+#: xml_manager/views.py:22 xml_manager/wagtail_hooks.py:92
+#, python-format
+msgid "Validation started for “%(title)s”."
+msgstr ""
+
+#: xml_manager/wagtail_hooks.py:55
+#, python-format
+msgid "SPS package uploaded. Validation started for “%(title)s”."
+msgstr ""
+
+#: xml_manager/wagtail_hooks.py:103 xml_manager/wagtail_hooks.py:106
+msgid "Validar SPS"
+msgstr ""
+
+#: xml_manager/wagtail_hooks.py:113
+msgid "SPS package (ZIP)"
+msgstr ""
+
+#: xml_manager/wagtail_hooks.py:146
+msgid "Revalidar"
+msgstr ""
+
+#, fuzzy
+#~| msgid "Validation File"
+#~ msgid "Validate"
+#~ msgstr "Archivo de Validación"
+
+#~ msgid "by"
+#~ msgstr "por"
+
+#~ msgid "by-sa"
+#~ msgstr "by-sa"
+
+#~ msgid "by-nc"
+#~ msgstr "by-nc"
+
+#~ msgid "by-nc-sa"
+#~ msgstr "by-nc-sa"
+
+#~ msgid "by-nd"
+#~ msgstr "by-nd"
+
+#~ msgid "by-nc-nd"
+#~ msgstr "by-nc-nd"
+
+#~ msgid "Male"
+#~ msgstr "Masculino"
+
+#~ msgid "Female"
+#~ msgstr "Femenino"
+
+#~ msgid "Sex"
+#~ msgstr "Sexo"
+
+#~ msgid "Language Name"
+#~ msgstr "Nombre del Idioma"
+
+#~ msgid "Language code 2"
+#~ msgstr "Código de idioma 2"
+
+#~ msgid "Languages"
+#~ msgstr "Idiomas"
+
+#~ msgid "Rich Text"
+#~ msgstr "Texto Enriquecido"
+
+#~ msgid "Plain Text"
+#~ msgstr "Texto Plano"
+
+#~ msgid "License"
+#~ msgstr "Licencia"
+
+#~ msgid "Licenses"
+#~ msgstr "Licencias"
+
+#~ msgid "Documents"
+#~ msgstr "Documentos"
+
+#, fuzzy
+#~| msgid "Content type"
+#~ msgid "Content Manager"
+#~ msgstr "Tipo de contenido"
+
 #~ msgid "Editor-Chefe"
 #~ msgstr "Editor en Jefe"
 
@@ -300,9 +1473,6 @@ msgstr "Nombre del Usuario"
 
 #~ msgid "February"
 #~ msgstr "Febrero"
-
-#~ msgid "March"
-#~ msgstr "Marzo"
 
 #~ msgid "April"
 #~ msgstr "Abril"
@@ -446,15 +1616,6 @@ msgstr "Nombre del Usuario"
 #~ "El nombre legible de la zona horaria que seguirá este horario (ej. "
 #~ "'Europe/Berlin')"
 
-#~ msgid "crontab"
-#~ msgstr "crontab"
-
-#~ msgid "crontabs"
-#~ msgstr "crontabs"
-
-#~ msgid "Name"
-#~ msgstr "Nombre"
-
 #~ msgid "Event"
 #~ msgstr "Evento"
 
@@ -552,9 +1713,6 @@ msgstr "Nombre del Usuario"
 #~ "Fecha y hora en que el horario debe comenzar a activar la ejecución de la "
 #~ "tarea"
 
-#~ msgid "enabled"
-#~ msgstr "habilitado"
-
 #~ msgid "Set to False to disable the schedule"
 #~ msgstr "Establecer en False para deshabilitar el horario"
 
@@ -610,9 +1768,6 @@ msgstr "Nombre del Usuario"
 #~ msgid "Site ID"
 #~ msgstr "ID del Sitio"
 
-#~ msgid "Short title"
-#~ msgstr "Título corto"
-
 #~ msgid "Journal ISSN"
 #~ msgstr "ISSN de la Revista"
 
@@ -658,38 +1813,23 @@ msgstr "Nombre del Usuario"
 #~ msgid "Short title (slug)"
 #~ msgstr "Título corto (slug)"
 
-#~ msgid "Title"
-#~ msgstr "Título"
-
 #~ msgid "Subtitle"
 #~ msgstr "Subtítulo"
 
 #~ msgid "Next title"
 #~ msgstr "Título siguiente"
 
-#~ msgid "Previous title"
-#~ msgstr "Título anterior"
-
 #~ msgid "Control number"
 #~ msgstr "Número de control"
 
-#~ msgid "Publisher name"
-#~ msgstr "Nombre del editor"
-
 #~ msgid "Publisher country"
 #~ msgstr "País del editor"
-
-#~ msgid "Publisher state"
-#~ msgstr "Estado del editor"
 
 #~ msgid "Publisher city"
 #~ msgstr "Ciudad del editor"
 
 #~ msgid "Publisher address"
 #~ msgstr "Dirección del editor"
-
-#~ msgid "Publication level"
-#~ msgstr "Nivel de publicación"
 
 #~ msgid "Email"
 #~ msgstr "Correo electrónico"
@@ -742,12 +1882,6 @@ msgstr "Nombre del Usuario"
 #~ msgid "State"
 #~ msgstr "Estado"
 
-#~ msgid "States"
-#~ msgstr "Estados"
-
-#~ msgid "City name"
-#~ msgstr "Nombre de la ciudad"
-
 #~ msgid "City"
 #~ msgstr "Ciudad"
 
@@ -763,14 +1897,8 @@ msgstr "Nombre del Usuario"
 #~ msgid "Structured document without references"
 #~ msgstr "Documento estructurado sin referencias"
 
-#~ msgid "Structured document"
-#~ msgstr "Documento estructurado"
-
 #~ msgid "Structured document and references"
 #~ msgstr "Documento estructurado y referencias"
-
-#~ msgid "DOI"
-#~ msgstr "DOI"
 
 #~ msgid "Rich Title"
 #~ msgstr "Título Enriquecido"
@@ -784,15 +1912,6 @@ msgstr "Nombre del Usuario"
 #~ msgid "Type"
 #~ msgstr "Tipo"
 
-#~ msgid "Paragraph"
-#~ msgstr "Párrafo"
-
-#~ msgid "Paragraphs"
-#~ msgstr "Párrafos"
-
-#~ msgid "Section title"
-#~ msgstr "Título de sección"
-
 #~ msgid "Section code"
 #~ msgstr "Código de sección"
 
@@ -805,14 +1924,8 @@ msgstr "Nombre del Usuario"
 #~ msgid "Figure"
 #~ msgstr "Figura"
 
-#~ msgid "Figures"
-#~ msgstr "Figuras"
-
 #~ msgid "Table"
 #~ msgstr "Tabla"
-
-#~ msgid "Tables"
-#~ msgstr "Tablas"
 
 #~ msgid "Supplementary Material"
 #~ msgstr "Material Suplementario"
@@ -835,12 +1948,6 @@ msgstr "Nombre del Usuario"
 #~ msgid "DOCX Subtitle"
 #~ msgstr "Subtítulo de DOCX"
 
-#~ msgid "DOCX Body"
-#~ msgstr "Cuerpo de DOCX"
-
-#~ msgid "DOCX Bodies"
-#~ msgstr "Cuerpos de DOCX"
-
 #~ msgid "DOCX Section"
 #~ msgstr "Sección de DOCX"
 
@@ -852,9 +1959,6 @@ msgstr "Nombre del Usuario"
 
 #~ msgid "Caption"
 #~ msgstr "Pie de imagen"
-
-#~ msgid "Source"
-#~ msgstr "Fuente"
 
 #~ msgid "Target"
 #~ msgstr "Destino"
@@ -916,9 +2020,6 @@ msgstr "Nombre del Usuario"
 #~ msgid "Model name is required."
 #~ msgstr "El nombre del modelo es obligatorio."
 
-#~ msgid "Model file is required."
-#~ msgstr "El archivo del modelo es obligatorio."
-
 #~ msgid "Hugging Face token is required."
 #~ msgstr "El token de Hugging Face es obligatorio."
 
@@ -943,39 +2044,6 @@ msgstr "Nombre del Usuario"
 #~ msgid "AI LLM Model"
 #~ msgstr "Modelo de LLM de IA"
 
-#~ msgid "No reference"
-#~ msgstr "Sin referencia"
-
-#~ msgid "Creating reference"
-#~ msgstr "Creando referencia"
-
-#~ msgid "Reference ready"
-#~ msgstr "Referencia lista"
-
-#~ msgid "Mixed Citation"
-#~ msgstr "Cita mixta"
-
-#~ msgid "Reference status"
-#~ msgstr "Estado de referencia"
-
-#~ msgid "Cited Elements"
-#~ msgstr "Elementos Citados"
-
-#~ msgid "Marked"
-#~ msgstr "Marcado"
-
-#~ msgid "Marked XML"
-#~ msgstr "XML Marcado"
-
-#~ msgid "Rating from 1 to 10"
-#~ msgstr "Calificación del 1 al 10"
-
-#~ msgid "Reference"
-#~ msgstr "Referencia"
-
-#~ msgid "error"
-#~ msgstr "error"
-
 #~ msgid "warning"
 #~ msgstr "advertencia"
 
@@ -991,23 +2059,14 @@ msgstr "Nombre del Usuario"
 #~ msgid "To do"
 #~ msgstr "Por hacer"
 
-#~ msgid "Done"
-#~ msgstr "Completado"
-
 #~ msgid "Doing"
 #~ msgstr "Haciendo"
-
-#~ msgid "Pending"
-#~ msgstr "Pendiente"
 
 #~ msgid "ignored"
 #~ msgstr "ignorado"
 
 #~ msgid "XML Parsing Error"
 #~ msgstr "Error de Análisis XML"
-
-#~ msgid "XML Validation Error"
-#~ msgstr "Error de Validación XML"
 
 #~ msgid "XML Conversion to DOCX Error"
 #~ msgstr "Error de Conversión XML a DOCX"
@@ -1023,9 +2082,6 @@ msgstr "Nombre del Usuario"
 
 #~ msgid "Unknown Error"
 #~ msgstr "Error Desconocido"
-
-#~ msgid "Error Type"
-#~ msgstr "Tipo de Error"
 
 #~ msgid "Data"
 #~ msgstr "Datos"
@@ -1051,9 +2107,6 @@ msgstr "Nombre del Usuario"
 #~ msgid "Item"
 #~ msgstr "Elemento"
 
-#~ msgid "Action"
-#~ msgstr "Acción"
-
 #~ msgid "General Event"
 #~ msgstr "Evento General"
 
@@ -1068,9 +2121,6 @@ msgstr "Nombre del Usuario"
 
 #~ msgid "Upload an XML file for processing."
 #~ msgstr "Subir un archivo XML para procesamiento."
-
-#~ msgid "Validation File"
-#~ msgstr "Archivo de Validación"
 
 #~ msgid "Exceptions File"
 #~ msgstr "Archivo de Excepciones"
@@ -1089,9 +2139,6 @@ msgstr "Nombre del Usuario"
 
 #~ msgid "PDF File"
 #~ msgstr "Archivo PDF"
-
-#~ msgid "DOCX File"
-#~ msgstr "Archivo DOCX"
 
 #~ msgid "Intermediate DOCX file generated during PDF creation"
 #~ msgstr "Archivo DOCX intermedio generado durante la creación del PDF"
@@ -1113,12 +2160,6 @@ msgstr "Nombre del Usuario"
 
 #~ msgid "XML Document HTMLs"
 #~ msgstr "HTMLs de Documento XML"
-
-#~ msgid "Validation file"
-#~ msgstr "Archivo de validación"
-
-#~ msgid "Exceptions file"
-#~ msgstr "Archivo de excepciones"
 
 #~ msgid "XML Processor"
 #~ msgstr "Procesador XML"

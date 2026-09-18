@@ -2,6 +2,7 @@
 # ------------------------------------------------------------------------------
 USE_DOCKER=yes
 IPYTHONDIR=/app/.ipython
+SCMS_WEBAPP_VERSION=v0.0.3-qa
 # Redis
 # ------------------------------------------------------------------------------
 REDIS_URL=redis://redis:6379/0
@@ -29,6 +30,12 @@ FRONT_MODEL=llama3.2:3b
 # FRONT_TIMEOUT=600
 # FRONT_NUM_CTX=8192
 # FRONT_KEEP_ALIVE=-1
+
+# Packtools PDF (SPS package)
+# ------------------------------------------------------------------------------
+# LIBREOFFICE_BINARY=libreoffice
+# PACKTOOLS_PDF_LAYOUT=
+# Empty PACKTOOLS_PDF_LAYOUT generates SCL styles required by packtools.
 
 # Body (Llama via HTTP — Ollama no host)
 # ------------------------------------------------------------------------------

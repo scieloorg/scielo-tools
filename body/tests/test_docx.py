@@ -58,7 +58,7 @@ def make_docx_bytes(paragraphs, tables=None):
         ),
         (
             "Título\n1. Introdução\nCorpo\nAgradecimentos\nCNPq 1",
-            "1. Introdução\nCorpo",
+            "1. Introdução\nCorpo\nAgradecimentos\nCNPq 1",
         ),
         (
             "INTRODUÇÃO\nTexto.\nDisponibilidade de dados\nOs dados estão no artigo.",
@@ -71,12 +71,46 @@ def make_docx_bytes(paragraphs, tables=None):
         (
             "Introduction\nBody.\nConclusions\nThe end.\n"
             "Supplementary Material\nFigure S1 – Extra.",
-            "Introduction\nBody.\nConclusions\nThe end.",
+            "Introduction\nBody.\nConclusions\nThe end.\n"
+            "Supplementary Material\nFigure S1 – Extra.",
+        ),
+        (
+            "Introduction\nBody.\nAcknowledgments\nThanks to CNPq.\n"
+            "Data Availability\nAvailable upon request.\nReferences\nSmith 2020",
+            "Introduction\nBody.\nAcknowledgments\nThanks to CNPq.\n"
+            "Data Availability\nAvailable upon request.",
+        ),
+        (
+            "Introduction\nBody.\nAcknowledgments\nThanks.\n"
+            "Author Contributions\nAna: writing.\n"
+            "Data Availability\nAvailable upon request.\nReferences\nSmith 2020",
+            "Introduction\nBody.\nAcknowledgments\nThanks.\n"
+            "Data Availability\nAvailable upon request.",
         ),
     ],
 )
 def test_extract_body_section(text, expected):
     assert extract_body_section(text) == expected
+
+
+def test_extract_body_section_bn_fixture_docx():
+    import io
+    import zipfile
+
+    from lxml import etree
+
+    W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
+    with zipfile.ZipFile("fixtures/bn-2025-1828/bn-2025-1828.docx") as archive:
+        root = etree.fromstring(archive.read("word/document.xml"))
+    paragraphs = []
+    for paragraph in root.iter(f"{W}p"):
+        text = "".join((node.text or "") for node in paragraph.iter(f"{W}t")).strip()
+        if text:
+            paragraphs.append(text)
+    body = extract_body_section("\n".join(paragraphs))
+    assert "Data Availability" in body
+    assert "Author Contributions" not in body
+    assert "Acknowledgments" in body
 
 
 @pytest.mark.django_db
@@ -225,3 +259,106 @@ def test_body_from_docx_upload_harvests_figure_captions_after_references():
     assert figures
     assert figures[0]["label"] == "Figure 1"
     assert "Cartographic representation map" in figures[0]["caption"]
+
+
+@pytest.mark.django_db
+def test_api_docx_attaches_fig_href_from_images(monkeypatch):
+    from body.tests.test_images import make_tiff_bytes, uploaded_image
+
+    monkeypatch.setattr(
+        "body.data_utils.mark_body",
+        lambda text: json.dumps(
+            {
+                "sections": [
+                    {
+                        "sec_type": "intro",
+                        "title": text.split(chr(10))[0],
+                        "content": [{"type": "p", "text": "See Figure 1 in the map."}],
+                        "sections": [],
+                    }
+                ]
+            }
+        ),
+    )
+    User = get_user_model()
+    user = User.objects.create_user(username="bodydocximg", password="pass")
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    uploaded = SimpleUploadedFile(
+        "article.docx",
+        make_docx_bytes(["Title", "Introduction", "See Figure 1 in the map."]),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ),
+    )
+    response = client.post(
+        "/api/v1/body/docx/",
+        data={
+            "file": uploaded,
+            "type": "json",
+            "images": uploaded_image("fig-1.tif", make_tiff_bytes()),
+        },
+        format="multipart",
+    )
+    assert response.status_code == 200
+    figs = [
+        block
+        for block in response.json()["data"]["sections"][0]["content"]
+        if block.get("type") == "fig"
+    ]
+    assert figs
+    assert figs[0]["href"] == "fig-1.jpg"
+
+
+@pytest.mark.django_db
+def test_api_docx_attaches_fig_href_from_images_zip(monkeypatch):
+    from body.tests.test_images import make_tiff_bytes
+
+    monkeypatch.setattr(
+        "body.data_utils.mark_body",
+        lambda text: json.dumps(
+            {
+                "sections": [
+                    {
+                        "sec_type": "intro",
+                        "title": text.split(chr(10))[0],
+                        "content": [{"type": "p", "text": "See Figure 1 in the map."}],
+                        "sections": [],
+                    }
+                ]
+            }
+        ),
+    )
+    User = get_user_model()
+    user = User.objects.create_user(username="bodydocxzip", password="pass")
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as zipped:
+        zipped.writestr("fig-1.tif", make_tiff_bytes())
+        zipped.writestr("notes.txt", "skip")
+    archive.seek(0)
+
+    uploaded = SimpleUploadedFile(
+        "article.docx",
+        make_docx_bytes(["Title", "Introduction", "See Figure 1 in the map."]),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ),
+    )
+    zipped_images = SimpleUploadedFile(
+        "figures.zip", archive.getvalue(), content_type="application/zip"
+    )
+    response = client.post(
+        "/api/v1/body/docx/",
+        data={
+            "file": uploaded,
+            "type": "xml",
+            "images_zip": zipped_images,
+        },
+        format="multipart",
+    )
+    assert response.status_code == 200
+    assert 'xlink:href="fig-1.jpg"' in response.json()["data"]

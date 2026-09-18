@@ -1,11 +1,21 @@
 {% extends "base.html" %}
+{% load i18n static %}
 
-{% block title %}Page not found{% endblock %}
+{% block title %}{% trans "Page not found" %}{% endblock %}
 
 {% block body_class %}template-404{% endblock %}
 
 {% block content %}
-<h1>Page not found</h1>
-
-<h2>Sorry, this page could not be found.</h2>
+<div class="scielo-error">
+    <div>
+        <img
+            class="scielo-home__logo"
+            src="{% static 'vendor/scielo-ds/img/logo-scielo.svg' %}"
+            alt="SciELO"
+        >
+        <h1>{% trans "Page not found" %}</h1>
+        <p>{% trans "Sorry, this page could not be found." %}</p>
+        <a class="btn btn-primary" href="/">{% trans "Back to home" %}</a>
+    </div>
+</div>
 {% endblock %}

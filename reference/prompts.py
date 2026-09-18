@@ -16,7 +16,10 @@ MESSAGES = [
             "Preserve surname/fname spelling and capitalization as in the citation; "
             "keep initial clusters compact when the citation has no spaces (C.A not "
             "C. A.) but do not invent missing initials. "
-            "date: string; keep letter suffixes (2013a, 2013b). "
+            "date: string; keep letter suffixes when present (2013a, 2013b): "
+            "same author or author group with multiple works in the same year "
+            "cited in one document (APA, ABNT, Chicago, Harvard disambiguation); "
+            "copy the suffix from the citation, do not invent one. "
             "If the text has DOI: or doi.org/…, ALWAYS set doi to the bare id "
             "(no https://doi.org/); do not emit uri when doi is present; never "
             "invent doi or uri. At most one uri. "
@@ -38,6 +41,30 @@ MESSAGES = [
             "with uri when present. "
             "Copy title/source wording verbatim (keep hyphens like Above-ground). "
             "confproc/webpage/software/legal-doc: use fields when present."
+        ),
+    },
+    {
+        "role": "user",
+        "content": (
+            "Alvares, C. A., Stape, J. L., Sentelhas, P. C., & Gonçalves, J. L. M. "
+            "(2013a). Modeling monthly mean air temperature for Brazil. "
+            "Theoretical and Applied Climatology, 113, 407–427. "
+            "https://doi.org/10.1007/s00704-012-0796-6"
+        ),
+    },
+    {
+        "role": "assistant",
+        "content": (
+            '{"reftype":"journal",'
+            '"authors":[{"surname":"Alvares","fname":"C. A."},'
+            '{"surname":"Stape","fname":"J. L."},'
+            '{"surname":"Sentelhas","fname":"P. C."},'
+            '{"surname":"Gonçalves","fname":"J. L. M."}],'
+            '"date":"2013a",'
+            '"title":"Modeling monthly mean air temperature for Brazil",'
+            '"source":"Theoretical and Applied Climatology",'
+            '"vol":113,"fpage":"407","lpage":"427",'
+            '"doi":"10.1007/s00704-012-0796-6"}'
         ),
     },
     {

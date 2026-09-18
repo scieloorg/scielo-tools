@@ -1,0 +1,21 @@
+{% extends "wagtailadmin/generic/create.html" %}
+{% load i18n %}
+
+{% block content %}
+    <div class="nice-padding scielo-ds">
+        <form method="post" enctype="multipart/form-data" novalidate class="manuscript-form">
+            {% csrf_token %}
+            <section class="card">
+                <div class="card-header">
+                    <h2>{% trans "Create manuscript" %}</h2>
+                </div>
+                <div class="card-body">
+                    {{ form.as_p }}
+                </div>
+            </section>
+            <footer class="footer">
+                <button type="submit" class="btn btn-primary">{% trans "Create manuscript" %}</button>
+            </footer>
+        </form>
+    </div>
+{% endblock %}

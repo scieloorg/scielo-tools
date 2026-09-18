@@ -22,25 +22,29 @@ BODY_HEADING_RE = re.compile(
     r"considerações?\s+finais|"
     r"consideraciones?\s+finales|"
     r"data\s+availability|"
-    r"disponibilidade\s+de\s+dados"
-    r")\s*$",
+    r"disponibilidade\s+de\s+dados|"
+    r"supplementary\s+materials?|"
+    r"material\s+suplementar|"
+    r"acknowledg(?:e?ments?)?|agradecimentos?"
+    r")\s*:?\s*$",
     re.IGNORECASE,
 )
 
-BODY_STOP_RE = re.compile(
+BODY_REFERENCE_STOP_RE = re.compile(
     r"^(?:\d+[.\)]\s*)?(?:"
-    r"acknowledg(?:e?ments?)?|agradecimentos?|"
-    r"funding|financiamento|"
+    r"references|refer[eê]ncias|referencias?|"
+    r"bibliography|bibliografia"
+    r")\s*:?\s*$",
+    re.IGNORECASE,
+)
+
+BODY_EDITORIAL_SKIP_RE = re.compile(
+    r"^(?:\d+[.\)]\s*)?(?:"
     r"authors?'?\s+contributions?|"
     r"contribui[cç][aã]o\s+dos\s+autores|"
     r"conflicts?\s+of\s+interest|"
     r"conflitos?\s+de\s+interesses?|"
-    r"references|refer[eê]ncias|"
-    r"bibliography|bibliografia|"
-    r"ethics|associate\s+editor|"
-    r"supplementary\s+materials?|"
-    r"material\s+suplementar|"
-    r"electronic\s+appendix"
+    r"ethics|associate\s+editor"
     r")\s*:?\s*$",
     re.IGNORECASE,
 )
@@ -82,7 +86,7 @@ def normalize_body_text(value):
 
 
 def body_checksum(normalized):
-    return hashlib.sha256(f"body-v5\n{normalized}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"body-v8\n{normalized}".encode("utf-8")).hexdigest()
 
 
 def extract_body_section(text):
@@ -100,11 +104,25 @@ def extract_body_section(text):
     end = len(lines)
     scan_from = start + 1 if found_heading else 0
     for index in range(scan_from, len(lines)):
-        if BODY_STOP_RE.match(lines[index].strip()):
+        if BODY_REFERENCE_STOP_RE.match(lines[index].strip()):
             end = index
             break
     selected = lines[start:end]
-    return "\n".join(line.strip() for line in selected if line.strip())
+    kept = []
+    skip = False
+    for line in selected:
+        stripped = line.strip()
+        if BODY_EDITORIAL_SKIP_RE.match(stripped):
+            skip = True
+            continue
+        if skip:
+            if stripped and BODY_HEADING_RE.match(stripped):
+                skip = False
+            else:
+                continue
+        if stripped:
+            kept.append(stripped)
+    return "\n".join(kept)
 
 
 def split_body_sections(text):
@@ -153,9 +171,7 @@ def sec_type_from_title(title):
     raw = re.sub(r"\s+", " ", raw).lower()
     if not raw:
         return None
-    if re.fullmatch(
-        r"introdu[cç][aã]o|introducci[oó]n|introduction|intro", raw
-    ):
+    if re.fullmatch(r"introdu[cç][aã]o|introducci[oó]n|introduction|intro", raw):
         return "intro"
     if re.search(r"material.+\b(?:m[eé]todos?|methods?)\b", raw):
         return "materials|methods"
@@ -175,6 +191,8 @@ def sec_type_from_title(title):
         or "consideraciones finales" in raw
     ):
         return "conclusions"
+    if re.fullmatch(r"acknowledg(e)?ments?|agradecimentos?", raw):
+        return "acknowledgments"
     if "supplementary" in raw or "material suplementar" in raw:
         return "supplementary-material"
     if "data availability" in raw or "disponibilidade de dados" in raw:
@@ -297,11 +315,13 @@ def apply_outline(skeleton, outline):
         "supplementary-material",
         "transcript",
         "data-availability",
+        "acknowledgments",
     }
     exclusive = {
         "supplementary-material",
         "transcript",
         "data-availability",
+        "acknowledgments",
     }
     for section in data.get("sections") or []:
         if not isinstance(section, dict):
@@ -318,6 +338,9 @@ def apply_outline(skeleton, outline):
             and not str(section.get("sec_type") or "").strip()
         ):
             section["sec_type"] = "|".join(parts)
+        specific = str(match.get("specific_use") or "").strip()
+        if specific:
+            section["specific_use"] = specific
         nested_out = match.get("sections") or []
         for child in section.get("sections") or []:
             if not isinstance(child, dict):
@@ -416,9 +439,7 @@ def annotate_paragraph(text, cite_ids):
             if len(year_matches) >= 2:
                 prefix = core[: year_matches[0].start()].strip()
                 first_year = year_matches[0].group(0)
-                first_label = (
-                    f"{prefix} {first_year}".strip() if prefix else first_year
-                )
+                first_label = f"{prefix} {first_year}".strip() if prefix else first_year
                 events.append(
                     (
                         start,
@@ -544,7 +565,8 @@ def fill_float_caption(sections, kind, number, incoming):
     caption = str((incoming or {}).get("caption") or "").strip()
     attrib = str((incoming or {}).get("attrib") or "").strip()
     label = str((incoming or {}).get("label") or "").strip()
-    if not caption and not attrib and not label:
+    href = str((incoming or {}).get("href") or "").strip()
+    if not caption and not attrib and not label and not href:
         return
     for section in sections or []:
         for content in iter_content_lists(section):
@@ -559,6 +581,8 @@ def fill_float_caption(sections, kind, number, incoming):
                     block["attrib"] = attrib
                 if label and not str(block.get("label") or "").strip():
                     block["label"] = label
+                if href and not str(block.get("href") or "").strip():
+                    block["href"] = href
 
 
 def existing_float_numbers(sections):
@@ -607,6 +631,68 @@ def insert_float_after_mention(sections, float_block, mention_re, number):
     content.insert(index + 1, float_block)
 
 
+ACK_SECTION_RE = re.compile(
+    r"^(?:acknowledg(?:e?ments?)?|agradecimentos?)\s*$",
+    re.IGNORECASE,
+)
+
+
+def infer_data_availability_specific_use(section):
+    pieces = [str(section.get("title") or "")]
+    for block in section.get("content") or []:
+        if isinstance(block, dict):
+            pieces.append(str(block.get("text") or ""))
+    for child in section.get("sections") or []:
+        if isinstance(child, dict):
+            pieces.append(str(child.get("title") or ""))
+            for block in child.get("content") or []:
+                if isinstance(block, dict):
+                    pieces.append(str(block.get("text") or ""))
+    folded = " ".join(pieces).casefold()
+    if (
+        "upon request" in folded
+        or "a pedido" in folded
+        or "corresponding author" in folded
+        or "autor correspondente" in folded
+    ):
+        return "data-available-upon-request"
+    if "not available" in folded or "não disponível" in folded or "nao disponivel" in folded:
+        return "data-not-available"
+    if (
+        "in the article" in folded
+        or "in this article" in folded
+        or "no próprio artigo" in folded
+        or "neste artigo" in folded
+    ):
+        return "data-in-article"
+    if "uninformed" in folded or "não informado" in folded or "nao informado" in folded:
+        return "uninformed"
+    if re.search(
+        r"https?://|doi\.org|repository|reposit[oó]rio|available at|dispon[ií]ve",
+        folded,
+    ):
+        return "data-available"
+    return "uninformed"
+
+
+def enrich_tail_sections(sections):
+    for section in sections or []:
+        if not isinstance(section, dict):
+            continue
+        title = str(section.get("title") or "").strip()
+        inferred = sec_type_from_title(title)
+        if inferred and not str(section.get("sec_type") or "").strip():
+            section["sec_type"] = inferred
+        sec_type = str(section.get("sec_type") or inferred or "").strip()
+        if sec_type == "data-availability" and not section.get("specific_use"):
+            section["specific_use"] = infer_data_availability_specific_use(section)
+        if sec_type == "supplementary-material":
+            for block in section.get("content") or []:
+                if isinstance(block, dict):
+                    block.pop("parts", None)
+        enrich_tail_sections(section.get("sections") or [])
+
+
 def apply_body_rules(marked, source_text, tables=None):
     data = marked if isinstance(marked, dict) else {"sections": []}
     sections = data.setdefault("sections", [])
@@ -643,6 +729,7 @@ def apply_body_rules(marked, source_text, tables=None):
         caption = str(item.get("caption") or "").strip()
         attrib = str(item.get("attrib") or "").strip()
         label = str(item.get("label") or "").strip() or f"Figure {num}"
+        href = str(item.get("href") or "").strip()
         if num not in figs:
             figs[num] = {
                 "type": "fig",
@@ -652,11 +739,15 @@ def apply_body_rules(marked, source_text, tables=None):
             }
             if attrib:
                 figs[num]["attrib"] = attrib
+            if href:
+                figs[num]["href"] = href
         else:
             if caption and not str(figs[num].get("caption") or "").strip():
                 figs[num]["caption"] = caption
             if attrib and not str(figs[num].get("attrib") or "").strip():
                 figs[num]["attrib"] = attrib
+            if href and not str(figs[num].get("href") or "").strip():
+                figs[num]["href"] = href
     for match in FIG_MENTION_RE.finditer(str(source_text or "")):
         num = match.group(2)
         if num not in figs:
@@ -720,13 +811,13 @@ def apply_body_rules(marked, source_text, tables=None):
                     "rows": item.get("rows") or [],
                 }
             )
+    enrich_tail_sections(sections)
     return data
 
 
 def paragraph_text(paragraph):
     return "".join(
-        node.text or ""
-        for node in paragraph.xpath(".//w:t", namespaces=DOCX_NSMAP)
+        node.text or "" for node in paragraph.xpath(".//w:t", namespaces=DOCX_NSMAP)
     ).strip()
 
 

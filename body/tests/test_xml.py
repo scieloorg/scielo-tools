@@ -101,12 +101,52 @@ def test_get_body_xml_sections_fig_and_xref():
     assert fig.get("id") == "f1"
     assert fig.find("label").text == "Figura 1"
     assert fig.find("caption/title").text == "Sistemas da teoria."
+    graphic = fig.find("graphic")
+    assert graphic is not None
+    assert graphic.get("id") == "g1"
+    assert graphic.get("{http://www.w3.org/1999/xlink}href") == "artigo-gf1.jpg"
     nested = second.find("sec")
     assert nested.get("sec-type") is None
     assert nested.find("title").text == "Eixo analítico"
     found = {el.tag.split("}")[-1] for el in root.iter()}
     unexpected = found - SPS_BODY_TAGS
     assert not unexpected
+
+
+def test_get_body_xml_assigns_sequential_graphic_ids():
+    xml = get_body_xml(
+        {
+            "sections": [
+                {
+                    "title": "Results",
+                    "sec_type": "results",
+                    "content": [
+                        {
+                            "type": "fig",
+                            "id": "f1",
+                            "label": "Figure 1",
+                            "href": "fig-1.jpg",
+                        },
+                        {
+                            "type": "fig",
+                            "id": "f2",
+                            "label": "Figure 2",
+                            "href": "fig-2.jpg",
+                        },
+                    ],
+                    "sections": [],
+                }
+            ]
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    ids = [el.get("id") for el in root.findall(".//graphic")]
+    hrefs = [
+        el.get("{http://www.w3.org/1999/xlink}href")
+        for el in root.findall(".//graphic")
+    ]
+    assert ids == ["g1", "g2"]
+    assert hrefs == ["fig-1.jpg", "fig-2.jpg"]
 
 
 def test_get_body_xml_table_list_and_formula():
@@ -182,6 +222,145 @@ def test_get_body_xml_omits_invalid_sec_type_and_figure_type_on_figura():
     fig = sec.find("fig")
     assert fig.get("id") == "f1"
     assert fig.get("fig-type") is None
+    graphic = fig.find("graphic")
+    assert graphic is not None
+    assert graphic.get("{http://www.w3.org/1999/xlink}href") == "fig-1.jpg"
+
+
+def test_get_body_xml_infers_data_availability_specific_use():
+    xml = get_body_xml(
+        {
+            "sections": [
+                {
+                    "title": "Data Availability",
+                    "sec_type": "data-availability",
+                    "content": [
+                        {
+                            "type": "p",
+                            "text": (
+                                "Datasets are available upon request from the "
+                                "corresponding author."
+                            ),
+                        }
+                    ],
+                    "sections": [],
+                }
+            ]
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    sec = root.find("sec")
+    assert sec.get("sec-type") == "data-availability"
+    assert sec.get("specific-use") == "data-available-upon-request"
+
+
+def test_get_body_xml_defaults_data_availability_to_uninformed():
+    xml = get_body_xml(
+        {
+            "sections": [
+                {
+                    "title": "Data Availability",
+                    "sec_type": "data-availability",
+                    "content": [{"type": "p", "text": "See the authors."}],
+                    "sections": [],
+                }
+            ]
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    sec = root.find("sec")
+    assert sec.get("specific-use") == "uninformed"
+
+
+def test_get_body_xml_renders_ack():
+    xml = get_body_xml(
+        {
+            "sections": [
+                {
+                    "title": "Acknowledgments",
+                    "sec_type": "acknowledgments",
+                    "content": [{"type": "p", "text": "Thanks to CNPq."}],
+                    "sections": [],
+                }
+            ]
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    ack = root.find("ack")
+    assert ack is not None
+    assert ack.find("title").text == "Acknowledgments"
+    assert ack.find("p").text == "Thanks to CNPq."
+    assert root.find("sec") is None
+
+
+def test_get_body_xml_supplementary_material_uses_plain_paragraphs():
+    xml = get_body_xml(
+        {
+            "sections": [
+                {
+                    "title": "Supplementary Material",
+                    "sec_type": "supplementary-material",
+                    "content": [
+                        {
+                            "type": "p",
+                            "text": "Figure S1 – Schematic representation of the study area.",
+                        }
+                    ],
+                    "sections": [],
+                }
+            ]
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    sec = root.find("sec")
+    assert sec.get("sec-type") == "supplementary-material"
+    assert sec.find("p").text.startswith("Figure S1")
+    assert sec.find(".//inline-supplementary-material") is None
+
+
+def test_get_body_xml_places_supplementary_material_after_tail_sections():
+    xml = get_body_xml(
+        {
+            "sections": [
+                {
+                    "sec_type": "conclusions",
+                    "title": "Conclusions",
+                    "content": [{"type": "p", "text": "Done."}],
+                    "sections": [],
+                },
+                {
+                    "title": "Supplementary Material",
+                    "sec_type": "supplementary-material",
+                    "content": [{"type": "p", "text": "Figure S1."}],
+                    "sections": [],
+                },
+                {
+                    "title": "Acknowledgments",
+                    "sec_type": "acknowledgments",
+                    "content": [{"type": "p", "text": "Thanks."}],
+                    "sections": [],
+                },
+                {
+                    "title": "Data Availability",
+                    "sec_type": "data-availability",
+                    "specific_use": "data-available-upon-request",
+                    "content": [{"type": "p", "text": "Upon request."}],
+                    "sections": [],
+                },
+            ]
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    children = list(root)
+    assert children[0].tag == "sec"
+    assert children[0].get("sec-type") == "conclusions"
+    assert children[1].tag == "ack"
+    assert children[2].tag == "sec"
+    assert children[2].get("sec-type") == "data-availability"
+    assert children[3].tag == "sec"
+    assert children[3].get("sec-type") == "supplementary-material"
+    body_secs = root.findall("sec")
+    assert body_secs[-1].get("sec-type") == "supplementary-material"
 
 
 def test_parse_marked_fenced_and_prose():
@@ -358,6 +537,7 @@ def test_apply_body_rules_inserts_fig_from_mention_and_outline():
                     "id": "f2",
                     "label": "Figure 2",
                     "caption": "Boxplots of environmental variables.",
+                    "href": "fig-2.jpg",
                 }
             ],
         },
@@ -371,7 +551,49 @@ def test_apply_body_rules_inserts_fig_from_mention_and_outline():
     assert len(figs) == 1
     assert figs[0]["id"] == "f2"
     assert figs[0]["caption"] == "Boxplots of environmental variables."
+    assert figs[0]["href"] == "fig-2.jpg"
     assert "figures" not in marked
+
+
+def test_apply_body_rules_fills_href_on_existing_fig():
+    from body.utils import apply_body_rules
+
+    marked = apply_body_rules(
+        {
+            "sections": [
+                {
+                    "title": "Introduction",
+                    "sec_type": "intro",
+                    "content": [
+                        {"type": "p", "text": "See Figure 1."},
+                        {
+                            "type": "fig",
+                            "id": "f1",
+                            "label": "Figure 1",
+                            "caption": "Existing caption.",
+                        },
+                    ],
+                    "sections": [],
+                }
+            ],
+            "figures": [
+                {
+                    "id": "f1",
+                    "label": "Figure 1",
+                    "href": "fig-1.jpg",
+                }
+            ],
+        },
+        "Introduction\nSee Figure 1.",
+    )
+    figs = [
+        block
+        for block in marked["sections"][0]["content"]
+        if block.get("type") == "fig"
+    ]
+    assert len(figs) == 1
+    assert figs[0]["href"] == "fig-1.jpg"
+    assert figs[0]["caption"] == "Existing caption."
 
 
 def test_get_body_xml_does_not_append_unused_xrefs():

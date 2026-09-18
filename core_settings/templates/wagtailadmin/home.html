@@ -1,0 +1,69 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load wagtailadmin_tags i18n %}
+
+{% block extra_css %}
+    {{ block.super }}
+    {{ media.css }}
+{% endblock %}
+
+{% block content %}
+    {% fragment as header_title %}
+        {% block branding_welcome %}{{ site_name }}{% endblock %}
+    {% endfragment %}
+
+    {% trans "Pesquisar por manuscritos, documentos(docx), imagens" as search_placeholder %}
+
+    {% component upgrade_notification %}
+    <div class="w-dashboard w-px-6 sm:w-px-[3.75rem] w-mt-16 sm:w-mt-10 lg:w-mt-[3.75rem]">
+        <header class="w-flex w-flex-col lg:w-flex-row">
+            <div class="lg:w-pr-20 lg:w-grow">
+                <h1 class="w-h1 w-mt-0">{{ header_title }}</h1>
+                {% component site_summary %}
+
+                <form
+                    class="w-mb-12"
+                    action="{% url 'scielo_admin_search' %}"
+                    method="get"
+                    novalidate
+                    role="search"
+                >
+                    <div class="w-field__wrapper">
+                        <label class="w-field__label w-sr-only" for="id_q">{{ search_placeholder }}</label>
+                        <div class="w-field">
+                            <div class="w-field__input">
+                                {% icon name="search" classname="w-field__icon" %}
+                                <input
+                                    type="search"
+                                    name="q"
+                                    id="id_q"
+                                    placeholder="{{ search_placeholder }}"
+                                    data-w-swap-target="input"
+                                    autocomplete="off"
+                                    autofocus
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    <div class="submit w-sr-only"><input type="submit" value="{% trans 'Search' %}" class="button" /></div>
+                </form>
+
+            </div>
+            {% include "wagtailadmin/home/account_summary.html" %}
+        </header>
+        {% if panels %}
+            {% for panel in panels %}
+                {% component panel fallback_render_method=True %}
+            {% endfor %}
+        {% else %}
+            <p>{% trans "This is your dashboard on which helpful information about content you've created will be displayed." %}</p>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    {{ media.js }}
+    <script>
+        document.getElementById("id_q")?.focus();
+    </script>
+{% endblock %}

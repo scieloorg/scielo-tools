@@ -61,9 +61,23 @@ def make_docx_bytes(paragraphs):
             "Acknowledgments\nFAPESP 2024/23894-1\n"
             "Authors' Contribution\nX wrote the draft\n"
             "Received: 22/12/2025\nAccepted: 21/04/2026\n"
-            "Published online: dd/mm/2026",
+            "Published online: 17/09/2026",
             "Título\nAna Silva\nAcknowledgments\nFAPESP 2024/23894-1\n"
-            "Received: 22/12/2025\nAccepted: 21/04/2026",
+            "Authors' Contribution\nX wrote the draft\n"
+            "Received: 22/12/2025\nAccepted: 21/04/2026\n"
+            "Published online: 17/09/2026",
+        ),
+        (
+            "Título\nAna Silva\nIntroduction\nBody\n"
+            "Associate Editor\nAlexander Vibrans\n"
+            "Author Contributions\nKaroline A. F. Ribeiro: study design; data analysis\n"
+            "Conflicts of Interest\nThe authors declare no conflict.\n"
+            "Ethics\nThis study did not involve humans.\n"
+            "References\nSmith 2020",
+            "Título\nAna Silva\nAssociate Editor\nAlexander Vibrans\n"
+            "Author Contributions\nKaroline A. F. Ribeiro: study design; data analysis\n"
+            "Conflicts of Interest\nThe authors declare no conflict.\n"
+            "Ethics\nThis study did not involve humans.",
         ),
         (
             "Título\nIntrodução\nCorpo\nAgradecimentos\nCNPq 1\n"

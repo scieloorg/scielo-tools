@@ -2,6 +2,7 @@ import json
 
 from body.marking import mark_body
 from body.utils import (
+    apply_body_rules,
     apply_outline,
     sec_type_from_title,
     section_from_plain_text,
@@ -34,10 +35,7 @@ def test_mark_body_one_call_keeps_source_paragraphs(monkeypatch):
         "body.marking.get_provider",
         lambda *args, **kwargs: FakeProvider(),
     )
-    source = (
-        "Introduction\nOriginal paragraph from the article.\n"
-        "Methods\nA study."
-    )
+    source = "Introduction\nOriginal paragraph from the article.\n" "Methods\nA study."
     marked = json.loads(mark_body(source))
     assert len(calls) == 1
     assert calls[0] == source
@@ -136,3 +134,74 @@ def test_apply_outline_keeps_skeleton_sec_type():
         },
     )
     assert overlay["sections"][0]["sec_type"] == "materials|methods"
+
+
+def test_apply_outline_copies_data_availability_specific_use():
+    skeleton = {
+        "sections": [
+            {
+                "title": "Data Availability",
+                "content": [{"type": "p", "text": "See SciELO Data."}],
+                "sections": [],
+            }
+        ]
+    }
+    overlay = apply_outline(
+        skeleton,
+        {
+            "sections": [
+                {
+                    "title": "Data Availability",
+                    "sec_type": "data-availability",
+                    "specific_use": "data-available",
+                }
+            ]
+        },
+    )
+    assert overlay["sections"][0]["sec_type"] == "data-availability"
+    assert overlay["sections"][0]["specific_use"] == "data-available"
+
+
+def test_sec_type_from_title_tail_sections():
+    assert sec_type_from_title("Acknowledgments") == "acknowledgments"
+    assert sec_type_from_title("Supplementary Material") == "supplementary-material"
+    assert sec_type_from_title("Data Availability") == "data-availability"
+
+
+def test_apply_body_rules_enriches_tail_sections():
+    marked = apply_body_rules(
+        {
+            "sections": [
+                {
+                    "title": "Supplementary Material",
+                    "content": [
+                        {
+                            "type": "p",
+                            "text": "See Supplementary Material S2 for tables.",
+                        }
+                    ],
+                    "sections": [],
+                },
+                {
+                    "title": "Data Availability",
+                    "content": [
+                        {
+                            "type": "p",
+                            "text": (
+                                "Datasets are available upon request from the "
+                                "corresponding author."
+                            ),
+                        }
+                    ],
+                    "sections": [],
+                },
+            ]
+        },
+        "",
+    )
+    assert marked["sections"][0]["sec_type"] == "supplementary-material"
+    assert "parts" not in marked["sections"][0]["content"][0]
+    assert marked["sections"][1]["sec_type"] == "data-availability"
+    assert (
+        marked["sections"][1]["specific_use"] == "data-available-upon-request"
+    )

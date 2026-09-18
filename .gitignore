@@ -42,3 +42,5 @@ core/media
 /ai/download
 .ai
 .ipython
+
+scripts/

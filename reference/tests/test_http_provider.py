@@ -72,6 +72,7 @@ def test_http_provider_chat_success(llama_settings):
     assert kwargs["json"]["options"]["num_ctx"] == 8192
     assert kwargs["json"]["format"] == "json"
     assert kwargs["json"]["keep_alive"] == -1
+    assert kwargs["json"]["think"] is False
     assert kwargs["json"]["messages"][-1]["content"] == "Smith J. Nature. 2024."
     assert kwargs["headers"] == {}
 
@@ -126,6 +127,17 @@ def test_http_provider_raises_on_http_error(llama_settings):
         "reference.providers.http.requests.post",
         side_effect=requests.ConnectionError("refused"),
     ):
+        provider = Provider([], None)
+        with pytest.raises(ReferenceLlamaUnavailableError):
+            provider.chat([{"role": "user", "content": "hi"}])
+
+
+def test_http_provider_raises_on_empty_content(llama_settings):
+    mock_response = MagicMock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {"message": {"content": "", "thinking": "..."}}
+
+    with patch("reference.providers.http.requests.post", return_value=mock_response):
         provider = Provider([], None)
         with pytest.raises(ReferenceLlamaUnavailableError):
             provider.chat([{"role": "user", "content": "hi"}])

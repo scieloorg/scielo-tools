@@ -65,6 +65,7 @@ def test_append_fpage_lpage_single_fpage_omits_lpage():
     assert root.find("fpage").text == "237"
     assert root.find("lpage") is None
 
+
 def test_append_access_date_with_and_without_year():
     with_year = etree.Element("element-citation")
     append_access_date(with_year, "cited 2025")
@@ -85,6 +86,18 @@ def test_get_xml_malformed_json_returns_error():
 def test_parse_marked_choice_dict_passthrough():
     marked = {"reftype": "journal", "title": "T"}
     assert parse_marked_choice(marked) is marked
+
+
+def test_parse_marked_choice_empty_or_non_string():
+    assert parse_marked_choice("") == {"raw": ""}
+    assert parse_marked_choice(None) == {"raw": None}
+
+
+def test_parse_marked_choice_extracts_json_after_think():
+    marked = parse_marked_choice(
+        '<think>slow reasoning</think>\n{"reftype":"journal","title":"T"}'
+    )
+    assert marked == {"reftype": "journal", "title": "T"}
 
 
 def test_get_xml_authors_collab_variants():

@@ -63,6 +63,7 @@ def test_http_provider_chat_success(llama_settings):
     assert kwargs["json"]["model"] == "llama3.2:3b"
     assert kwargs["json"]["format"] == "json"
     assert kwargs["json"]["keep_alive"] == -1
+    assert kwargs["json"]["think"] is False
     assert kwargs["headers"] == {}
 
 

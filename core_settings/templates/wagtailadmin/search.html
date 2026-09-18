@@ -1,0 +1,110 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load wagtailadmin_tags i18n %}
+
+{% block titletag %}{% trans "Search" %}{% endblock %}
+
+{% block content %}
+    {% trans "Pesquisar por manuscritos, documentos(docx), imagens" as search_placeholder %}
+    <div class="w-dashboard w-px-6 sm:w-px-[3.75rem] w-mt-16 sm:w-mt-10 lg:w-mt-[3.75rem]">
+        <header class="w-flex w-flex-col">
+            <h1 class="w-h1 w-mt-0">{% trans "Search" %}</h1>
+            <form
+                class="w-mb-12"
+                action="{% url 'scielo_admin_search' %}"
+                method="get"
+                novalidate
+                role="search"
+            >
+                <div class="w-field__wrapper">
+                    <label class="w-field__label w-sr-only" for="id_q">{{ search_placeholder }}</label>
+                    <div class="w-field">
+                        <div class="w-field__input">
+                            {% icon name="search" classname="w-field__icon" %}
+                            <input
+                                type="search"
+                                name="q"
+                                id="id_q"
+                                value="{{ query }}"
+                                placeholder="{{ search_placeholder }}"
+                                autocomplete="off"
+                            >
+                        </div>
+                    </div>
+                </div>
+                <div class="submit w-sr-only"><input type="submit" value="{% trans 'Search' %}" class="button" /></div>
+            </form>
+        </header>
+
+        {% if query %}
+            {% if show_manuscripts %}
+                <section class="w-mb-12">
+                    <h2 class="w-h2">{% trans "Manuscripts" %} ({{ manuscripts|length }})</h2>
+                    <table class="listing">
+                        <tbody>
+                            {% for item in manuscripts %}
+                                <tr>
+                                    <td class="title">
+                                        <div class="title-wrapper">
+                                            <a href="{{ item.url }}">{{ item.title }}</a>
+                                        </div>
+                                    </td>
+                                    <td>{{ item.meta }}</td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td>{% trans "No manuscripts found." %}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            {% endif %}
+
+            {% if show_images %}
+                <section class="w-mb-12">
+                    <h2 class="w-h2">{% trans "Images" %} ({{ images|length }})</h2>
+                    <table class="listing">
+                        <tbody>
+                            {% for item in images %}
+                                <tr>
+                                    <td class="title">
+                                        <div class="title-wrapper">
+                                            <a href="{{ item.url }}">{{ item.title }}</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td>{% trans "No images found." %}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            {% endif %}
+
+            {% if show_documents %}
+                <section class="w-mb-12">
+                    <h2 class="w-h2">{% trans "Documents" %} ({{ documents|length }})</h2>
+                    <table class="listing">
+                        <tbody>
+                            {% for item in documents %}
+                                <tr>
+                                    <td class="title">
+                                        <div class="title-wrapper">
+                                            <a href="{{ item.url }}">{{ item.title }}</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td>{% trans "No documents found." %}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </section>
+            {% endif %}
+        {% endif %}
+    </div>
+{% endblock %}

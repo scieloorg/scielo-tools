@@ -47,6 +47,7 @@ make down                  # para os containers
 | `core_settings/` | Configurações editáveis do site (nome, logo, favicon) |
 | `users/` | `CustomUser` (`AUTH_USER_MODEL`) |
 | `front/` | Marcação do front do artigo (API REST, Llama local, XML SPS 1.10) |
+| `body/` | Marcação do corpo do artigo (API REST, Llama local, XML SPS 1.10) |
 | `compose/` | Dockerfiles e scripts de inicialização |
 | `requirements/` | Dependências Python (base, local, production) |
 

@@ -1,0 +1,387 @@
+.manuscript-wizard {
+    padding-bottom: 5rem;
+}
+
+.manuscript-source-tabs__nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--scielo-border);
+}
+
+.manuscript-source-tabs__tab {
+    margin: 0 0 -1px;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid transparent;
+    border-radius: var(--scielo-radius) var(--scielo-radius) 0 0;
+    background: transparent;
+    color: var(--scielo-text-emphasis);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.manuscript-source-tabs__tab:hover {
+    color: var(--scielo-interaction);
+}
+
+.manuscript-source-tabs__tab.is-active {
+    background: var(--scielo-white);
+    border-color: var(--scielo-border);
+    border-bottom-color: var(--scielo-white);
+    color: var(--scielo-interaction);
+}
+
+.manuscript-source-tabs__panel[hidden] {
+    display: none;
+}
+
+.manuscript-validation-items {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.manuscript-validation-items li + li {
+    margin-top: 0.5rem;
+}
+
+.manuscript-validation-items__group {
+    display: inline-block;
+    margin-right: 0.35rem;
+    font-weight: 600;
+}
+
+.manuscript-validation-tabs__badge--critical {
+    background-color: #6f1111;
+}
+
+.manuscript-validation-tabs__badge--error {
+    background-color: var(--scielo-danger, #dc3545);
+}
+
+.manuscript-validation-tabs__badge--warning {
+    background-color: var(--scielo-warning, #ffc107);
+    color: #212529;
+}
+
+.manuscript-wizard__steps {
+    align-items: center;
+}
+
+.manuscript-wizard__step-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.85rem;
+    height: 0.85rem;
+    color: var(--scielo-text-emphasis, #00314c);
+}
+
+.manuscript-wizard__step-arrow::before {
+    content: "";
+    display: block;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-right: 2px solid currentColor;
+    border-top: 2px solid currentColor;
+    transform: rotate(45deg);
+}
+
+.scielo-ds .nav-pills .nav-link.is-complete,
+.scielo-ds .nav-pills .nav-link.is-complete.active {
+    background: var(--scielo-positive, #2c9d45);
+    border-color: var(--scielo-positive, #2c9d45);
+    color: var(--scielo-white, #fff);
+}
+
+.scielo-ds .nav-pills .nav-link.is-complete:hover {
+    background: var(--scielo-positive, #2c9d45);
+    border-color: var(--scielo-positive, #2c9d45);
+    color: var(--scielo-white, #fff);
+    filter: brightness(0.92);
+}
+
+.manuscript-wizard__layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+        "toolbar preview-title"
+        "editor preview"
+        "extra preview";
+    column-gap: 1.5rem;
+    row-gap: 0.75rem;
+}
+
+.manuscript-wizard__toolbar {
+    grid-area: toolbar;
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+}
+
+.manuscript-wizard__toolbar .nav {
+    margin: 0;
+}
+
+.manuscript-wizard__preview-title {
+    grid-area: preview-title;
+    display: flex;
+    align-items: center;
+    margin: 0;
+    min-height: 2.75rem;
+    font-size: 1.1rem;
+}
+
+.manuscript-wizard__editor {
+    grid-area: editor;
+    min-width: 0;
+}
+
+.manuscript-wizard__editor > .card:last-child {
+    margin-bottom: 0;
+}
+
+.manuscript-wizard__preview {
+    grid-area: preview;
+    min-width: 0;
+    min-height: calc(100vh - 14rem);
+    display: flex;
+    flex-direction: column;
+}
+
+.manuscript-wizard__editor-extra {
+    grid-area: extra;
+    min-width: 0;
+}
+
+.manuscript-wizard__editor-extra:empty {
+    display: none;
+}
+
+@media (max-width: 960px) {
+    .manuscript-wizard__layout {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "toolbar"
+            "editor"
+            "preview-title"
+            "preview"
+            "extra";
+    }
+}
+
+.manuscript-wizard__preview-frame {
+    display: block;
+    width: 100%;
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: calc(100vh - 14rem);
+    border: 1px solid var(--scielo-border);
+    border-radius: var(--scielo-radius);
+    background: var(--scielo-white);
+    box-shadow: var(--scielo-shadow-1);
+}
+
+.manuscript-wysiwyg {
+    min-height: 200px;
+}
+
+.manuscript-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    align-items: center;
+}
+
+.manuscript-inline-form {
+    display: inline;
+}
+
+.manuscript-wizard .footer {
+    position: fixed;
+    bottom: 0;
+    inset-inline-start: auto;
+    inset-inline-end: 1.25rem;
+    margin: 0;
+    width: auto;
+    z-index: 32;
+}
+
+@media screen and (min-width: 50em) {
+    .manuscript-wizard .footer {
+        inset-inline-end: 5rem;
+    }
+}
+
+.manuscript-wizard__footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    width: auto;
+    color: var(--scielo-text, #333);
+}
+
+.manuscript-wizard__footer .manuscript-inline-form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.manuscript-field {
+    margin-bottom: 0.75rem;
+}
+
+.manuscript-figure-files {
+    margin: 0.25rem 0 0;
+    padding-left: 1.25rem;
+}
+
+.manuscript-toolbar {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.manuscript-rich-block {
+    min-height: 4rem;
+    border: 1px solid var(--scielo-border);
+    border-radius: var(--scielo-radius);
+    padding: 0.5rem;
+    background: var(--scielo-white);
+}
+
+.manuscript-rich-block:focus {
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem var(--scielo-focus);
+    border-color: var(--scielo-interaction);
+}
+
+.manuscript-xml-preview {
+    width: 100%;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.85rem;
+}
+
+.manuscript-tag-stats-wrap {
+    max-height: 28rem;
+    overflow: auto;
+}
+
+.manuscript-tag-stats {
+    margin-bottom: 0;
+}
+
+.manuscript-tag-stats th:last-child,
+.manuscript-tag-stats td:last-child {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    width: 6rem;
+}
+
+.manuscript-toast {
+    position: fixed;
+    bottom: 5rem;
+    right: 1rem;
+    z-index: 1000;
+    min-width: 16rem;
+    box-shadow: var(--scielo-shadow-2);
+    background: #e4f3f6;
+    border: 1px solid var(--scielo-info);
+    color: var(--scielo-text);
+    padding: 0.75rem 1rem;
+    border-radius: var(--scielo-radius);
+}
+
+.manuscript-section-card,
+.manuscript-ref-card {
+    margin-bottom: 0.75rem;
+}
+
+.manuscript-wysiwyg details.accordion-item > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    list-style: none;
+}
+
+.manuscript-wysiwyg details.accordion-item > summary::before {
+    content: "";
+    display: inline-block;
+    width: 0.4rem;
+    height: 0.4rem;
+    flex-shrink: 0;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 0.15s ease;
+}
+
+.manuscript-wysiwyg details.accordion-item[open] > summary::before {
+    transform: rotate(45deg);
+}
+
+.manuscript-marking-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.86);
+}
+
+.manuscript-marking-overlay.is-visible {
+    display: flex !important;
+}
+
+.manuscript-marking-overlay__dialog {
+    min-width: 16rem;
+    padding: 1.5rem 1.75rem;
+    text-align: center;
+    background: var(--scielo-white);
+    border: 1px solid var(--scielo-border);
+    border-radius: var(--scielo-radius);
+    box-shadow: var(--scielo-shadow-2);
+}
+
+.manuscript-marking-overlay__spinner {
+    display: inline-block;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 0.2em solid var(--scielo-interaction);
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: manuscript-spin 0.75s linear infinite;
+}
+
+.manuscript-marking-overlay__message {
+    margin: 1rem 0 0.5rem;
+    font-weight: 600;
+    color: var(--scielo-text-emphasis);
+}
+
+.manuscript-marking-overlay__timer {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.75rem;
+    line-height: 1.2;
+    color: var(--scielo-text);
+}
+
+.manuscript-marking-overlay__elapsed {
+    margin: 0.25rem 0 0;
+    font-size: 0.85rem;
+    color: var(--scielo-text-meta, var(--scielo-text));
+}
+
+@keyframes manuscript-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
