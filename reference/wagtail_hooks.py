@@ -27,7 +27,8 @@ class ReferenceCreateView(CreateView):
         ).bind_to_model(self.model)
 
     def get_form_class(self):
-        return self.panel.get_form_class()
+        panel = self.panel or self.get_panel()
+        return panel.get_form_class()
 
     def form_valid(self, form):
         try:

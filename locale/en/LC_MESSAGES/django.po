@@ -324,7 +324,7 @@ msgstr ""
 
 #: manuscript/forms.py:23 reference/create_forms.py:33
 msgid "Empty file."
-msgstr "Exceptions file"
+msgstr "Empty file."
 
 #: manuscript/forms.py:58 manuscript/models.py:78
 #: manuscript/wagtail_hooks.py:146

@@ -18,7 +18,7 @@ class WorkflowTests(TestCase):
         self.user = User.objects.create_user(username="editor", password="secret")
         self.manuscript = Manuscript.objects.create(
             title="Test article",
-            status=ManuscriptStatus.FRAFT,
+            status=ManuscriptStatus.DRAFT,
             creator=self.user,
         )
 

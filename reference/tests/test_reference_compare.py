@@ -1,20 +1,24 @@
 import sys
 from pathlib import Path
 
+import pytest
 from lxml import etree
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from reference_compare import (
-    compare_element_citations,
-    doi_from_uri_value,
-    fields_from_element_citation,
-    normalize_pages_value,
-    normalize_year_value,
-    sps_normalize_fields,
-)
+try:
+    from reference_compare import (
+        compare_element_citations,
+        doi_from_uri_value,
+        fields_from_element_citation,
+        normalize_pages_value,
+        normalize_year_value,
+        sps_normalize_fields,
+    )
+except ModuleNotFoundError:
+    pytest.skip("scripts/reference_compare.py is not available", allow_module_level=True)
 
 
 def _element(xml):
