@@ -111,9 +111,10 @@ def _assert_marked_matches_golden(marked, golden_node, ref_id):
     expected = _fields_from_element_citation(golden_node)
     actual = _fields_from_marked_json(marked)
     for key in _comparable_keys(expected):
-        assert actual.get(key) == expected.get(
-            key
-        ), f"{ref_id} field {key}: expected {expected.get(key)!r}, got {actual.get(key)!r}"
+        assert actual.get(key) == expected.get(key), (
+            f"{ref_id} field {key}: expected {expected.get(key)!r}, "
+            f"got {actual.get(key)!r}"
+        )
     if expected["authors"]:
         assert len(actual["authors"]) >= min(3, len(expected["authors"])), (
             f"{ref_id} authors count: expected at least "
@@ -128,7 +129,8 @@ def _assert_marked_matches_golden(marked, golden_node, ref_id):
                     continue
                 assert _collapse_ws(actual_author.get(field_name)) == expected_value, (
                     f"{ref_id} author[{index}].{field_name}: "
-                    f"expected {expected_value!r}, got {actual_author.get(field_name)!r}"
+                    f"expected {expected_value!r}, "
+                    f"got {actual_author.get(field_name)!r}"
                 )
 
 
@@ -185,9 +187,9 @@ def test_eval_llama_jats_matches_golden(eval_llama_marked):
     for index, golden_node in enumerate(golden_nodes):
         marked, raw = eval_llama_marked[index]
         xml_node = get_xml(raw)
-        assert (
-            xml_node.tag != "error"
-        ), f"B{index + 1}: get_xml returned error for {marked!r}"
+        assert xml_node.tag != "error", (
+            f"B{index + 1}: get_xml returned error for {marked!r}"
+        )
         _assert_element_citation_matches(xml_node, golden_node, f"B{index + 1}")
         results.append(
             {
@@ -206,5 +208,6 @@ def test_eval_llama_jats_matches_golden(eval_llama_marked):
     )
     built_nodes = [ref.find("element-citation") for ref in built_root.findall("ref")]
     assert len(built_nodes) == len(golden_nodes)
-    for index, (built_node, golden_node) in enumerate(zip(built_nodes, golden_nodes)):
+    pairs = zip(built_nodes, golden_nodes, strict=True)
+    for index, (built_node, golden_node) in enumerate(pairs):
         _assert_element_citation_matches(built_node, golden_node, f"B{index + 1}")

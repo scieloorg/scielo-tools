@@ -18,7 +18,6 @@ from manuscript.i18n import get_manuscript_js_i18n
 from manuscript.models import (
     Manuscript,
     ManuscriptFigureFile,
-    ManuscriptReference,
     ManuscriptStatus,
 )
 from manuscript.preview import (
@@ -37,7 +36,6 @@ from manuscript.services.assembly import (
     build_sps_zip,
     refresh_assembled_xml,
 )
-from manuscript.services.intake import ManuscriptIntakeError, extract_all_from_docx
 from manuscript.services.marking import (
     MarkingError,
     build_manuscript_ref_list_xml,

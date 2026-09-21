@@ -18,7 +18,7 @@ from front.exceptions import (
     FrontLlamaUnavailableError,
 )
 from front.utils import front_from_docx_upload
-from manuscript.models import Manuscript, ManuscriptReference
+from manuscript.models import ManuscriptReference
 from reference.data_utils import (
     get_xml,
     resolve_reference_result,
@@ -75,7 +75,7 @@ def mark_front(manuscript, user=None, language=None, counts=None):
                         ),
                     )
                 _front_text, counts = front_from_docx_upload(uploaded)
-            except (FrontDocxError, OSError, ValueError):
+            except FrontDocxError, OSError, ValueError:
                 counts = None
     try:
         result = resolve_front_result(

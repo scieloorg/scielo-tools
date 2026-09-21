@@ -108,7 +108,7 @@ def mark_reference_texts(texts):
 
 def mark_references(reference_block):
     lines = parse_reference_list(reference_block)
-    for ref_row, content in zip(lines, mark_reference_texts(lines)):
+    for ref_row, content in zip(lines, mark_reference_texts(lines), strict=False):
         yield {
             "references": ref_row,
             "choices": [content] if content is not None else [],

@@ -1046,9 +1046,7 @@ def test_apply_text_fields_reads_history_dates(text, expected):
 
 
 def test_apply_text_fields_reads_published_online_into_history_and_pub_date():
-    text = (
-        "Received: 18/06/2025. Accepted: 11/12/2025. " "Published online: 17/09/2026."
-    )
+    text = "Received: 18/06/2025. Accepted: 11/12/2025. Published online: 17/09/2026."
     marked = apply_text_fields({}, text)
     assert marked["history"][-1] == {
         "type": "pub",

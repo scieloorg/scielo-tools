@@ -1,7 +1,7 @@
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from manuscript.models import Manuscript, ManuscriptStatus
+from manuscript.models import ManuscriptStatus
 
 
 class WorkflowError(Exception):

@@ -36,8 +36,10 @@ def figure_jpeg_bytes(name, data, ext):
         return jpeg
     except BodyImageError:
         raise
-    except Exception:
-        raise BodyImageError(f"Could not convert {os.path.basename(name)} to JPEG.")
+    except Exception as exc:
+        raise BodyImageError(
+            f"Could not convert {os.path.basename(name)} to JPEG."
+        ) from exc
 
 
 def collect_image_assets(images=None, images_zip=None):
@@ -66,8 +68,8 @@ def collect_image_assets(images=None, images_zip=None):
         images_zip.seek(0)
     try:
         archive = zipfile.ZipFile(io.BytesIO(zip_bytes))
-    except zipfile.BadZipFile:
-        raise BodyImageError("Invalid zip file.")
+    except zipfile.BadZipFile as exc:
+        raise BodyImageError("Invalid zip file.") from exc
     for info in archive.infolist():
         if info.is_dir():
             continue

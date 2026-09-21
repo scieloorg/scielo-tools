@@ -9,7 +9,6 @@ from body.utils import body_from_docx_upload
 from front.exceptions import FrontDocxError
 from front.utils import front_from_docx_upload
 from manuscript.models import ArticleType, Manuscript, OriginalLanguage
-from manuscript.services.intake import extract_all_from_docx
 from reference.exceptions import DocxReferencesError
 from reference.utils.references import references_from_docx_upload
 

@@ -42,8 +42,8 @@ until postgres_ready; do
 done
 >&2 echo 'PostgreSQL is available'
 
-if [ -d /packtools ]; then
-  pip install -e /packtools --quiet
+if [ -f /packtools/pyproject.toml ] || [ -f /packtools/setup.py ]; then
+  pip install -e /packtools --quiet --no-build-isolation
 fi
 
 exec "$@"

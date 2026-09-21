@@ -35,7 +35,7 @@ def test_mark_body_one_call_keeps_source_paragraphs(monkeypatch):
         "body.marking.get_provider",
         lambda *args, **kwargs: FakeProvider(),
     )
-    source = "Introduction\nOriginal paragraph from the article.\n" "Methods\nA study."
+    source = "Introduction\nOriginal paragraph from the article.\nMethods\nA study."
     marked = json.loads(mark_body(source))
     assert len(calls) == 1
     assert calls[0] == source
@@ -202,6 +202,4 @@ def test_apply_body_rules_enriches_tail_sections():
     assert marked["sections"][0]["sec_type"] == "supplementary-material"
     assert "parts" not in marked["sections"][0]["content"][0]
     assert marked["sections"][1]["sec_type"] == "data-availability"
-    assert (
-        marked["sections"][1]["specific_use"] == "data-available-upon-request"
-    )
+    assert marked["sections"][1]["specific_use"] == "data-available-upon-request"

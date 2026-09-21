@@ -630,13 +630,13 @@ def parse_marked(choice):
             if isinstance(parsed, dict):
                 return parsed
         except json.JSONDecodeError:
-            pass
+            parsed = None
         try:
             parsed, _ = json.JSONDecoder().raw_decode(candidate)
             if isinstance(parsed, dict):
                 return parsed
-        except (json.JSONDecodeError, ValueError):
-            pass
+        except json.JSONDecodeError, ValueError:
+            parsed = None
     return None
 
 
@@ -1584,7 +1584,7 @@ def get_front_xml(data):
         "license",
         attrib={
             "license-type": "open-access",
-            "{%s}href" % XLINK_NS: CC_BY_HREF,
+            f"{{{XLINK_NS}}}href": CC_BY_HREF,
             XML_LANG: "en",
         },
     )
@@ -1691,7 +1691,9 @@ def resolve_front_result(
                 str(raw or "")[:500],
             )
         if marked is None:
-            raise FrontLlamaUnavailableError("Front Llama returned invalid JSON")
+            raise FrontLlamaUnavailableError(
+                "Front Llama returned invalid JSON"
+            ) from None
         marked = apply_language_fallback(marked, language)
         marked = apply_text_fields(marked, front_text)
         xml = get_front_xml(marked)

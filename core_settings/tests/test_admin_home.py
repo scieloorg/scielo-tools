@@ -84,7 +84,8 @@ class AdminHomeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
         match = re.search(
-            r'<script id="wagtail-sidebar-props" type="application/json">(.*?)</script>',
+            r'<script id="wagtail-sidebar-props" '
+            r'type="application/json">(.*?)</script>',
             html,
         )
         self.assertIsNotNone(match)
@@ -105,7 +106,8 @@ class AdminHomeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
         match = re.search(
-            r'<script id="wagtail-sidebar-props" type="application/json">(.*?)</script>',
+            r'<script id="wagtail-sidebar-props" '
+            r'type="application/json">(.*?)</script>',
             html,
         )
         self.assertIsNotNone(match)
@@ -133,7 +135,8 @@ class AdminHomeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.content.decode()
         match = re.search(
-            r'<script id="wagtail-sidebar-props" type="application/json">(.*?)</script>',
+            r'<script id="wagtail-sidebar-props" '
+            r'type="application/json">(.*?)</script>',
             html,
         )
         self.assertIsNotNone(match)

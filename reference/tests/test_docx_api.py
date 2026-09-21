@@ -93,7 +93,7 @@ def test_api_docx_marks_references(monkeypatch):
         "article.docx",
         docx_bytes,
         content_type=(
-            "application/vnd.openxmlformats-officedocument." "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
     )
 
@@ -144,7 +144,7 @@ def test_api_docx_rejects_missing_references_section():
         "article.docx",
         make_docx_bytes(["Introduction", "No refs here"]),
         content_type=(
-            "application/vnd.openxmlformats-officedocument." "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
     )
 
@@ -165,7 +165,7 @@ def test_api_docx_requires_authentication():
         "article.docx",
         make_docx_bytes(["References", "Ref A"]),
         content_type=(
-            "application/vnd.openxmlformats-officedocument." "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
     )
 
@@ -215,7 +215,7 @@ def test_api_docx_jats_returns_ref_list(monkeypatch):
         "article.docx",
         make_docx_bytes(["Referências", "Smith J. Nature. 2024."]),
         content_type=(
-            "application/vnd.openxmlformats-officedocument." "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
     )
 

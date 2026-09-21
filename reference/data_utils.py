@@ -42,7 +42,7 @@ def parse_marked_choice(choice):
             if isinstance(parsed, dict):
                 return parsed
         except json.JSONDecodeError:
-            pass
+            parsed = None
     return {"raw": choice}
 
 
@@ -89,11 +89,9 @@ meses = {
     "janeiro": "01",
     "fevereiro": "02",
     "março": "03",
-    "abril": "04",
     "maio": "05",
     "junho": "06",
     "julho": "07",
-    "agosto": "08",
     "setembro": "09",
     "outubro": "10",
     "novembro": "11",
@@ -683,7 +681,8 @@ def resolve_references_result(references, user=None, output_type="json"):
 
     premarked = {}
     if pending:
-        for citation, content in zip(pending, mark_reference_texts(pending)):
+        marked_pending = mark_reference_texts(pending)
+        for citation, content in zip(pending, marked_pending, strict=False):
             premarked[citation] = (
                 parse_marked_choice(content) if content is not None else None
             )

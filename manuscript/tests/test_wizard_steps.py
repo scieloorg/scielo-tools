@@ -808,11 +808,11 @@ class ValidateStepUiTests(TestCase):
             SimpleUploadedFile(
                 "bn-2025-1828.validation.csv",
                 (
-                    "group,response,item,advice,got_value\n"
-                    "bibliographic strip,ERROR,title,Missing title,\n"
-                    "article languages,WARNING,lang,Check language,en\n"
-                    "reference,CRITICAL,ref,Invalid reference,\n"
-                ).encode("utf-8"),
+                    b"group,response,item,advice,got_value\n"
+                    b"bibliographic strip,ERROR,title,Missing title,\n"
+                    b"article languages,WARNING,lang,Check language,en\n"
+                    b"reference,CRITICAL,ref,Invalid reference,\n"
+                ),
                 content_type="text/csv",
             ),
             save=True,

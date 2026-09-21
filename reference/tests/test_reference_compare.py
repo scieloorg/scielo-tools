@@ -18,7 +18,9 @@ try:
         sps_normalize_fields,
     )
 except ModuleNotFoundError:
-    pytest.skip("scripts/reference_compare.py is not available", allow_module_level=True)
+    pytest.skip(
+        "scripts/reference_compare.py is not available", allow_module_level=True
+    )
 
 
 def _element(xml):
@@ -325,7 +327,8 @@ def test_compare_title_distinct_still_mismatch():
     expected = _element(
         """
         <element-citation publication-type="journal">
-          <article-title>Modeling monthly mean air temperature for Brazil</article-title>
+          <article-title>Modeling monthly mean air temperature for Brazil"""
+        """</article-title>
           <source>Theoretical and Applied Climatology</source>
         </element-citation>
         """

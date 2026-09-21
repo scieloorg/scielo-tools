@@ -48,7 +48,6 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Deleted {ref_count} Reference(s) and "
-                f"{cite_count} ElementCitation(s)."
+                f"Deleted {ref_count} Reference(s) and {cite_count} ElementCitation(s)."
             )
         )

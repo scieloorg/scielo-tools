@@ -70,12 +70,14 @@ def make_docx_bytes(paragraphs):
         (
             "Título\nAna Silva\nIntroduction\nBody\n"
             "Associate Editor\nAlexander Vibrans\n"
-            "Author Contributions\nKaroline A. F. Ribeiro: study design; data analysis\n"
+            "Author Contributions\n"
+            "Karoline A. F. Ribeiro: study design; data analysis\n"
             "Conflicts of Interest\nThe authors declare no conflict.\n"
             "Ethics\nThis study did not involve humans.\n"
             "References\nSmith 2020",
             "Título\nAna Silva\nAssociate Editor\nAlexander Vibrans\n"
-            "Author Contributions\nKaroline A. F. Ribeiro: study design; data analysis\n"
+            "Author Contributions\n"
+            "Karoline A. F. Ribeiro: study design; data analysis\n"
             "Conflicts of Interest\nThe authors declare no conflict.\n"
             "Ethics\nThis study did not involve humans.",
         ),

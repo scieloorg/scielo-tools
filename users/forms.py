@@ -10,11 +10,10 @@ class CustomUserCreationForm(UserCreationForm):
         error_messages = {
             "username": {"unique": _("This username has already been taken.")}
         }
-        fields = ('first_name', 'last_name')
+        fields = ("first_name", "last_name")
 
 
 class CustomUserChangeForm(UserChangeForm):
     class Meta:
         model = CustomUser
-        fields = ('first_name', 'last_name')
-
+        fields = ("first_name", "last_name")

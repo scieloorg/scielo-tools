@@ -127,10 +127,10 @@ def parse_marked(choice):
     parsed = None
     try:
         parsed = json.loads(snippet)
-    except (TypeError, json.JSONDecodeError):
+    except TypeError, json.JSONDecodeError:
         try:
             parsed, _ = json.JSONDecoder().raw_decode(snippet)
-        except (TypeError, json.JSONDecodeError, ValueError):
+        except TypeError, json.JSONDecodeError, ValueError:
             parsed = None
     if isinstance(parsed, list):
         return {"sections": parsed}
@@ -275,7 +275,7 @@ def append_fig(parent, block, counters):
         href = f"fig-{digits.group(1)}.jpg" if digits else "fig-1.jpg"
     graphic = etree.SubElement(fig, "graphic")
     graphic.set("id", take_id(counters, "graphic", None))
-    graphic.set("{%s}href" % XLINK_NS, href)
+    graphic.set(f"{{{XLINK_NS}}}href", href)
     if alt_text:
         alt_el = etree.SubElement(graphic, "alt-text")
         alt_el.text = alt_text
@@ -385,7 +385,7 @@ def append_block(parent, block, counters):
         if mime_subtype:
             media.set("mime-subtype", mime_subtype)
         if href:
-            media.set("{%s}href" % XLINK_NS, href)
+            media.set(f"{{{XLINK_NS}}}href", href)
         label = str(block.get("label") or "").strip()
         if label:
             lab = etree.SubElement(media, "label")
@@ -424,11 +424,11 @@ def append_block(parent, block, counters):
             if mime_subtype:
                 media.set("mime-subtype", mime_subtype)
             if href:
-                media.set("{%s}href" % XLINK_NS, href)
+                media.set(f"{{{XLINK_NS}}}href", href)
         elif href:
             graphic = etree.SubElement(suppl, "graphic")
             graphic.set("id", take_id(counters, "graphic", None))
-            graphic.set("{%s}href" % XLINK_NS, href)
+            graphic.set(f"{{{XLINK_NS}}}href", href)
     elif kind == "disp-quote":
         quote = etree.SubElement(parent, "disp-quote")
         text = str(block.get("text") or "").strip()
@@ -606,7 +606,9 @@ def resolve_body_result(
                 len(preview),
                 preview[:500],
             )
-            raise BodyLlamaUnavailableError("Body Llama returned invalid JSON")
+            raise BodyLlamaUnavailableError(
+                "Body Llama returned invalid JSON"
+            ) from None
         if figures:
             marked.setdefault("figures", [])
             marked["figures"] = list(marked.get("figures") or []) + [

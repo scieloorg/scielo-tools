@@ -18,8 +18,7 @@ class ReferencesInputField(serializers.Field):
 class ReferenceMarkRequestSerializer(serializers.Serializer):
     references = ReferencesInputField(
         help_text=(
-            "Uma referência por linha, lista JSON "
-            '["Ref A", "Ref B"] ou string única.'
+            'Uma referência por linha, lista JSON ["Ref A", "Ref B"] ou string única.'
         ),
     )
     type = serializers.ChoiceField(

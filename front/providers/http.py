@@ -48,7 +48,7 @@ class Provider:
         else:
             try:
                 self.keep_alive = int(raw_keep_alive)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 self.keep_alive = str(raw_keep_alive)
 
     def run(self, user_input):

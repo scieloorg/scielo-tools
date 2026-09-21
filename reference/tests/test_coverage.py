@@ -27,7 +27,7 @@ from reference.data_utils import (
     resolve_references_result,
 )
 from reference.marking import mark_reference
-from reference.models import ElementCitation, Reference, ReferenceStatus
+from reference.models import Reference, ReferenceStatus
 from reference.providers import get_provider
 from reference.providers.http import Provider
 from reference.tests.test_docx_api import make_docx_bytes
@@ -444,7 +444,7 @@ def test_api_docx_read_failure(monkeypatch):
         "article.docx",
         b"PK fake",
         content_type=(
-            "application/vnd.openxmlformats-officedocument." "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
     )
     response = client.post(
@@ -462,17 +462,13 @@ def test_reference_create_view_form_valid(monkeypatch):
     user = User.objects.create_user(username="wagtail-ref", password="pass")
     resolve_calls = []
 
-    def fake_get_reference(obj_id):
-        reference = Reference.objects.get(id=obj_id)
-        ElementCitation.objects.create(
-            reference=reference,
-            marked={"reftype": "journal", "title": reference.mixed_citation},
-            marked_xml="<element-citation publication-type='journal'/>",
-        )
-        reference.status = ReferenceStatus.READY
-        reference.save()
+    def fake_mark_texts(texts):
+        return [
+            json.dumps({"reftype": "journal", "title": text, "source": "Nature"})
+            for text in texts
+        ]
 
-    monkeypatch.setattr("reference.data_utils.get_reference", fake_get_reference)
+    monkeypatch.setattr("reference.data_utils.mark_reference_texts", fake_mark_texts)
 
     original_resolve = resolve_references_result
 
@@ -492,7 +488,7 @@ def test_reference_create_view_form_valid(monkeypatch):
     view.get_success_url = lambda: "/admin/snippets/reference/reference/"
 
     citation_text = (
-        "Smith J. Nature. 2024.\n\n" "Doe A. Science. 2023.\n" "Smith J. Nature. 2024."
+        "Smith J. Nature. 2024.\n\nDoe A. Science. 2023.\nSmith J. Nature. 2024."
     )
     form = MagicMock()
     form.cleaned_data = {"mixed_citation": citation_text}
@@ -621,7 +617,7 @@ def test_reference_create_admin_form_rejects_docx_without_section():
         "article.docx",
         make_docx_bytes(["Introduction", "No refs here"]),
         content_type=(
-            "application/vnd.openxmlformats-officedocument." "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
     )
     form = ReferenceCreateAdminForm(
@@ -645,7 +641,7 @@ def test_reference_create_admin_form_docx_extracts_references():
             ]
         ),
         content_type=(
-            "application/vnd.openxmlformats-officedocument." "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
     )
     form = ReferenceCreateAdminForm(
@@ -664,17 +660,13 @@ def test_reference_create_view_form_valid_from_docx(monkeypatch):
     user = User.objects.create_user(username="wagtail-docx", password="pass")
     resolve_calls = []
 
-    def fake_get_reference(obj_id):
-        reference = Reference.objects.get(id=obj_id)
-        ElementCitation.objects.create(
-            reference=reference,
-            marked={"reftype": "journal", "title": reference.mixed_citation},
-            marked_xml="<element-citation publication-type='journal'/>",
-        )
-        reference.status = ReferenceStatus.READY
-        reference.save()
+    def fake_mark_texts(texts):
+        return [
+            json.dumps({"reftype": "journal", "title": text, "source": "Nature"})
+            for text in texts
+        ]
 
-    monkeypatch.setattr("reference.data_utils.get_reference", fake_get_reference)
+    monkeypatch.setattr("reference.data_utils.mark_reference_texts", fake_mark_texts)
 
     original_resolve = resolve_references_result
 
@@ -699,7 +691,7 @@ def test_reference_create_view_form_valid_from_docx(monkeypatch):
             ]
         ),
         content_type=(
-            "application/vnd.openxmlformats-officedocument." "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
     )
     form = ReferenceCreateAdminForm(

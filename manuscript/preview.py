@@ -4,7 +4,7 @@ import re
 
 from django.utils.dates import MONTHS
 from django.utils.html import format_html, format_html_join
-from django.utils.safestring import mark_safe
+from django.utils.safestring import SafeString
 from django.utils.translation import gettext
 from lxml import etree
 from lxml import html as lhtml
@@ -13,6 +13,14 @@ from packtools import HTMLGenerator
 logger = logging.getLogger(__name__)
 
 XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
+
+
+def _join_html(parts):
+    return format_html_join("", "{}", ((part,) for part in parts))
+
+
+def _static_html(markup):
+    return SafeString(markup)
 
 
 class ManuscriptPreviewError(Exception):
@@ -73,7 +81,7 @@ def _jats_table_section_html(section, wrapper, header):
             rows.append(format_html("<tr>{}</tr>", cell_html))
     if not rows:
         return ""
-    inner = mark_safe("".join(rows))
+    inner = _join_html(rows)
     if wrapper == "thead":
         return format_html("<thead>{}</thead>", inner)
     return format_html("<tbody>{}</tbody>", inner)
@@ -111,7 +119,7 @@ def _fig_alt_text(fig):
 def _render_fig_preview(fig, figure_urls=None):
     label = _text(fig.find("label"))
     caption = _text(fig.find("caption"))
-    parts = [mark_safe("<figure class='fig'>")]
+    parts = [_static_html("<figure class='fig'>")]
     href = _fig_graphic_href(fig)
     mapping = figure_urls or {}
     if href and href in mapping:
@@ -129,19 +137,19 @@ def _render_fig_preview(fig, figure_urls=None):
             caption,
         )
     )
-    return mark_safe("".join(parts))
+    return _join_html(parts)
 
 
 def render_front_preview(marked_xml):
     if not (marked_xml or "").strip():
-        return mark_safe(
-            "<p class='alert alert-info'>{}</p>".format(gettext("No front markup yet."))
+        return format_html(
+            "<p class='alert alert-info'>{}</p>", gettext("No front markup yet.")
         )
     try:
         root = etree.fromstring(marked_xml.encode("utf-8"))
     except etree.XMLSyntaxError:
-        return mark_safe(
-            "<p class='alert alert-danger'>{}</p>".format(gettext("Invalid front XML."))
+        return format_html(
+            "<p class='alert alert-danger'>{}</p>", gettext("Invalid front XML.")
         )
     parts = []
     title = _text(root.find(".//article-title"))
@@ -154,7 +162,10 @@ def render_front_preview(marked_xml):
             authors.append(format_html("<span>{}</span>", name))
     if authors:
         parts.append(
-            mark_safe('<div class="contribGroup">{}</div>'.format(" ".join(authors)))
+            format_html(
+                '<div class="contribGroup">{}</div>',
+                format_html_join(" ", "{}", ((author,) for author in authors)),
+            )
         )
     abstracts = []
     for tag in ("abstract", "trans-abstract"):
@@ -174,7 +185,7 @@ def render_front_preview(marked_xml):
                 used.add(j)
                 break
     remaining_kwd = [group for j, group in enumerate(kwd_groups) if j not in used]
-    for i, abstract in enumerate(abstracts):
+    for i, _abstract in enumerate(abstracts):
         if assigned[i] is None and remaining_kwd:
             assigned[i] = remaining_kwd.pop(0)
     for i, abstract in enumerate(abstracts):
@@ -184,7 +195,8 @@ def render_front_preview(marked_xml):
             label = f"Abstract ({lang})" if lang else "Abstract"
         parts.append(
             format_html(
-                "<section class='articleSection'><h2 class='articleSectionTitle'>{}</h2>",
+                "<section class='articleSection'>"
+                "<h2 class='articleSectionTitle'>{}</h2>",
                 label,
             )
         )
@@ -192,7 +204,7 @@ def render_front_preview(marked_xml):
             parts.append(format_html("<p class='paragraph'>{}</p>", _text(paragraph)))
         if assigned[i] is not None:
             parts.append(_kwd_group_html(assigned[i]))
-        parts.append(mark_safe("</section>"))
+        parts.append(_static_html("</section>"))
     for kwd_group in remaining_kwd:
         parts.append(_kwd_group_html(kwd_group))
     history = root.find(".//history")
@@ -235,24 +247,24 @@ def render_front_preview(marked_xml):
             parts.append(_timeline_section(gettext("Counts"), items))
     if not parts:
         parts.append(format_html("<pre>{}</pre>", html.escape(marked_xml[:2000])))
-    return mark_safe("".join(parts))
+    return _join_html(parts)
 
 
 def render_body_preview(marked_xml, figure_urls=None):
     if not (marked_xml or "").strip():
-        return mark_safe(
-            "<p class='alert alert-info'>{}</p>".format(gettext("No body markup yet."))
+        return format_html(
+            "<p class='alert alert-info'>{}</p>", gettext("No body markup yet.")
         )
     try:
         root = etree.fromstring(marked_xml.encode("utf-8"))
     except etree.XMLSyntaxError:
-        return mark_safe(
-            "<p class='alert alert-danger'>{}</p>".format(gettext("Invalid body XML."))
+        return format_html(
+            "<p class='alert alert-danger'>{}</p>", gettext("Invalid body XML.")
         )
     parts = []
     for sec in root.findall(".//sec"):
         title = _text(sec.find("title"))
-        parts.append(mark_safe("<section class='articleSection'>"))
+        parts.append(_static_html("<section class='articleSection'>"))
         if title:
             parts.append(format_html("<h2 class='articleSectionTitle'>{}</h2>", title))
         for child in sec:
@@ -284,7 +296,7 @@ def render_body_preview(marked_xml, figure_urls=None):
                     table_parts.append(
                         format_html(
                             "<table class='table table-hover'>{}</table>",
-                            mark_safe("".join(chunks)),
+                            _join_html(chunks),
                         )
                     )
                 attrib = _text(child.find("attrib"))
@@ -301,32 +313,32 @@ def render_body_preview(marked_xml, figure_urls=None):
                 parts.append(
                     format_html(
                         "<div class='table'>{}</div>",
-                        mark_safe("".join(table_parts)),
+                        _join_html(table_parts),
                     )
                 )
-        parts.append(mark_safe("</section>"))
+        parts.append(_static_html("</section>"))
     if not parts:
         parts.append(format_html("<pre>{}</pre>", html.escape(marked_xml[:2000])))
-    return mark_safe("".join(parts))
+    return _join_html(parts)
 
 
 def render_back_preview(references):
     if not references:
-        return mark_safe(
-            "<p class='alert alert-info'>{}</p>".format(
-                gettext("No references marked yet.")
-            )
+        return format_html(
+            "<p class='alert alert-info'>{}</p>",
+            gettext("No references marked yet."),
         )
     parts = [
-        '<section class="articleSection ref-list"><h2 class="articleSectionTitle">{}</h2><ol class="refList">'.format(
-            gettext("References")
+        format_html(
+            '<section class="articleSection ref-list">'
+            '<h2 class="articleSectionTitle">{}</h2><ol class="refList">',
+            gettext("References"),
         )
     ]
     for ref in references:
-        citation = html.escape(ref.mixed_citation or "")
-        parts.append(f"<li>{citation}</li>")
-    parts.append("</ol></section>")
-    return mark_safe("".join(parts))
+        parts.append(format_html("<li>{}</li>", ref.mixed_citation or ""))
+    parts.append(_static_html("</ol></section>"))
+    return _join_html(parts)
 
 
 def _article_language(assembled_xml, language):
@@ -348,10 +360,14 @@ def _packtools_article_txt_html(html_document):
     if not nodes:
         return None
     node = nodes[0]
-    return mark_safe(
-        "".join(
-            etree.tostring(child, encoding="unicode", method="html") for child in node
-        )
+    return format_html(
+        "{}",
+        SafeString(
+            "".join(
+                etree.tostring(child, encoding="unicode", method="html")
+                for child in node
+            )
+        ),
     )
 
 
@@ -383,19 +399,17 @@ def render_article_preview_packtools(assembled_xml, language=None):
 
 def render_article_preview(assembled_xml, figure_urls=None):
     if not (assembled_xml or "").strip():
-        return mark_safe(
-            "<p class='alert alert-info'>{}</p>".format(
-                gettext("No assembled XML yet.")
-            )
+        return format_html(
+            "<p class='alert alert-info'>{}</p>",
+            gettext("No assembled XML yet."),
         )
     stripped = re.sub(r"<!DOCTYPE[^>]+>", "", assembled_xml, count=1)
     try:
         root = etree.fromstring(stripped.encode("utf-8"))
     except etree.XMLSyntaxError:
-        return mark_safe(
-            "<p class='alert alert-danger'>{}</p>".format(
-                gettext("Invalid article XML.")
-            )
+        return format_html(
+            "<p class='alert alert-danger'>{}</p>",
+            gettext("Invalid article XML."),
         )
     front = root.find("front")
     body = root.find("body")
@@ -420,4 +434,4 @@ def render_article_preview(assembled_xml, figure_urls=None):
 
             ref_items.append(Ref())
         parts.append(render_back_preview(ref_items))
-    return mark_safe("".join(parts))
+    return _join_html(parts)

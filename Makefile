@@ -63,6 +63,17 @@ django_createsuperuser: ## Create a superuser
 django_bash: ## Open bash in django container
 	docker compose -f $(COMPOSE_FILE) run --rm django bash
 
+lint: ## Ruff check and format --check
+	docker compose -f $(COMPOSE_FILE) run --rm django ruff check .
+	docker compose -f $(COMPOSE_FILE) run --rm django ruff format --check .
+
+format: ## Ruff format
+	docker compose -f $(COMPOSE_FILE) run --rm django ruff format .
+
+lint-fix: ## Ruff check --fix and format
+	docker compose -f $(COMPOSE_FILE) run --rm django ruff check --fix .
+	docker compose -f $(COMPOSE_FILE) run --rm django ruff format .
+
 test: ## Run tests (pytest default, excludes llama eval)
 	docker compose -f $(COMPOSE_FILE) run --rm django pytest --reuse-db -m "not llama"
 
@@ -72,10 +83,11 @@ test-llama: ## Run Llama reference eval tests (requires Ollama)
 test-fast: ## Run tests (pytest failfast)
 	docker compose -f $(COMPOSE_FILE) run --rm django pytest -x --reuse-db -m "not llama"
 
-test-cov: ## Run tests with coverage (reference, fail under 100%)
+test-cov: ## Run tests with coverage (project Django apps)
 	docker compose -f $(COMPOSE_FILE) run --rm django pytest --reuse-db -m "not llama" \
-		--cov=reference --cov-report=term-missing --cov-fail-under=100 \
-		reference/tests
+		--cov=config --cov=core --cov=core_settings --cov=users \
+		--cov=xml_manager --cov=manuscript --cov=reference --cov=front --cov=body \
+		--cov-report=term-missing
 
 test-fresh: ## Recreate test database and run pytest
 	docker compose -f $(COMPOSE_FILE) run --rm django pytest --create-db

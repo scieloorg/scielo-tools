@@ -55,6 +55,8 @@ def mark_body(body_text):
         BodyLlamaUnavailableError,
     ):
         raise
-    except Exception:
+    except Exception as exc:
         logger.exception("Unexpected error marking body")
-        raise BodyLlamaUnavailableError("Body Llama returned an unexpected error")
+        raise BodyLlamaUnavailableError(
+            "Body Llama returned an unexpected error"
+        ) from exc

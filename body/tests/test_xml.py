@@ -303,7 +303,10 @@ def test_get_body_xml_supplementary_material_uses_plain_paragraphs():
                     "content": [
                         {
                             "type": "p",
-                            "text": "Figure S1 – Schematic representation of the study area.",
+                            "text": (
+                                "Figure S1 – Schematic representation of "
+                                "the study area."
+                            ),
                         }
                     ],
                     "sections": [],

@@ -86,7 +86,7 @@ def normalize_body_text(value):
 
 
 def body_checksum(normalized):
-    return hashlib.sha256(f"body-v8\n{normalized}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"body-v8\n{normalized}".encode()).hexdigest()
 
 
 def extract_body_section(text):
@@ -656,7 +656,11 @@ def infer_data_availability_specific_use(section):
         or "autor correspondente" in folded
     ):
         return "data-available-upon-request"
-    if "not available" in folded or "não disponível" in folded or "nao disponivel" in folded:
+    if (
+        "not available" in folded
+        or "não disponível" in folded
+        or "nao disponivel" in folded
+    ):
         return "data-not-available"
     if (
         "in the article" in folded
@@ -699,7 +703,7 @@ def apply_body_rules(marked, source_text, tables=None):
     cite_ids = {}
     for section in sections:
         for content in iter_content_lists(section):
-            for index, block in enumerate(content):
+            for block in content:
                 if not isinstance(block, dict) or block.get("type") != "p":
                     continue
                 annotated = annotate_paragraph(block.get("text") or "", cite_ids)

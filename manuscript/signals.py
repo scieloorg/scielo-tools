@@ -26,7 +26,7 @@ def _delete_file_and_unreferenced_family(file_field):
         )
         try:
             _dirs, files = storage.listdir(directory)
-        except (FileNotFoundError, OSError):
+        except FileNotFoundError, OSError:
             files = []
         family = []
         for fname in files:

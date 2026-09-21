@@ -53,7 +53,8 @@ def make_docx_bytes(paragraphs, tables=None):
     [
         ("", ""),
         (
-            "Título\nAna Silva\nIntroduction\nBody of the article\nReferences\nSmith 2020",
+            "Título\nAna Silva\nIntroduction\nBody of the article\n"
+            "References\nSmith 2020",
             "Introduction\nBody of the article",
         ),
         (
@@ -94,7 +95,6 @@ def test_extract_body_section(text, expected):
 
 
 def test_extract_body_section_bn_fixture_docx():
-    import io
     import zipfile
 
     from lxml import etree

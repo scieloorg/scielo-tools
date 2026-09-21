@@ -23,7 +23,7 @@ CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 DATABASES["default"] = env.db("DATABASE_URL")  # noqa F405
 DATABASES["default"]["ATOMIC_REQUESTS"] = True  # noqa F405
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)  # noqa F405
-DATABASES["default"]["ENGINE"] = 'django.db.backends.postgresql'
+DATABASES["default"]["ENGINE"] = "django.db.backends.postgresql"
 # CACHES
 # ------------------------------------------------------------------------------
 CACHES = {
@@ -76,7 +76,9 @@ EMAIL_HOST = env.str("DJANGO_EMAIL_HOST", default="mailrelay.scielo.org")
 EMAIL_PORT = env.int("DJANGO_EMAIL_PORT", default=25)
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#email-host-user
-EMAIL_HOST_USER = env.str("DJANGO_EMAIL_HOST_USER", default="suporte.aplicacao@scielo.org")
+EMAIL_HOST_USER = env.str(
+    "DJANGO_EMAIL_HOST_USER", default="suporte.aplicacao@scielo.org"
+)
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#std-setting-EMAIL_HOST_PASSWORD
 EMAIL_HOST_PASSWORD = env.str("DJANGO_EMAIL_HOST_PASSWORD", default="")

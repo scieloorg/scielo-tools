@@ -1,5 +1,3 @@
-import os
-
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.urls import include, path, reverse

@@ -85,8 +85,7 @@ SPS_ARTICLE_TYPES = (
     (
         "review-article",
         "Revisão de literatura",
-        "Avaliações críticas sistematizadas da literatura sobre determinado "
-        "assunto.",
+        "Avaliações críticas sistematizadas da literatura sobre determinado assunto.",
     ),
     (
         "data-article",

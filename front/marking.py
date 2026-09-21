@@ -24,6 +24,8 @@ def mark_front(front_text):
         FrontLlamaUnavailableError,
     ):
         raise
-    except Exception:
+    except Exception as exc:
         logger.exception("Unexpected error marking front")
-        raise FrontLlamaUnavailableError("Front Llama returned an unexpected error")
+        raise FrontLlamaUnavailableError(
+            "Front Llama returned an unexpected error"
+        ) from exc

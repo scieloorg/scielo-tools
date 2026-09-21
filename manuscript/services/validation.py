@@ -2,16 +2,15 @@ import csv
 import io
 import json
 
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-csv.field_size_limit(10 * 1024 * 1024)
-
-from manuscript.models import Manuscript, ManuscriptStatus
+from manuscript.models import ManuscriptStatus
 from manuscript.services.assembly import build_sps_zip
 from manuscript.services.workflow import mark_validated
 from xml_manager.models import SPSPackageValidation, SPSPackageValidationStatus
 from xml_manager.services import run_sps_package_validation
+
+csv.field_size_limit(10 * 1024 * 1024)
 
 
 class ValidationError(Exception):
@@ -29,7 +28,7 @@ def read_validation_csv(document):
     try:
         with document.file.open("rb") as fp:
             content = fp.read().decode("utf-8-sig")
-    except (OSError, ValueError, UnicodeDecodeError):
+    except OSError, ValueError, UnicodeDecodeError:
         return [], True
     reader = csv.DictReader(io.StringIO(content))
     return list(reader), False
