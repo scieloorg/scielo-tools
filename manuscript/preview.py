@@ -371,6 +371,73 @@ def _packtools_article_txt_html(html_document):
     )
 
 
+def apply_figure_urls(html_content, figure_urls, xml_text=None):
+    text = str(html_content or "")
+    for href, url in figure_urls.items():
+        if href and url and href in text:
+            text = text.replace(href, url)
+    if not figure_urls or not (xml_text or "").strip() or "thumbOff" not in text:
+        return SafeString(text)
+    stripped = re.sub(r"<!DOCTYPE[^>]+>", "", xml_text, count=1)
+    try:
+        root = etree.fromstring(stripped.encode("utf-8"))
+    except etree.XMLSyntaxError:
+        return SafeString(text)
+    document = lhtml.fromstring(f"<div>{text}</div>")
+    for fig in root.findall(".//fig"):
+        fig_id = (fig.get("id") or "").strip()
+        graphic = fig.find("graphic")
+        href = (graphic.get(XLINK_HREF) or "").strip() if graphic is not None else ""
+        url = figure_urls.get(href)
+        if not fig_id or not url:
+            continue
+        nodes = document.xpath(f'//*[@id="{fig_id}"]//*[contains(@class, "thumbOff")]')
+        if not nodes or nodes[0].find(".//img") is not None:
+            continue
+        img = lhtml.Element("img")
+        img.set("src", url)
+        img.set("alt", fig_id)
+        nodes[0].insert(0, img)
+    return SafeString(
+        "".join(
+            etree.tostring(child, encoding="unicode", method="html")
+            for child in document
+        )
+    )
+
+
+def preview_article_xml(manuscript, part):
+    from manuscript.services.marking import build_manuscript_ref_list_xml
+    from xml_manager.assembly import generate_xml_sps
+
+    if part == "article" and (manuscript.assembled_xml or "").strip():
+        return manuscript.assembled_xml
+    front = (manuscript.front_marked_xml or "").strip()
+    body = (manuscript.body_marked_xml or "").strip()
+    back = ""
+    if part in ("back", "article"):
+        back = (build_manuscript_ref_list_xml(manuscript) or "").strip()
+    required = {
+        "front": front,
+        "body": body,
+        "back": back,
+        "article": front or body or back,
+    }
+    if part not in required or not required[part]:
+        raise ManuscriptPreviewError("empty")
+    try:
+        return generate_xml_sps(
+            front or "<front/>",
+            body or "<body/>",
+            back or "<back/>",
+            article_type=manuscript.article_type,
+            language=manuscript.language or None,
+            specific_use=manuscript.specific_use,
+        )
+    except ValueError as exc:
+        raise ManuscriptPreviewError("invalid xml") from exc
+
+
 def render_article_preview_packtools(assembled_xml, language=None):
     if not (assembled_xml or "").strip():
         raise ManuscriptPreviewError("empty")

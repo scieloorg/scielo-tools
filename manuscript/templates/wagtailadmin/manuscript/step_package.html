@@ -27,18 +27,17 @@
                 {% csrf_token %}
                 <p>
                     <label>
-                        <input type="checkbox" name="include_pdf" value="on">
+                        <input type="checkbox" name="include_pdf" value="on" checked>
                         {% trans "Include PDF generated from the XML" %}
                     </label>
                 </p>
-                <p class="help">{% trans "Requires LibreOffice and may take a while." %}</p>
-                <button type="submit" name="action" value="build" class="btn btn-primary">{% trans "Build SPS package" %}</button>
+                <div class="manuscript-actions">
+                    <button type="submit" name="action" value="build" class="btn btn-primary">{% trans "Build SPS package" %}</button>
+                    {% if manuscript.sps_package %}
+                        <a href="{{ manuscript.sps_package.url }}" class="btn btn-secondary" target="_blank">{% trans "Download SPS package" %}</a>
+                    {% endif %}
+                </div>
             </form>
-            {% if manuscript.sps_package %}
-                <p>
-                    <a href="{{ manuscript.sps_package.url }}" target="_blank">{% trans "Download SPS package" %}</a>
-                </p>
-            {% endif %}
         </div>
     </section>
 

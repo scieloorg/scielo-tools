@@ -7,6 +7,7 @@ from django.core.files.base import ContentFile
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
@@ -22,12 +23,10 @@ from manuscript.models import (
 )
 from manuscript.preview import (
     ManuscriptPreviewError,
+    apply_figure_urls,
     figure_urls_for_manuscript,
-    render_article_preview,
+    preview_article_xml,
     render_article_preview_packtools,
-    render_back_preview,
-    render_body_preview,
-    render_front_preview,
 )
 from manuscript.publishers.base import get_publisher, scielo_preview_base_url
 from manuscript.services.assembly import (
@@ -39,18 +38,23 @@ from manuscript.services.assembly import (
 from manuscript.services.marking import (
     MarkingError,
     build_manuscript_ref_list_xml,
-    mark_body,
-    mark_front,
-    mark_references,
     mark_single_reference,
     save_body_marked,
     save_front_marked,
     save_references_from_payload,
     save_references_marked_xml,
 )
+from manuscript.services.marking_jobs import (
+    enqueue_back,
+    enqueue_body,
+    enqueue_front,
+    marking_status_payload,
+)
 from manuscript.services.validation import (
     ValidationError,
     confirm_validation_review,
+    read_validation_csv,
+    response_for_validation_row,
     run_manuscript_validation,
     validation_summary,
 )
@@ -63,6 +67,7 @@ from manuscript.services.workflow import (
     mark_ready,
     open_step,
 )
+from xml_manager.models import SPSPackageValidationStatus
 
 
 def _manuscript_or_404(pk):
@@ -84,11 +89,45 @@ def _wizard_context(request, manuscript, step, form=None):
         completed_steps.append("validate")
     if status_rank > STEP_ORDER.index(ManuscriptStatus.READY):
         completed_steps.append("package")
+    marking_state = marking_status_payload(manuscript)
+    marking_active = {
+        part: state.get("status") in ("pending", "running")
+        for part, state in marking_state.items()
+    }
+    validation = manuscript.validation
+    validate_has_error = False
+    validate_is_complete = "validate" in completed_steps
+    if validation is not None:
+        if (
+            validation.status == SPSPackageValidationStatus.ERROR
+            or validation.error_message
+        ):
+            validate_has_error = True
+        else:
+            rows, report_unreadable = read_validation_csv(
+                validation.validation_document
+            )
+            if report_unreadable:
+                validate_has_error = True
+            else:
+                validate_has_error = any(
+                    response_for_validation_row(row) in ("CRITICAL", "ERROR")
+                    for row in rows
+                )
+            if (
+                validation.status == SPSPackageValidationStatus.DONE
+                and not validate_has_error
+            ):
+                validate_is_complete = True
     return {
         "manuscript": manuscript,
         "step": step,
         "form": form,
         "completed_steps": completed_steps,
+        "marking_state": marking_state,
+        "marking_active": marking_active,
+        "validate_has_error": validate_has_error,
+        "validate_is_complete": validate_is_complete,
         "preview_base_url": scielo_preview_base_url(),
         "js_i18n": get_manuscript_js_i18n(),
         "header_title": manuscript.title,
@@ -146,12 +185,12 @@ def step_front(request, pk):
                 return redirect("manuscript_step_front", pk=pk)
             if action == "mark" and source_ready:
                 try:
-                    mark_front(
+                    enqueue_front(
                         manuscript,
                         user=request.user,
                         counts=extracted_counts or manuscript.front_counts,
                     )
-                    messages.success(request, _("Front marked successfully."))
+                    messages.success(request, _("Front marking started."))
                 except MarkingError as exc:
                     messages.error(request, str(exc))
                 return redirect("manuscript_step_front", pk=pk)
@@ -269,8 +308,8 @@ def step_body(request, pk):
                 return redirect("manuscript_step_body", pk=pk)
             if action == "mark" and source_ready:
                 try:
-                    mark_body(manuscript, user=request.user)
-                    messages.success(request, _("Body marked successfully."))
+                    enqueue_body(manuscript, user=request.user)
+                    messages.success(request, _("Body marking started."))
                 except MarkingError as exc:
                     messages.error(request, str(exc))
                 return redirect("manuscript_step_body", pk=pk)
@@ -339,8 +378,8 @@ def step_back(request, pk):
                 return redirect("manuscript_step_back", pk=pk)
             if action == "mark" and source_ready:
                 try:
-                    mark_references(manuscript, user=request.user)
-                    messages.success(request, _("References marked successfully."))
+                    enqueue_back(manuscript, user=request.user)
+                    messages.success(request, _("References marking started."))
                 except MarkingError as exc:
                     messages.error(request, str(exc))
                 return redirect("manuscript_step_back", pk=pk)
@@ -453,36 +492,24 @@ def step_package(request, pk):
 @xframe_options_sameorigin
 def preview_part(request, pk, part):
     manuscript = _manuscript_or_404(pk)
-    figure_urls = figure_urls_for_manuscript(manuscript)
-    if part == "front":
-        html_content = render_front_preview(manuscript.front_marked_xml)
-    elif part == "body":
-        html_content = render_body_preview(
-            manuscript.body_marked_xml,
-            figure_urls=figure_urls,
-        )
-    elif part == "back":
-        references = list(manuscript.references.all().order_by("sort_order"))
-        html_content = render_back_preview(references)
-    elif part == "article":
-        if request.GET.get("renderer") == "packtools":
-            try:
-                html_content = render_article_preview_packtools(
-                    manuscript.assembled_xml,
-                    language=manuscript.language,
-                )
-            except ManuscriptPreviewError:
-                html_content = render_article_preview(
-                    manuscript.assembled_xml,
-                    figure_urls=figure_urls,
-                )
-        else:
-            html_content = render_article_preview(
-                manuscript.assembled_xml,
-                figure_urls=figure_urls,
-            )
-    else:
+    if part not in ("front", "body", "back", "article"):
         return HttpResponse(status=404)
+    figure_urls = figure_urls_for_manuscript(manuscript)
+    try:
+        article_xml = preview_article_xml(manuscript, part)
+        html_content = apply_figure_urls(
+            render_article_preview_packtools(
+                article_xml,
+                language=manuscript.language,
+            ),
+            figure_urls,
+            xml_text=article_xml,
+        )
+    except ManuscriptPreviewError as exc:
+        html_content = format_html(
+            "<p class='alert alert-danger'>{}</p>",
+            str(exc),
+        )
     return render(
         request,
         "manuscript/article_preview_frame.html",
@@ -566,6 +593,13 @@ def api_save_back(request, pk):
             "preview_url": reverse("manuscript_preview_part", args=[pk, "back"]),
         }
     )
+
+
+@require_admin_access
+@require_GET
+def api_marking_status(request, pk):
+    manuscript = _manuscript_or_404(pk)
+    return JsonResponse(marking_status_payload(manuscript))
 
 
 @require_admin_access

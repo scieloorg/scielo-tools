@@ -658,6 +658,21 @@ def apply_language_fallback(data, language):
     return marked
 
 
+SCIELO_ACRON_RE = re.compile(
+    r"scielo\.br/(?:j/)?([a-z0-9]{2,16})\b",
+    re.IGNORECASE,
+)
+_ACRON_SKIP = {"pdf", "journal", "articles", "search", "scielo", "www"}
+
+
+def journal_acronym_from_text(text):
+    for match in SCIELO_ACRON_RE.finditer(str(text or "")):
+        token = match.group(1).lower()
+        if token not in _ACRON_SKIP:
+            return token
+    return ""
+
+
 def apply_text_fields(data, front_text):
     marked = dict(data) if isinstance(data, dict) else {}
     lines = [
@@ -680,6 +695,24 @@ def apply_text_fields(data, front_text):
         )
         journal["journal_title"] = journal_title
         marked["journal"] = journal
+    acronym = journal_acronym_from_text(front_text)
+    if acronym:
+        journal = (
+            dict(marked["journal"]) if isinstance(marked.get("journal"), dict) else {}
+        )
+        journal_ids = [
+            item
+            for item in (journal.get("journal_ids") or [])
+            if isinstance(item, dict)
+        ]
+        if not any(
+            str(item.get("type") or "").strip() == "publisher-id"
+            and not _blank(item.get("value"))
+            for item in journal_ids
+        ):
+            journal_ids.append({"type": "publisher-id", "value": acronym})
+            journal["journal_ids"] = journal_ids
+            marked["journal"] = journal
     groups = []
     for line in lines:
         match = KEYWORD_LINE_RE.match(line)

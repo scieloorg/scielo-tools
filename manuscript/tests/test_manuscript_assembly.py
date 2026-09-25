@@ -26,6 +26,19 @@ from manuscript.services.marking import (
 
 User = get_user_model()
 
+SPS_STEM = "0124-4567-scie-10-03-365"
+
+FRONT_MARKED = {
+    "journal": {
+        "journal_ids": [{"type": "publisher-id", "value": "scie"}],
+        "issns": [{"pub_type": "epub", "value": "0124-4567"}],
+    },
+    "titles": [{"kind": "main", "text": "Assembly title", "language": "en"}],
+    "volume": "10",
+    "issue": "3",
+    "fpage": "365",
+}
+
 
 class ManuscriptAssemblyTests(TestCase):
     def setUp(self):
@@ -33,13 +46,7 @@ class ManuscriptAssemblyTests(TestCase):
         self.manuscript = Manuscript.objects.create(
             title="Assembly test",
             creator=self.user,
-            front_marked_xml=get_front_xml(
-                {
-                    "titles": [
-                        {"kind": "main", "text": "Assembly title", "language": "en"}
-                    ],
-                }
-            ),
+            front_marked_xml=get_front_xml(FRONT_MARKED),
             body_marked_xml=get_body_xml(
                 {
                     "sections": [
@@ -163,20 +170,70 @@ class ManuscriptAssemblyTests(TestCase):
             sort_order=2,
         )
         fig2.file.save("fig-2.jpg", ContentFile(b"jpeg-two"), save=True)
+        self.manuscript.body_marked_xml = get_body_xml(
+            {
+                "sections": [
+                    {
+                        "title": "Intro",
+                        "content": [
+                            {"type": "p", "text": "Paragraph."},
+                            {"type": "fig", "id": "f1", "href": "fig-1.jpg"},
+                            {"type": "fig", "id": "f2", "href": "fig-2.jpg"},
+                        ],
+                        "sections": [],
+                    }
+                ]
+            }
+        )
+        self.manuscript.save(update_fields=["body_marked_xml"])
+        assemble_manuscript_xml(self.manuscript)
+        stored_xml = self.manuscript.assembled_xml
         document = build_sps_zip(self.manuscript)
+        self.manuscript.refresh_from_db()
+        self.assertEqual(self.manuscript.assembled_xml, stored_xml)
+        self.assertIn('href="fig-1.jpg"', stored_xml)
+        fig1.refresh_from_db()
+        self.assertEqual(fig1.href, "fig-1.jpg")
         with document.file.open("rb") as fh:
             with zipfile.ZipFile(fh) as archive:
                 names = set(archive.namelist())
-                self.assertIn("fig-1.jpg", names)
-                self.assertIn("fig-2.jpg", names)
-                self.assertEqual(archive.read("fig-1.jpg"), b"jpeg-one")
-                self.assertEqual(archive.read("fig-2.jpg"), b"jpeg-two")
+                gf1 = f"{SPS_STEM}-gf01.jpg"
+                gf2 = f"{SPS_STEM}-gf02.jpg"
+                self.assertIn(gf1, names)
+                self.assertIn(gf2, names)
+                self.assertNotIn("fig-1.jpg", names)
+                self.assertEqual(archive.read(gf1), b"jpeg-one")
+                self.assertEqual(archive.read(gf2), b"jpeg-two")
                 xml_names = [name for name in names if name.endswith(".xml")]
-                self.assertEqual(len(xml_names), 1)
+                self.assertEqual(xml_names, [f"{SPS_STEM}.xml"])
+                packed = archive.read(xml_names[0]).decode("utf-8")
+                self.assertIn(f'href="{gf1}"', packed)
+                self.assertNotIn("fig-1.jpg", packed)
+
+    def test_build_sps_zip_includes_uploaded_figures_without_xml_href(self):
+        fig = ManuscriptFigureFile(
+            manuscript=self.manuscript,
+            number=1,
+            href="fig-1.jpg",
+            original_name="photo.tif",
+            sort_order=1,
+        )
+        fig.file.save("fig-1.jpg", ContentFile(b"jpeg-one"), save=True)
+        document = build_sps_zip(self.manuscript)
+        with document.file.open("rb") as fh:
+            with zipfile.ZipFile(fh) as archive:
+                self.assertEqual(archive.read(f"{SPS_STEM}-gf01.jpg"), b"jpeg-one")
 
     def test_build_sps_zip_keeps_existing_assembled_xml(self):
         self.manuscript.assembled_xml = (
-            "<article><title>Manually edited XML</title></article>"
+            "<article>"
+            "<front><journal-meta>"
+            '<journal-id journal-id-type="publisher-id">scie</journal-id>'
+            '<issn pub-type="epub">0124-4567</issn>'
+            "</journal-meta><article-meta>"
+            "<volume>10</volume><issue>3</issue><fpage>365</fpage>"
+            "</article-meta></front>"
+            "<title>Manually edited XML</title></article>"
         )
         self.manuscript.save(update_fields=["assembled_xml"])
         document = build_sps_zip(self.manuscript)
@@ -212,6 +269,21 @@ class ManuscriptAssemblyTests(TestCase):
             sort_order=1,
         )
         fig.file.save("fig-1.jpg", ContentFile(b"jpeg-one"), save=True)
+        self.manuscript.body_marked_xml = get_body_xml(
+            {
+                "sections": [
+                    {
+                        "title": "Intro",
+                        "content": [
+                            {"type": "fig", "id": "f1", "href": "fig-1.jpg"},
+                        ],
+                        "sections": [],
+                    }
+                ]
+            }
+        )
+        self.manuscript.assembled_xml = ""
+        self.manuscript.save(update_fields=["body_marked_xml", "assembled_xml"])
         with patch(
             "manuscript.services.assembly.generate_packtools_pdf",
             return_value=b"%PDF-fake",
@@ -221,9 +293,9 @@ class ManuscriptAssemblyTests(TestCase):
         with document.file.open("rb") as fh:
             with zipfile.ZipFile(fh) as archive:
                 names = set(archive.namelist())
-                self.assertIn("fig-1.jpg", names)
-                self.assertIn("Assembly-test.pdf", names)
-                self.assertEqual(archive.read("Assembly-test.pdf"), b"%PDF-fake")
+                self.assertIn(f"{SPS_STEM}-gf01.jpg", names)
+                self.assertIn(f"{SPS_STEM}.pdf", names)
+                self.assertEqual(archive.read(f"{SPS_STEM}.pdf"), b"%PDF-fake")
                 self.assertFalse(any(name.endswith(".docx") for name in names))
 
     def test_build_sps_zip_replaces_previous_file_on_disk(self):
@@ -341,6 +413,87 @@ class ManuscriptAssemblyTests(TestCase):
             with self.assertRaises(AssemblyError) as ctx:
                 generate_packtools_pdf("<article/>", "x.xml", [])
         self.assertIn("PDF generation failed", str(ctx.exception))
+
+    def test_build_sps_zip_requires_issn_and_acronym(self):
+        self.manuscript.assembled_xml = (
+            "<article><front><article-meta>"
+            "<volume>10</volume><issue>3</issue><fpage>365</fpage>"
+            "</article-meta></front></article>"
+        )
+        self.manuscript.save(update_fields=["assembled_xml"])
+        with self.assertRaises(AssemblyError) as ctx:
+            build_sps_zip(self.manuscript)
+        self.assertIn("ISSN", str(ctx.exception))
+        self.assertIn("acronym", str(ctx.exception))
+
+    def test_build_sps_zip_uses_scielo_url_acronym_from_front_source(self):
+        self.manuscript.front_source_text = "www.scielo.br/csp\n"
+        self.manuscript.assembled_xml = (
+            "<article><front><journal-meta>"
+            '<issn pub-type="epub">0124-4567</issn>'
+            "</journal-meta><article-meta>"
+            "<volume>10</volume><issue>3</issue><fpage>365</fpage>"
+            "</article-meta></front></article>"
+        )
+        self.manuscript.save(update_fields=["front_source_text", "assembled_xml"])
+        document = build_sps_zip(self.manuscript)
+        with document.file.open("rb") as fh:
+            with zipfile.ZipFile(fh) as archive:
+                self.assertIn("0124-4567-csp-10-03-365.xml", archive.namelist())
+
+    def test_build_sps_zip_uses_journal_title_initials_without_acronym(self):
+        self.manuscript.assembled_xml = (
+            "<article><front><journal-meta>"
+            "<journal-title-group>"
+            "<abbrev-journal-title>Cad. Saúde Pública</abbrev-journal-title>"
+            "</journal-title-group>"
+            '<issn pub-type="epub">0124-4567</issn>'
+            "</journal-meta><article-meta>"
+            "<volume>10</volume><issue>3</issue><fpage>365</fpage>"
+            "</article-meta></front></article>"
+        )
+        self.manuscript.save(update_fields=["assembled_xml"])
+        document = build_sps_zip(self.manuscript)
+        with document.file.open("rb") as fh:
+            with zipfile.ZipFile(fh) as archive:
+                self.assertIn("0124-4567-csp-10-03-365.xml", archive.namelist())
+
+    def test_build_sps_zip_uses_elocation_when_fpage_missing(self):
+        self.manuscript.assembled_xml = (
+            "<article><front><journal-meta>"
+            '<journal-id journal-id-type="publisher-id">scie</journal-id>'
+            '<issn pub-type="epub">0124-4567</issn>'
+            "</journal-meta><article-meta>"
+            "<volume>41</volume><issue>1</issue>"
+            "<elocation-id>e0123</elocation-id>"
+            "</article-meta></front>"
+            "<body><fig><graphic "
+            'xmlns:xlink="http://www.w3.org/1999/xlink" '
+            'xlink:href="fig-1.png"/></fig></body></article>'
+        )
+        self.manuscript.save(update_fields=["assembled_xml"])
+        document = build_sps_zip(self.manuscript)
+        with document.file.open("rb") as fh:
+            with zipfile.ZipFile(fh) as archive:
+                self.assertIn("0124-4567-scie-41-01-e0123.xml", archive.namelist())
+                packed = archive.read("0124-4567-scie-41-01-e0123.xml").decode("utf-8")
+                self.assertIn("0124-4567-scie-41-01-e0123-gf01.png", packed)
+
+    def test_build_sps_zip_uses_doi_suffix_for_ahead_of_print(self):
+        self.manuscript.assembled_xml = (
+            "<article><front><journal-meta>"
+            '<journal-id journal-id-type="publisher-id">scie</journal-id>'
+            '<issn pub-type="epub">0124-4567</issn>'
+            "</journal-meta><article-meta>"
+            '<article-id pub-id-type="doi">10.1590/S0123-45672018050</article-id>'
+            "</article-meta></front></article>"
+        )
+        self.manuscript.save(update_fields=["assembled_xml"])
+        document = build_sps_zip(self.manuscript)
+        with document.file.open("rb") as fh:
+            with zipfile.ZipFile(fh) as archive:
+                names = archive.namelist()
+        self.assertIn("0124-4567-scie-S0123-45672018050.xml", names)
 
     def test_generate_packtools_pdf_accepts_body_wider_than_header(self):
         xml = """<?xml version="1.0" encoding="UTF-8"?>

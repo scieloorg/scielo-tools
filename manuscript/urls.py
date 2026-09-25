@@ -13,6 +13,11 @@ urlpatterns = [
         views.preview_part,
         name="manuscript_preview_part",
     ),
+    path(
+        "<int:pk>/api/marking-status/",
+        views.api_marking_status,
+        name="manuscript_api_marking_status",
+    ),
     path("<int:pk>/api/front/", views.api_save_front, name="manuscript_api_save_front"),
     path("<int:pk>/api/body/", views.api_save_body, name="manuscript_api_save_body"),
     path("<int:pk>/api/back/", views.api_save_back, name="manuscript_api_save_back"),

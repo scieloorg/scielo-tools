@@ -14,8 +14,14 @@ from PIL import Image
 
 from body.data_utils import get_body_xml
 from front.data_utils import get_front_xml
-from manuscript.models import Manuscript, ManuscriptReference, ManuscriptStatus
-from manuscript.services.marking import MarkingError
+from manuscript.models import (
+    Manuscript,
+    ManuscriptMarkingPart,
+    ManuscriptMarkingRun,
+    ManuscriptMarkingRunStatus,
+    ManuscriptReference,
+    ManuscriptStatus,
+)
 from reference.data_utils import build_ref_list
 
 
@@ -43,9 +49,12 @@ class WizardStepLabelTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertIn(">Front</a>", content)
-        self.assertIn(">Body</a>", content)
-        self.assertIn(">Back</a>", content)
+        self.assertIn('data-marking-part="front"', content)
+        self.assertIn('data-marking-part="body"', content)
+        self.assertIn('data-marking-part="back"', content)
+        self.assertIn(">Front<", content)
+        self.assertIn(">Body<", content)
+        self.assertIn(">Back<", content)
         self.assertIn(">Validar</a>", content)
         self.assertIn(">Pacote</a>", content)
         self.assertEqual(content.count('class="manuscript-wizard__step-arrow"'), 4)
@@ -60,7 +69,8 @@ class WizardStepLabelTests(TestCase):
         toolbar_chunk = toolbar_chunk.split(
             'class="manuscript-wizard__preview-title"', 1
         )[0]
-        self.assertIn(">Front</a>", toolbar_chunk)
+        self.assertIn('data-marking-part="front"', toolbar_chunk)
+        self.assertIn(">Front<", toolbar_chunk)
         self.assertNotIn("Preview", toolbar_chunk)
         extra = content.split('class="manuscript-wizard__editor-extra"', 1)[1]
         self.assertIn("Front editor", extra)
@@ -93,7 +103,7 @@ class WizardStepLabelTests(TestCase):
         self.assertIn('"received"', content)
         self.assertIn('"counts"', content)
 
-    @patch("manuscript.services.marking.resolve_front_result")
+    @patch("front.tasks.resolve_front_result")
     def test_mark_uses_persisted_front_counts(self, mock_resolve):
         def fake_resolve(
             text, user=None, output_type="json", language=None, counts=None
@@ -185,7 +195,9 @@ class WizardStepLabelTests(TestCase):
         self.assertContains(response, "Build SPS package")
         self.assertContains(response, 'name="include_pdf"')
         self.assertContains(response, 'type="checkbox"')
+        self.assertContains(response, 'name="include_pdf" value="on" checked')
         self.assertContains(response, "Include PDF generated from the XML")
+        self.assertNotContains(response, "Download SPS package")
 
     def test_completed_steps_use_is_complete(self):
         self.manuscript.status = ManuscriptStatus.BACK
@@ -195,10 +207,10 @@ class WizardStepLabelTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        self.assertIn('is-complete">Front</a>', content)
-        self.assertIn('is-complete">Body</a>', content)
-        self.assertIn('active">Back</a>', content)
-        self.assertNotIn('is-complete">Back</a>', content)
+        self.assertRegex(content, r'is-complete[^>]*data-marking-part="front"')
+        self.assertRegex(content, r'is-complete[^>]*data-marking-part="body"')
+        self.assertRegex(content, r'active[^>]*data-marking-part="back"')
+        self.assertNotRegex(content, r'is-complete[^>]*data-marking-part="back"')
         self.assertNotIn('is-complete">Validar</a>', content)
         self.assertNotIn('is-complete">Pacote</a>', content)
 
@@ -209,9 +221,9 @@ class WizardStepLabelTests(TestCase):
             reverse("manuscript_step_package", args=[self.manuscript.pk])
         )
         content = response.content.decode()
-        self.assertIn('is-complete">Front</a>', content)
-        self.assertIn('is-complete">Body</a>', content)
-        self.assertIn('is-complete">Back</a>', content)
+        self.assertRegex(content, r'is-complete[^>]*data-marking-part="front"')
+        self.assertRegex(content, r'is-complete[^>]*data-marking-part="body"')
+        self.assertRegex(content, r'is-complete[^>]*data-marking-part="back"')
         self.assertIn('is-complete">Validar</a>', content)
         self.assertIn('active">Pacote</a>', content)
         self.assertNotIn('is-complete">Pacote</a>', content)
@@ -224,6 +236,44 @@ class WizardStepLabelTests(TestCase):
         )
         content = response.content.decode()
         self.assertIn('active is-complete">Pacote</a>', content)
+
+    def test_idle_steps_have_no_complete_or_error(self):
+        response = self.client.get(
+            reverse("manuscript_step_front", args=[self.manuscript.pk])
+        )
+        content = response.content.decode()
+        self.assertNotRegex(content, r'is-complete[^>]*data-marking-part="front"')
+        self.assertNotRegex(content, r'is-error[^>]*data-marking-part="front"')
+        self.assertNotRegex(content, r'is-running[^>]*data-marking-part="front"')
+        self.assertNotIn('is-complete">Validar</a>', content)
+        self.assertNotIn("is-error", content.split(">Validar</a>", 1)[0][-80:])
+
+    def test_done_marking_marks_part_complete(self):
+        ManuscriptMarkingRun.objects.create(
+            manuscript=self.manuscript,
+            part=ManuscriptMarkingPart.FRONT,
+            status=ManuscriptMarkingRunStatus.DONE,
+        )
+        response = self.client.get(
+            reverse("manuscript_step_front", args=[self.manuscript.pk])
+        )
+        content = response.content.decode()
+        self.assertRegex(content, r'is-complete[^>]*data-marking-part="front"')
+        self.assertNotRegex(content, r'is-error[^>]*data-marking-part="front"')
+
+    def test_error_marking_marks_part_error(self):
+        ManuscriptMarkingRun.objects.create(
+            manuscript=self.manuscript,
+            part=ManuscriptMarkingPart.FRONT,
+            status=ManuscriptMarkingRunStatus.ERROR,
+            error="Front Llama returned invalid JSON",
+        )
+        response = self.client.get(
+            reverse("manuscript_step_front", args=[self.manuscript.pk])
+        )
+        content = response.content.decode()
+        self.assertRegex(content, r'is-error[^>]*data-marking-part="front"')
+        self.assertNotRegex(content, r'is-complete[^>]*data-marking-part="front"')
 
     def test_front_step_shows_marked_xml_after_marking(self):
         front_marked_xml = get_front_xml(
@@ -422,7 +472,7 @@ class WizardStepLabelTests(TestCase):
         self.manuscript.refresh_from_db()
         self.assertEqual(self.manuscript.front_source_text, "")
 
-    @patch("manuscript.services.marking.resolve_front_result")
+    @patch("front.tasks.resolve_front_result")
     def test_mark_saves_posted_source_then_marks(self, mock_resolve):
         mock_resolve.return_value = {
             "data": {
@@ -441,7 +491,7 @@ class WizardStepLabelTests(TestCase):
         mock_resolve.assert_called_once()
         self.assertEqual(mock_resolve.call_args.args[0], "Hello front text")
 
-    @patch("manuscript.services.marking.resolve_front_result")
+    @patch("front.tasks.resolve_front_result")
     def test_mark_uses_saved_source_when_post_is_empty(self, mock_resolve):
         mock_resolve.return_value = {
             "data": {
@@ -458,9 +508,9 @@ class WizardStepLabelTests(TestCase):
         mock_resolve.assert_called_once()
         self.assertEqual(mock_resolve.call_args.args[0], "Already saved front")
 
-    @patch("manuscript.services.marking.resolve_front_result")
+    @patch("front.tasks.resolve_front_result")
     def test_mark_error_keeps_saved_source_and_shows_message(self, mock_resolve):
-        mock_resolve.side_effect = MarkingError("Front Llama returned invalid JSON")
+        mock_resolve.side_effect = RuntimeError("Front Llama returned invalid JSON")
         self.manuscript.front_source_text = "Front that failed to mark"
         self.manuscript.save(update_fields=["front_source_text"])
         url = reverse("manuscript_step_front", args=[self.manuscript.pk])
@@ -841,6 +891,59 @@ class ValidateStepUiTests(TestCase):
         self.assertIn("Invalid reference", content)
         self.assertNotIn('name="action" value="open_step"', content)
         self.assertNotContains(response, "Go to step")
+        self.assertIn("is-error", content.split(">Validar</a>", 1)[0][-80:])
+
+    def test_validation_without_errors_marks_validate_complete(self):
+        from wagtail.documents.models import Document
+
+        from xml_manager.models import SPSPackageValidation, SPSPackageValidationStatus
+
+        package = Document(title="bn-2025-1828-ok.zip")
+        package.file.save(
+            "bn-2025-1828-ok.zip",
+            SimpleUploadedFile(
+                "bn-2025-1828-ok.zip",
+                b"zip",
+                content_type="application/zip",
+            ),
+            save=True,
+        )
+        csv = Document(title="bn-2025-1828-ok.validation.csv")
+        csv.file.save(
+            "bn-2025-1828-ok.validation.csv",
+            SimpleUploadedFile(
+                "bn-2025-1828-ok.validation.csv",
+                b"group,response,item,advice,got_value\n"
+                b"article languages,WARNING,lang,Check language,en\n",
+                content_type="text/csv",
+            ),
+            save=True,
+        )
+        validation = SPSPackageValidation.objects.create(
+            package_document=package,
+            validation_document=csv,
+            status=SPSPackageValidationStatus.DONE,
+            zip_size_bytes=3,
+        )
+        self.manuscript.sps_package = package
+        self.manuscript.validation = validation
+        self.manuscript.save(update_fields=["sps_package", "validation", "updated"])
+
+        response = self.client.get(
+            reverse("manuscript_step_validate", args=[self.manuscript.pk])
+        )
+        content = response.content.decode()
+        self.assertIn('is-complete">Validar</a>', content)
+        self.assertNotIn("is-error", content.split(">Validar</a>", 1)[0][-80:])
+
+    def test_idle_validate_has_no_complete_or_error(self):
+        response = self.client.get(
+            reverse("manuscript_step_validate", args=[self.manuscript.pk])
+        )
+        content = response.content.decode()
+        validate_link = content.split(">Validar</a>", 1)[0][-120:]
+        self.assertNotIn("is-complete", validate_link)
+        self.assertNotIn("is-error", validate_link)
 
     def test_missing_validation_csv_shows_rerun_message(self):
         from wagtail.documents.models import Document
@@ -938,7 +1041,15 @@ class ValidateStepUiTests(TestCase):
 
     def test_validate_saves_assembled_xml_before_revalidation(self):
         url = reverse("manuscript_step_validate", args=[self.manuscript.pk])
-        updated_xml = "<article><title>Revalidated title</title></article>"
+        updated_xml = (
+            "<article><front><journal-meta>"
+            '<journal-id journal-id-type="publisher-id">scie</journal-id>'
+            '<issn pub-type="epub">0124-4567</issn>'
+            "</journal-meta><article-meta>"
+            "<volume>10</volume><issue>3</issue><fpage>365</fpage>"
+            "<title-group><article-title>Revalidated title</article-title>"
+            "</title-group></article-meta></front></article>"
+        )
         with patch(
             "xml_manager.services.utils.validate_zip",
             return_value=([], []),
@@ -990,3 +1101,30 @@ class PackagePdfBuildTests(TestCase):
             response = self.client.post(url, {"action": "build", "include_pdf": "on"})
         self.assertRedirects(response, url)
         mock_build.assert_called_once_with(self.manuscript, include_pdf=True)
+
+    def test_package_download_button_is_enabled_when_package_exists(self):
+        from wagtail.documents.models import Document
+
+        package = Document(title="package-pdf.zip")
+        package.file.save(
+            "package-pdf.zip",
+            SimpleUploadedFile(
+                "package-pdf.zip",
+                b"zip",
+                content_type="application/zip",
+            ),
+            save=True,
+        )
+        self.manuscript.sps_package = package
+        self.manuscript.save(update_fields=["sps_package", "updated"])
+        response = self.client.get(
+            reverse("manuscript_step_package", args=[self.manuscript.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertIn("Download SPS package", content)
+        self.assertIn('class="btn btn-secondary"', content)
+        self.assertIn(package.url, content)
+        self.assertIn('target="_blank"', content)
+        download = content.split("Download SPS package", 1)[0][-200:]
+        self.assertNotIn("disabled", download)

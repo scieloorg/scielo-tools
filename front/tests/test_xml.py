@@ -612,6 +612,9 @@ def test_apply_text_fields_reads_masthead_and_keyword_lines():
     )
     marked = apply_text_fields({"titles": [{"kind": "main", "text": "Title"}]}, text)
     assert marked["journal"]["journal_title"] == "Biota Neotropica"
+    assert marked["journal"]["journal_ids"] == [
+        {"type": "publisher-id", "value": "bn"}
+    ]
     assert marked["keywords"] == [
         {
             "language": "en",

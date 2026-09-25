@@ -1,0 +1,13 @@
+<a href="{% url url_name manuscript.pk %}" class="nav-link manuscript-wizard__step-btn{% if step == part %} active{% endif %}{% if part in completed_steps or state == 'done' %} is-complete{% endif %}{% if active %} is-running{% endif %}{% if state == 'error' %} is-error{% endif %}" data-marking-part="{{ part }}"{% if active %} aria-busy="true"{% endif %}>
+    <span class="manuscript-wizard__step-label">
+        <span class="manuscript-wizard__step-caption">{{ label }}</span>
+        <span class="manuscript-wizard__step-percent"{% if not active %} hidden{% endif %}>{% if percent != None %}{{ percent }}{% else %}0{% endif %}%</span>
+    </span>
+    <span class="manuscript-wizard__step-label manuscript-wizard__step-label--fill" aria-hidden="true"{% if not active %} hidden{% endif %}{% if active %} style="clip-path: inset(0 calc(100% - {% if percent != None %}{{ percent }}{% else %}0{% endif %}%) 0 0)"{% endif %}>
+        <span class="manuscript-wizard__step-caption">{{ label }}</span>
+        <span class="manuscript-wizard__step-percent">{% if percent != None %}{{ percent }}{% else %}0{% endif %}%</span>
+    </span>
+    <span class="manuscript-wizard__step-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{% if active %}{% if percent != None %}{{ percent }}{% else %}0{% endif %}{% else %}0{% endif %}"{% if not active %} hidden{% endif %}>
+        <span class="manuscript-wizard__step-meter-bar"{% if active %} style="width: {% if percent != None %}{{ percent }}{% else %}0{% endif %}%"{% endif %}></span>
+    </span>
+</a>

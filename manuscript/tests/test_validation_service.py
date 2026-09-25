@@ -22,9 +22,16 @@ class RunManuscriptValidationTests(TestCase):
             creator=self.user,
             front_marked_xml=get_front_xml(
                 {
+                    "journal": {
+                        "journal_ids": [{"type": "publisher-id", "value": "scie"}],
+                        "issns": [{"pub_type": "epub", "value": "0124-4567"}],
+                    },
                     "titles": [
                         {"kind": "main", "text": "Validation title", "language": "en"}
                     ],
+                    "volume": "10",
+                    "issue": "3",
+                    "fpage": "365",
                 }
             ),
             body_marked_xml=get_body_xml(
@@ -84,7 +91,16 @@ class RunManuscriptValidationTests(TestCase):
 
     def test_revalidation_keeps_edited_assembled_xml(self):
         self._run()
-        edited = "<article><title>Edited before revalidation</title></article>"
+        edited = (
+            "<article><front><journal-meta>"
+            '<journal-id journal-id-type="publisher-id">scie</journal-id>'
+            '<issn pub-type="epub">0124-4567</issn>'
+            "</journal-meta><article-meta>"
+            "<volume>10</volume><issue>3</issue><fpage>365</fpage>"
+            "<title-group><article-title>"
+            "Edited before revalidation</article-title></title-group>"
+            "</article-meta></front></article>"
+        )
         self.manuscript.assembled_xml = edited
         self.manuscript.save(update_fields=["assembled_xml", "updated"])
         self._run()

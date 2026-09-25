@@ -230,6 +230,54 @@ class ManuscriptReference(Orderable):
         verbose_name_plural = _("Manuscript references")
 
 
+class ManuscriptMarkingPart(models.TextChoices):
+    FRONT = "front", _("Front")
+    BODY = "body", _("Body")
+    BACK = "back", _("Back")
+
+
+class ManuscriptMarkingRunStatus(models.TextChoices):
+    IDLE = "idle", _("Idle")
+    PENDING = "pending", _("Pending")
+    RUNNING = "running", _("Running")
+    DONE = "done", _("Done")
+    ERROR = "error", _("Error")
+
+
+class ManuscriptMarkingRun(models.Model):
+    manuscript = models.ForeignKey(
+        Manuscript,
+        on_delete=models.CASCADE,
+        related_name="marking_runs",
+        verbose_name=_("Manuscript"),
+    )
+    part = models.CharField(
+        _("Part"),
+        max_length=16,
+        choices=ManuscriptMarkingPart.choices,
+    )
+    status = models.CharField(
+        _("Status"),
+        max_length=16,
+        choices=ManuscriptMarkingRunStatus.choices,
+        default=ManuscriptMarkingRunStatus.IDLE,
+    )
+    task_id = models.CharField(_("Task id"), max_length=255, blank=True)
+    error = models.TextField(_("Error"), blank=True)
+    started_at = models.DateTimeField(_("Started at"), null=True, blank=True)
+    finished_at = models.DateTimeField(_("Finished at"), null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("Manuscript marking run")
+        verbose_name_plural = _("Manuscript marking runs")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["manuscript", "part"],
+                name="uniq_manuscript_marking_run_part",
+            )
+        ]
+
+
 class ManuscriptPublication(models.Model):
     manuscript = models.ForeignKey(
         Manuscript,

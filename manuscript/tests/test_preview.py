@@ -318,7 +318,6 @@ class PreviewTests(TestCase):
             reverse("manuscript_preview_part", args=[manuscript.pk, "body"])
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'class="graphic"')
         self.assertContains(response, figure.file.url)
         self.assertContains(response, "Preview figure.")
 
@@ -448,7 +447,7 @@ class PreviewTests(TestCase):
             render_article_preview_packtools("", language="en")
 
     @patch("manuscript.preview.HTMLGenerator.parse")
-    def test_preview_part_falls_back_when_packtools_fails(self, mock_parse):
+    def test_preview_part_shows_error_when_packtools_fails(self, mock_parse):
         user = User.objects.create_superuser(
             username="fallback", email="fallback@example.com", password="secret"
         )
@@ -456,13 +455,12 @@ class PreviewTests(TestCase):
         mock_parse.side_effect = RuntimeError("packtools unavailable")
         self.client.force_login(user)
         url = reverse("manuscript_preview_part", args=[manuscript.pk, "article"])
-        response = self.client.get(f"{url}?renderer=packtools")
+        response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Packtools title")
-        fallback_html = render_article_preview(manuscript.assembled_xml)
-        self.assertIn("Packtools title", fallback_html)
+        self.assertContains(response, "packtools generation failed")
+        self.assertNotContains(response, "Packtools title")
 
-    def test_preview_part_uses_manual_renderer_without_query_param(self):
+    def test_preview_part_uses_packtools_without_query_param(self):
         user = User.objects.create_superuser(
             username="manual", email="manual@example.com", password="secret"
         )
@@ -470,11 +468,12 @@ class PreviewTests(TestCase):
         self.client.force_login(user)
         url = reverse("manuscript_preview_part", args=[manuscript.pk, "article"])
         with patch(
-            "manuscript.views.render_article_preview_packtools"
+            "manuscript.views.render_article_preview_packtools",
+            return_value="Packtools title",
         ) as mock_packtools:
             response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        mock_packtools.assert_not_called()
+        mock_packtools.assert_called_once()
         self.assertContains(response, "Packtools title")
 
     def test_validate_step_preview_iframe_uses_packtools_renderer(self):
@@ -487,7 +486,11 @@ class PreviewTests(TestCase):
             reverse("manuscript_step_validate", args=[manuscript.pk])
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "renderer=packtools")
+        self.assertNotContains(response, "renderer=packtools")
+        self.assertContains(
+            response,
+            reverse("manuscript_preview_part", args=[manuscript.pk, "article"]),
+        )
 
     def test_article_preview_reflects_front_edit(self):
         user = User.objects.create_superuser(
@@ -525,4 +528,8 @@ class PreviewTests(TestCase):
             reverse("manuscript_step_package", args=[manuscript.pk])
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "renderer=packtools")
+        self.assertNotContains(response, "renderer=packtools")
+        self.assertContains(
+            response,
+            reverse("manuscript_preview_part", args=[manuscript.pk, "article"]),
+        )

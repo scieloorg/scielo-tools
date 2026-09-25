@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import shutil
 import tempfile
 import zipfile
@@ -9,6 +10,7 @@ from django.core.files.base import ContentFile
 from django.utils.translation import gettext_lazy as _
 from docx import Document as DocxDocument
 from docx.enum.style import WD_STYLE_TYPE
+from lxml import etree
 from packtools.sps.formats.pdf.pipeline import docx as packtools_docx
 from packtools.sps.formats.pdf.renderer.docx import table as packtools_table
 from packtools.sps.formats.pdf.utils import file_utils as packtools_file_utils
@@ -21,6 +23,174 @@ from xml_manager.assembly import generate_xml_sps
 
 class AssemblyError(Exception):
     pass
+
+
+XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
+
+
+def _xml_text(root, path):
+    node = root.find(path)
+    if node is None or node.text is None:
+        return ""
+    return node.text.strip()
+
+
+def _pad_numeric(value):
+    text = (value or "").strip()
+    if text.isdigit():
+        return text.zfill(2)
+    return text
+
+
+def _doi_suffix(doi):
+    text = (doi or "").strip()
+    if "://" in text:
+        text = text.split("://", 1)[1]
+    if text.lower().startswith("doi.org/"):
+        text = text.split("/", 1)[1]
+    if "/" in text:
+        return text.split("/", 1)[1]
+    return text
+
+
+def _acronym_from_journal_title(title):
+    words = re.findall(r"[0-9A-Za-zÀ-ÿ]+", title or "")
+    skipped = {
+        "de",
+        "da",
+        "do",
+        "dos",
+        "das",
+        "e",
+        "of",
+        "the",
+        "and",
+        "del",
+        "la",
+        "el",
+    }
+    words = [word for word in words if word.lower() not in skipped]
+    if not words:
+        return ""
+    if len(words) == 1:
+        return re.sub(r"[^a-z0-9]", "", words[0].lower())[:12]
+    return "".join(word[0] for word in words).lower()
+
+
+def _acronym_from_manuscript(manuscript):
+    from front.data_utils import journal_acronym_from_text
+
+    marked = manuscript.front_marked
+    if not isinstance(marked, dict):
+        marked = {}
+    journal = marked.get("journal") if isinstance(marked.get("journal"), dict) else {}
+    for item in journal.get("journal_ids") or []:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("type") or "").strip() != "publisher-id":
+            continue
+        value = str(item.get("value") or "").strip()
+        if value:
+            return value
+    return journal_acronym_from_text(manuscript.front_source_text)
+
+
+def sps_package_stem(xml_text, acronym=""):
+    stripped = xml_text or ""
+    try:
+        root = etree.fromstring(stripped.encode("utf-8"))
+    except etree.XMLSyntaxError as exc:
+        raise AssemblyError(_("Assembled XML is invalid")) from exc
+    issn = (
+        _xml_text(root, './/issn[@pub-type="epub"]')
+        or _xml_text(root, './/issn[@pub-type="ppub"]')
+        or _xml_text(root, ".//issn")
+    )
+    acronym = (
+        _xml_text(root, './/journal-id[@journal-id-type="publisher-id"]')
+        or (acronym or "").strip()
+    )
+    if not acronym:
+        acronym = _acronym_from_journal_title(
+            _xml_text(root, ".//abbrev-journal-title")
+            or _xml_text(root, ".//journal-title")
+        )
+    missing = []
+    if not issn:
+        missing.append("ISSN")
+    if not acronym:
+        missing.append("acronym")
+    if missing:
+        raise AssemblyError(
+            _("SPS package name is missing %(fields)s") % {"fields": ", ".join(missing)}
+        )
+    volume = _xml_text(root, ".//article-meta/volume")
+    issue = _xml_text(root, ".//article-meta/issue")
+    fpage = _xml_text(root, ".//article-meta/fpage")
+    elocation = _xml_text(root, ".//article-meta/elocation-id")
+    parts = [issn, acronym]
+    if volume or issue:
+        if volume:
+            parts.append(_pad_numeric(volume))
+        if issue:
+            parts.append(_pad_numeric(issue))
+        page = fpage or elocation
+        if not page:
+            raise AssemblyError(_("SPS package name is missing pagination"))
+        parts.append(page)
+    else:
+        doi = _doi_suffix(_xml_text(root, './/article-id[@pub-id-type="doi"]'))
+        if not doi:
+            raise AssemblyError(_("SPS package name is missing DOI"))
+        parts.append(doi)
+    return "-".join(parts)
+
+
+def _graphic_href(graphic):
+    for key, value in graphic.attrib.items():
+        if key == "href" or key.endswith("}href"):
+            return (value or "").strip()
+    return ""
+
+
+def _figure_extension(href):
+    ext = os.path.splitext(href or "")[1].lower() or ".jpg"
+    if ext == ".jpeg":
+        return ".jpg"
+    return ext
+
+
+def package_xml_with_sps_names(xml_text, acronym=""):
+    stem = sps_package_stem(xml_text, acronym=acronym)
+    root = etree.fromstring(xml_text.encode("utf-8"))
+    href_map = {}
+    graphics = root.xpath(".//*[local-name()='fig']/*[local-name()='graphic']")
+    for index, graphic in enumerate(graphics, start=1):
+        old = _graphic_href(graphic)
+        new_name = f"{stem}-gf{index:02d}{_figure_extension(old)}"
+        if old:
+            href_map[old] = new_name
+        graphic.set(XLINK_HREF, new_name)
+    packed = etree.tostring(root, encoding="unicode")
+    return stem, packed, href_map
+
+
+def _figure_for_href(figures, old_href, index):
+    base = os.path.basename((old_href or "").replace("\\", "/"))
+    by_href = {figure.href: figure for figure in figures}
+    by_base = {
+        os.path.basename(figure.href.replace("\\", "/")): figure for figure in figures
+    }
+    by_number = {figure.number: figure for figure in figures}
+    figure = by_href.get(old_href) or by_href.get(base) or by_base.get(base)
+    if figure is not None:
+        return figure
+    match = re.search(r"(\d+)", base)
+    if match:
+        figure = by_number.get(int(match.group(1)))
+        if figure is not None:
+            return figure
+    return by_number.get(index)
 
 
 _PACKTOOLS_PDF_PARAGRAPH_STYLES = (
@@ -161,29 +331,39 @@ def generate_packtools_pdf(xml_text, xml_name, figures):
 def build_sps_zip(manuscript, include_pdf=False):
     if not (manuscript.assembled_xml or "").strip():
         assemble_manuscript_xml(manuscript)
-    slug = "".join(ch if ch.isalnum() else "-" for ch in manuscript.title[:40]).strip(
-        "-"
-    )
-    if not slug:
-        slug = f"manuscript-{manuscript.pk}"
-    xml_name = f"{slug}.xml"
     pdf_bytes = None
     if include_pdf:
         pdf_bytes = generate_packtools_pdf(
             manuscript.assembled_xml,
-            xml_name,
+            "article.xml",
             list(manuscript.figure_files.all()),
         )
+    stem, packed_xml, href_map = package_xml_with_sps_names(
+        manuscript.assembled_xml,
+        acronym=_acronym_from_manuscript(manuscript),
+    )
+    figures = list(manuscript.figure_files.all().order_by("number"))
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr(xml_name, manuscript.assembled_xml.encode("utf-8"))
-        for figure in manuscript.figure_files.all():
+        archive.writestr(f"{stem}.xml", packed_xml.encode("utf-8"))
+        written = set()
+        for index, (old_href, new_name) in enumerate(href_map.items(), start=1):
+            figure = _figure_for_href(figures, old_href, index)
+            if figure is None or figure.pk in written:
+                continue
             with figure.file.open("rb") as fh:
-                archive.writestr(figure.href, fh.read())
+                archive.writestr(new_name, fh.read())
+            written.add(figure.pk)
+        for figure in figures:
+            if figure.pk in written:
+                continue
+            name = f"{stem}-gf{figure.number:02d}{_figure_extension(figure.href)}"
+            with figure.file.open("rb") as fh:
+                archive.writestr(name, fh.read())
         if pdf_bytes is not None:
-            archive.writestr(f"{slug}.pdf", pdf_bytes)
+            archive.writestr(f"{stem}.pdf", pdf_bytes)
     buffer.seek(0)
-    zip_name = f"{slug}.zip"
+    zip_name = f"{stem}.zip"
     if manuscript.sps_package_id:
         if manuscript.sps_package.file:
             manuscript.sps_package.file.delete(save=False)
