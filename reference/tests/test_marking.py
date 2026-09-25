@@ -68,8 +68,14 @@ def test_mark_reference_texts_batches_one_request(monkeypatch, settings):
 
     from reference.marking import mark_reference_texts
 
-    result = mark_reference_texts(["Ref A", "Ref B", "Ref C"])
+    progress = []
+    result = mark_reference_texts(
+        ["Ref A", "Ref B", "Ref C"],
+        on_progress=lambda done, total: progress.append((done, total)),
+    )
 
+    assert progress[0] == (0, 3)
+    assert progress[-1] == (3, 3)
     assert len(calls) == 1
     assert "1. Ref A" in calls[0]
     assert "2. Ref B" in calls[0]

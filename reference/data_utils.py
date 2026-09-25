@@ -666,7 +666,9 @@ def resolve_reference_result(
     }
 
 
-def resolve_references_result(references, user=None, output_type="json"):
+def resolve_references_result(
+    references, user=None, output_type="json", on_progress=None
+):
     citations = parse_reference_list(references)
     pending = []
     pending_seen = set()
@@ -681,7 +683,10 @@ def resolve_references_result(references, user=None, output_type="json"):
 
     premarked = {}
     if pending:
-        marked_pending = mark_reference_texts(pending)
+        if on_progress is None:
+            marked_pending = mark_reference_texts(pending)
+        else:
+            marked_pending = mark_reference_texts(pending, on_progress=on_progress)
         for citation, content in zip(pending, marked_pending, strict=False):
             premarked[citation] = (
                 parse_marked_choice(content) if content is not None else None

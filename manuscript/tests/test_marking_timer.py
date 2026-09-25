@@ -7,7 +7,7 @@ from django.urls import reverse
 from manuscript.models import Manuscript, ManuscriptStatus
 
 
-class FrontMarkingTimerTests(TestCase):
+class FrontMarkingStatusUiTests(TestCase):
     def setUp(self):
         user = get_user_model().objects.create_superuser(
             username="editor", email="editor@example.com", password="secret"
@@ -19,30 +19,39 @@ class FrontMarkingTimerTests(TestCase):
             creator=user,
         )
 
-    def test_front_step_includes_marking_timer_overlay(self):
+    def test_front_step_includes_marking_status_ui(self):
         response = self.client.get(
             reverse("manuscript_step_front", args=[self.manuscript.pk])
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'id="manuscript-marking-overlay"')
-        self.assertContains(response, 'id="manuscript-marking-timer"')
-        self.assertContains(response, "Elapsed time")
+        self.assertContains(response, 'data-marking-part="front"')
+        self.assertContains(response, "manuscript-wizard__step-meter")
+        self.assertContains(response, "manuscript-wizard__step-btn")
+        self.assertContains(response, "manuscript-wizard__action-btn")
+        self.assertContains(response, "manuscript-wizard__step-percent")
+        self.assertContains(response, "manuscript-marking-state")
+        self.assertContains(response, "/api/marking-status/")
         self.assertContains(response, 'value="mark"')
         self.assertContains(response, "Mark front")
         self.assertContains(response, "manuscript/js/wizard.js")
-        self.assertContains(response, "markingFront")
+        self.assertNotContains(response, "manuscript-marking-overlay")
 
-    def test_marking_overlay_lets_native_submit_proceed(self):
+    def test_wizard_js_polls_marking_status(self):
         source = Path("manuscript/static/manuscript/js/wizard.js").read_text(
             encoding="utf-8"
         )
-        overlay = source.split("function bindManuscriptMarkingOverlay()", 1)[1]
-        self.assertNotIn("fetch(", overlay)
-        self.assertNotIn("window.location.assign", overlay)
-        self.assertIn("requestAnimationFrame", overlay)
-        self.assertIn("requestSubmit", overlay)
-        self.assertIn("allowNative", overlay)
-        self.assertIn("event.preventDefault()", overlay)
+        self.assertIn("function bindManuscriptMarkingStatus()", source)
+        self.assertIn("function applyManuscriptMarkingState(state)", source)
+        self.assertIn(
+            "function applyManuscriptMeter(host, meter, info, active)", source
+        )
+        self.assertIn('classList.add("is-complete")', source)
+        self.assertIn("manuscript-wizard__step-percent", source)
+        self.assertIn("clipPath", source)
+        self.assertIn("fetch(", source)
+        self.assertIn("window.location.reload()", source)
+        self.assertNotIn("bindManuscriptMarkingOverlay", source)
+        self.assertNotIn("requestSubmit", source)
 
     def test_front_editor_shows_section_counts_in_labels(self):
         source = Path("manuscript/static/manuscript/js/front-editor.js").read_text(
@@ -119,3 +128,24 @@ class FrontMarkingTimerTests(TestCase):
         self.assertIn("accordion-item", source)
         self.assertIn("accordion-body", source)
         self.assertIn("structuredMarkedJson", source)
+
+    def test_wizard_css_has_running_meter(self):
+        css = Path("manuscript/static/manuscript/css/wizard.css").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn(".manuscript-wizard__steps .nav-link", css)
+        self.assertNotIn(".nav-pills .manuscript-wizard__steps .nav-link", css)
+        self.assertIn(".manuscript-wizard__step-meter", css)
+        self.assertIn(".manuscript-wizard__step-btn", css)
+        self.assertIn(".manuscript-wizard__action-btn", css)
+        self.assertIn(".manuscript-wizard__step-percent", css)
+        self.assertIn(".is-running", css)
+        self.assertIn(".is-error", css)
+        self.assertIn("inset: 0", css)
+        self.assertIn("var(--scielo-white, #fff)", css)
+        self.assertIn("var(--scielo-black, #000)", css)
+        self.assertIn("var(--scielo-text-subtle, #6c6b6b)", css)
+        self.assertIn("var(--scielo-positive, #2c9d45)", css)
+        self.assertIn("var(--scielo-danger, #dc3545)", css)
+        self.assertNotIn("min-width: 5.75rem", css)
+        self.assertNotIn(".manuscript-marking-overlay", css)

@@ -4,7 +4,4 @@ set -o errexit
 set -o nounset
 
 
-# Install local packtools in editable mode (dev only - uses bind-mounted workspace)
-# pip install -e /packtools --quiet
-
-watchgod celery.__main__.main --args -A config.celery_app worker -l INFO
+exec celery -A config.celery_app worker -l INFO --concurrency=3

@@ -35,7 +35,7 @@
                             {% include "wagtailadmin/manuscript/source_form_fields.html" %}
                             <div class="btn-group">
                                 <button type="submit" name="action" value="save_source" class="btn btn-secondary">{% trans "Save source" %}</button>
-                                <button type="submit" name="action" value="mark" class="btn btn-primary">{% trans "Mark references" %}</button>
+                                {% include "wagtailadmin/manuscript/mark_action_button.html" with part="back" active=marking_active.back percent=marking_state.back.percent %}
                             </div>
                         </form>
                     </div>
@@ -81,7 +81,7 @@
                     {{ form.as_p }}
                     <div class="btn-group">
                         <button type="submit" name="action" value="save_source" class="btn btn-secondary">{% trans "Save source" %}</button>
-                        <button type="submit" name="action" value="mark" class="btn btn-primary">{% trans "Mark references" %}</button>
+                        {% include "wagtailadmin/manuscript/mark_action_button.html" with part="back" active=marking_active.back percent=marking_state.back.percent %}
                     </div>
                 </form>
             {% endif %}
@@ -109,7 +109,7 @@
             <form method="post" class="manuscript-inline-form">
                 {% csrf_token %}
                 <button type="submit" name="action" value="back" class="btn btn-sm btn-secondary">{% trans "Back to body" %}</button>
-                <button type="submit" name="action" value="approve" class="btn btn-outline-primary">{% trans "Approve and validate" %}</button>
+                <button type="submit" name="action" value="approve" class="btn btn-outline-primary" data-marking-approve="back"{% if marking_active.back %} disabled{% endif %}>{% trans "Approve and validate" %}</button>
             </form>
         </div>
     </footer>

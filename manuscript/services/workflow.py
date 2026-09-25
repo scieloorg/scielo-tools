@@ -1,7 +1,8 @@
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from manuscript.models import ManuscriptStatus
+from manuscript.models import ManuscriptMarkingPart, ManuscriptStatus
+from manuscript.services.marking_jobs import part_is_active
 
 
 class WorkflowError(Exception):
@@ -58,6 +59,8 @@ def open_step(manuscript, step, user=None):
 
 
 def approve_front(manuscript, user=None):
+    if part_is_active(manuscript, ManuscriptMarkingPart.FRONT):
+        raise WorkflowError(_("Cannot approve front while marking is running"))
     if manuscript.status not in (ManuscriptStatus.DRAFT, ManuscriptStatus.FRONT):
         raise WorkflowError(_("Cannot approve front from current status"))
     manuscript.status = ManuscriptStatus.BODY
@@ -69,6 +72,8 @@ def approve_front(manuscript, user=None):
 
 
 def approve_body(manuscript, user=None):
+    if part_is_active(manuscript, ManuscriptMarkingPart.BODY):
+        raise WorkflowError(_("Cannot approve body while marking is running"))
     if manuscript.status != ManuscriptStatus.BODY:
         raise WorkflowError(_("Cannot approve body from current status"))
     manuscript.status = ManuscriptStatus.BACK
@@ -80,6 +85,8 @@ def approve_body(manuscript, user=None):
 
 
 def approve_back(manuscript, user=None):
+    if part_is_active(manuscript, ManuscriptMarkingPart.BACK):
+        raise WorkflowError(_("Cannot approve back while marking is running"))
     if manuscript.status != ManuscriptStatus.BACK:
         raise WorkflowError(_("Cannot approve back from current status"))
     manuscript.status = ManuscriptStatus.ASSEMBLED

@@ -50,9 +50,15 @@ LLAMA_ERRORS = (
 
 
 def _sync_assembled_xml(manuscript):
+    from django.db import transaction
+
+    from manuscript.models import Manuscript
     from manuscript.services.assembly import refresh_assembled_xml
 
-    refresh_assembled_xml(manuscript)
+    pk = manuscript.pk
+    with transaction.atomic():
+        locked = Manuscript.objects.select_for_update().get(pk=pk)
+        refresh_assembled_xml(locked)
 
 
 def mark_front(manuscript, user=None, language=None, counts=None):
@@ -185,6 +191,10 @@ def mark_references(manuscript, user=None):
         items = resolve_references_result(citations, user=user, output_type="json")
     except LLAMA_ERRORS as exc:
         raise MarkingError(str(exc)) from exc
+    return save_references_items(manuscript, items, user=user)
+
+
+def save_references_items(manuscript, items, user=None):
     if not items:
         raise MarkingError(_("Could not mark references"))
     manuscript.references.all().delete()

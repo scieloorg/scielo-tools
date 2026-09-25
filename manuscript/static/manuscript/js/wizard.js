@@ -74,78 +74,146 @@ window.manuscriptToast = manuscriptToast;
 window.manuscriptSaveJson = manuscriptSaveJson;
 window.manuscriptRefreshPreview = manuscriptRefreshPreview;
 
-function bindManuscriptMarkingOverlay() {
-    const overlay = document.getElementById("manuscript-marking-overlay");
-    const messageNode = document.getElementById("manuscript-marking-message");
-    const timerNode = document.getElementById("manuscript-marking-timer");
-    if (!overlay || !messageNode || !timerNode) {
+function manuscriptMarkingConfig() {
+    const root = document.querySelector(".manuscript-wizard");
+    const editor = window.manuscriptEditorConfig || {};
+    const stateNode = document.getElementById("manuscript-marking-state");
+    let state = editor.markingState;
+    if (!state && stateNode) {
+        state = JSON.parse(stateNode.textContent);
+    }
+    return {
+        step: editor.step || (root && root.dataset.step) || "",
+        statusUrl: editor.markingStatusUrl || (root && root.dataset.markingStatusUrl) || "",
+        state: state || {},
+    };
+}
+
+function applyManuscriptMeter(host, meter, info, active) {
+    if (!meter) {
         return;
     }
-    document.body.appendChild(overlay);
-    let marking = false;
-    let allowNative = false;
-    let timerId = 0;
-    document.addEventListener(
-        "submit",
-        (event) => {
-            const form = event.target;
-            const submitter = event.submitter;
-            if (
-                !(form instanceof HTMLFormElement) ||
-                !submitter ||
-                submitter.name !== "action" ||
-                submitter.value !== "mark"
-            ) {
+    meter.hidden = !active;
+    let percent = 0;
+    if (active && info.percent != null && info.percent !== "") {
+        percent = Math.round(Number(info.percent));
+        if (Number.isNaN(percent)) {
+            percent = 0;
+        }
+        percent = Math.max(0, Math.min(100, percent));
+    }
+    meter.setAttribute("aria-valuenow", String(percent));
+    const bar = meter.querySelector(".manuscript-wizard__step-meter-bar");
+    if (bar) {
+        bar.style.width = `${percent}%`;
+    }
+    host.querySelectorAll(".manuscript-wizard__step-percent").forEach((node) => {
+        node.hidden = !active;
+        node.textContent = `${percent}%`;
+    });
+    const fillLabel = host.querySelector(".manuscript-wizard__step-label--fill");
+    if (fillLabel) {
+        fillLabel.hidden = !active;
+        fillLabel.style.clipPath = `inset(0 calc(100% - ${percent}%) 0 0)`;
+    }
+}
+
+function applyManuscriptMarkingState(state) {
+    document.querySelectorAll("[data-marking-part]").forEach((link) => {
+        const info = state[link.dataset.markingPart] || {};
+        const status = info.status || "idle";
+        const active = status === "pending" || status === "running";
+        link.classList.toggle("is-running", active);
+        link.classList.toggle("is-error", status === "error");
+        if (status === "done") {
+            link.classList.add("is-complete");
+        }
+        if (active) {
+            link.setAttribute("aria-busy", "true");
+        } else {
+            link.removeAttribute("aria-busy");
+        }
+        applyManuscriptMeter(
+            link,
+            link.querySelector(".manuscript-wizard__step-meter"),
+            info,
+            active
+        );
+    });
+    document.querySelectorAll("[data-marking-submit]").forEach((button) => {
+        const info = state[button.dataset.markingSubmit] || {};
+        const status = info.status || "idle";
+        const active = status === "pending" || status === "running";
+        button.disabled = active;
+        button.classList.toggle("is-running", active);
+        applyManuscriptMeter(
+            button,
+            button.querySelector(".manuscript-wizard__step-meter"),
+            info,
+            active
+        );
+    });
+    document.querySelectorAll("[data-marking-approve]").forEach((button) => {
+        const status = (state[button.dataset.markingApprove] || {}).status;
+        button.disabled = status === "pending" || status === "running";
+    });
+}
+
+function bindManuscriptMarkingStatus() {
+    const config = manuscriptMarkingConfig();
+    applyManuscriptMarkingState(config.state);
+    if (!config.statusUrl) {
+        return;
+    }
+    const parts = ["front", "body", "back"];
+    const startedDone = {};
+    parts.forEach((part) => {
+        startedDone[part] = (config.state[part] || {}).status === "done";
+    });
+    const hasActive = parts.some((part) => {
+        const status = (config.state[part] || {}).status;
+        return status === "pending" || status === "running";
+    });
+    if (!hasActive) {
+        return;
+    }
+    const poll = async () => {
+        const response = await fetch(config.statusUrl);
+        if (!response.ok) {
+            window.setTimeout(poll, 2000);
+            return;
+        }
+        const data = await response.json();
+        applyManuscriptMarkingState(data);
+        const step = config.step;
+        if (parts.includes(step)) {
+            const now = (data[step] || {}).status;
+            if (!startedDone[step] && now === "done") {
+                window.location.reload();
                 return;
             }
-            if (allowNative) {
-                return;
-            }
-            event.preventDefault();
-            if (marking) {
-                return;
-            }
-            marking = true;
-            const step = (window.manuscriptEditorConfig || {}).step;
-            const messages = {
-                front: manuscriptT("markingFront", "Marking front..."),
-                body: manuscriptT("markingBody", "Marking body..."),
-                back: manuscriptT("markingReferences", "Marking references..."),
-            };
-            messageNode.textContent =
-                messages[step] || manuscriptT("markingFront", "Marking front...");
-            overlay.hidden = false;
-            overlay.classList.add("is-visible");
-            overlay.setAttribute("aria-busy", "true");
-            const started = Date.now();
-            const tick = () => {
-                const total = Math.floor((Date.now() - started) / 1000);
-                const minutes = String(Math.floor(total / 60)).padStart(2, "0");
-                const seconds = String(total % 60).padStart(2, "0");
-                timerNode.textContent = `${minutes}:${seconds}`;
-            };
-            tick();
-            timerId = window.setInterval(tick, 1000);
-            window.requestAnimationFrame(() => {
-                allowNative = true;
-                if (typeof form.requestSubmit === "function") {
-                    form.requestSubmit(submitter);
-                    return;
+            if (now === "error" && !startedDone[step]) {
+                startedDone[step] = true;
+                const error = (data[step] || {}).error;
+                if (error) {
+                    manuscriptToast(error);
                 }
-                const input = document.createElement("input");
-                input.type = "hidden";
-                input.name = "action";
-                input.value = "mark";
-                form.appendChild(input);
-                form.submit();
-            });
-        },
-        true
-    );
+            }
+        }
+        if (
+            parts.some((part) => {
+                const status = (data[part] || {}).status;
+                return status === "pending" || status === "running";
+            })
+        ) {
+            window.setTimeout(poll, 2000);
+        }
+    };
+    window.setTimeout(poll, 2000);
 }
 
 if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", bindManuscriptMarkingOverlay);
+    document.addEventListener("DOMContentLoaded", bindManuscriptMarkingStatus);
 } else {
-    bindManuscriptMarkingOverlay();
+    bindManuscriptMarkingStatus();
 }

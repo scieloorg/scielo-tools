@@ -37,18 +37,23 @@ def mark_reference(reference_text):
         yield f"An unexpected error occurred: {str(exc)}"
 
 
-def mark_reference_texts(texts):
+def mark_reference_texts(texts, on_progress=None):
     lines = list(texts)
     if not lines:
         return []
 
     batch_size = max(1, int(getattr(settings, "REFERENCE_BATCH_SIZE", 10) or 10))
     marked = []
+    total = len(lines)
+    if on_progress is not None:
+        on_progress(0, total)
     for start in range(0, len(lines), batch_size):
         chunk = lines[start : start + batch_size]
         if len(chunk) == 1:
             choices = list(mark_reference(chunk[0]))
             marked.append(choices[0] if choices else None)
+            if on_progress is not None:
+                on_progress(len(marked), total)
             continue
 
         batch_contents = None
@@ -102,6 +107,8 @@ def mark_reference_texts(texts):
                 marked.append(choices[0] if choices else None)
         else:
             marked.extend(batch_contents)
+        if on_progress is not None:
+            on_progress(len(marked), total)
 
     return marked
 
