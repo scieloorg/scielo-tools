@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.core.files.base import ContentFile
 from django.test import TestCase
 from django.urls import reverse
 from django.utils.translation import override
@@ -11,7 +10,6 @@ from body.images import attach_figure_hrefs
 from front.data_utils import get_front_xml
 from manuscript.models import (
     Manuscript,
-    ManuscriptFigureFile,
     ManuscriptReference,
     ManuscriptStatus,
 )
@@ -25,6 +23,7 @@ from manuscript.preview import (
 )
 from manuscript.services.assembly import assemble_manuscript_xml
 from manuscript.services.marking import save_front_marked
+from manuscript.tests.helpers import attach_manuscript_figure
 
 User = get_user_model()
 
@@ -305,20 +304,18 @@ class PreviewTests(TestCase):
             creator=user,
             body_marked_xml=get_body_xml(marked),
         )
-        figure = ManuscriptFigureFile(
-            manuscript=manuscript,
+        figure = attach_manuscript_figure(
+            manuscript,
             number=1,
             href="fig-1.jpg",
             original_name="fig-1.jpg",
-            sort_order=1,
         )
-        figure.file.save("fig-1.jpg", ContentFile(b"jpeg-preview"), save=True)
         self.client.force_login(user)
         response = self.client.get(
             reverse("manuscript_preview_part", args=[manuscript.pk, "body"])
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, figure.file.url)
+        self.assertContains(response, figure.image.file.url)
         self.assertContains(response, "Preview figure.")
 
     def test_render_article_preview_shows_figure_image(self):
@@ -345,21 +342,19 @@ class PreviewTests(TestCase):
         attach_figure_hrefs(marked, {"1": "fig-1.jpg"})
         manuscript.body_marked_xml = get_body_xml(marked)
         manuscript.save(update_fields=["body_marked_xml"])
-        figure = ManuscriptFigureFile(
-            manuscript=manuscript,
+        figure = attach_manuscript_figure(
+            manuscript,
             number=1,
             href="fig-1.jpg",
             original_name="fig-1.jpg",
-            sort_order=1,
         )
-        figure.file.save("fig-1.jpg", ContentFile(b"jpeg-article"), save=True)
         assemble_manuscript_xml(manuscript)
         manuscript.refresh_from_db()
         html = render_article_preview(
             manuscript.assembled_xml,
             figure_urls=figure_urls_for_manuscript(manuscript),
         )
-        self.assertIn(figure.file.url, html)
+        self.assertIn(figure.image.file.url, html)
         self.assertIn("Article figure.", html)
 
     def test_preview_part_renders_design_system_frame(self):

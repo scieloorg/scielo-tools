@@ -4,13 +4,12 @@ import zipfile
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
-from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 from docx import Document as DocxDocument
 
 from body.data_utils import get_body_xml
 from front.data_utils import get_front_xml
-from manuscript.models import Manuscript, ManuscriptFigureFile, ManuscriptReference
+from manuscript.models import Manuscript, ManuscriptReference
 from manuscript.services.assembly import (
     AssemblyError,
     assemble_manuscript_xml,
@@ -23,6 +22,7 @@ from manuscript.services.marking import (
     save_front_marked,
     save_references_from_payload,
 )
+from manuscript.tests.helpers import attach_manuscript_figure
 
 User = get_user_model()
 
@@ -154,22 +154,22 @@ class ManuscriptAssemblyTests(TestCase):
         self.assertNotIn(">Journal<", self.manuscript.assembled_xml)
 
     def test_build_sps_zip_includes_figure_files(self):
-        fig1 = ManuscriptFigureFile(
-            manuscript=self.manuscript,
+        fig1 = attach_manuscript_figure(
+            self.manuscript,
             number=1,
             href="fig-1.jpg",
             original_name="fig-1.tif",
-            sort_order=1,
         )
-        fig1.file.save("fig-1.jpg", ContentFile(b"jpeg-one"), save=True)
-        fig2 = ManuscriptFigureFile(
-            manuscript=self.manuscript,
+        fig2 = attach_manuscript_figure(
+            self.manuscript,
             number=2,
             href="fig-2.jpg",
             original_name="fig-2.jpg",
-            sort_order=2,
         )
-        fig2.file.save("fig-2.jpg", ContentFile(b"jpeg-two"), save=True)
+        with fig1.image.file.open("rb") as fh:
+            jpeg_one = fh.read()
+        with fig2.image.file.open("rb") as fh:
+            jpeg_two = fh.read()
         self.manuscript.body_marked_xml = get_body_xml(
             {
                 "sections": [
@@ -202,8 +202,8 @@ class ManuscriptAssemblyTests(TestCase):
                 self.assertIn(gf1, names)
                 self.assertIn(gf2, names)
                 self.assertNotIn("fig-1.jpg", names)
-                self.assertEqual(archive.read(gf1), b"jpeg-one")
-                self.assertEqual(archive.read(gf2), b"jpeg-two")
+                self.assertEqual(archive.read(gf1), jpeg_one)
+                self.assertEqual(archive.read(gf2), jpeg_two)
                 xml_names = [name for name in names if name.endswith(".xml")]
                 self.assertEqual(xml_names, [f"{SPS_STEM}.xml"])
                 packed = archive.read(xml_names[0]).decode("utf-8")
@@ -211,18 +211,18 @@ class ManuscriptAssemblyTests(TestCase):
                 self.assertNotIn("fig-1.jpg", packed)
 
     def test_build_sps_zip_includes_uploaded_figures_without_xml_href(self):
-        fig = ManuscriptFigureFile(
-            manuscript=self.manuscript,
+        fig = attach_manuscript_figure(
+            self.manuscript,
             number=1,
             href="fig-1.jpg",
             original_name="photo.tif",
-            sort_order=1,
         )
-        fig.file.save("fig-1.jpg", ContentFile(b"jpeg-one"), save=True)
+        with fig.image.file.open("rb") as fh:
+            jpeg_one = fh.read()
         document = build_sps_zip(self.manuscript)
         with document.file.open("rb") as fh:
             with zipfile.ZipFile(fh) as archive:
-                self.assertEqual(archive.read(f"{SPS_STEM}-gf01.jpg"), b"jpeg-one")
+                self.assertEqual(archive.read(f"{SPS_STEM}-gf01.jpg"), jpeg_one)
 
     def test_build_sps_zip_keeps_existing_assembled_xml(self):
         self.manuscript.assembled_xml = (
@@ -261,14 +261,12 @@ class ManuscriptAssemblyTests(TestCase):
                 self.assertFalse(any(name.endswith(".docx") for name in names))
 
     def test_build_sps_zip_includes_pdf_when_requested(self):
-        fig = ManuscriptFigureFile(
-            manuscript=self.manuscript,
+        attach_manuscript_figure(
+            self.manuscript,
             number=1,
             href="fig-1.jpg",
             original_name="fig-1.jpg",
-            sort_order=1,
         )
-        fig.file.save("fig-1.jpg", ContentFile(b"jpeg-one"), save=True)
         self.manuscript.body_marked_xml = get_body_xml(
             {
                 "sections": [
@@ -326,14 +324,12 @@ class ManuscriptAssemblyTests(TestCase):
             self.assertEqual(fh.read(), previous)
 
     def test_generate_packtools_pdf_reads_converted_file(self):
-        fig = ManuscriptFigureFile(
-            manuscript=self.manuscript,
+        attach_manuscript_figure(
+            self.manuscript,
             number=1,
             href="fig-1.jpg",
             original_name="fig-1.jpg",
-            sort_order=1,
         )
-        fig.file.save("fig-1.jpg", ContentFile(b"jpeg-one"), save=True)
         document = MagicMock()
         captured = {}
 

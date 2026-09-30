@@ -1,9 +1,9 @@
 import json
 import re
+from pathlib import Path
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError as FormValidationError
-from django.core.files.base import ContentFile
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -20,6 +20,8 @@ from manuscript.models import (
     Manuscript,
     ManuscriptFigureFile,
     ManuscriptStatus,
+    create_figure_image,
+    get_or_create_manuscript_collection,
 )
 from manuscript.preview import (
     ManuscriptPreviewError,
@@ -67,6 +69,7 @@ from manuscript.services.workflow import (
     mark_ready,
     open_step,
 )
+from manuscript.signals import delete_unused_manuscript_image
 from xml_manager.models import SPSPackageValidationStatus
 
 
@@ -277,31 +280,52 @@ def step_body(request, pk):
                             "updated",
                         ]
                     )
-                    for number, asset in (
-                        form.cleaned_data.get("image_assets") or {}
-                    ).items():
+                    image_assets = form.cleaned_data.get("image_assets") or {}
+                    collection = None
+                    if image_assets:
+                        images_zip = form.cleaned_data.get("images_zip")
+                        collection_name = ""
+                        if images_zip:
+                            collection_name = Path(
+                                getattr(images_zip, "name", "") or ""
+                            ).stem.strip()
+                        if not collection_name:
+                            collection_name = (manuscript.title or "").strip()
+                        if not collection_name:
+                            collection_name = f"manuscript-{manuscript.pk}"
+                        collection = get_or_create_manuscript_collection(
+                            collection_name
+                        )
+                    for number, asset in image_assets.items():
                         figure_number = int(number)
                         href = asset["href"]
                         original_name = asset["original_name"]
-                        content = ContentFile(asset["bytes"], name=href)
+                        image = create_figure_image(
+                            f"{manuscript.pk} {href}",
+                            asset["bytes"],
+                            href,
+                            collection,
+                        )
                         existing = manuscript.figure_files.filter(
                             number=figure_number
                         ).first()
                         if existing:
-                            if existing.file:
-                                existing.file.delete(save=False)
+                            old_image_id = existing.image_id
                             existing.href = href
                             existing.original_name = original_name
-                            existing.file.save(href, content, save=True)
+                            existing.image = image
+                            existing.save()
+                            if old_image_id:
+                                delete_unused_manuscript_image(old_image_id)
                         else:
-                            figure = ManuscriptFigureFile(
+                            ManuscriptFigureFile.objects.create(
                                 manuscript=manuscript,
                                 number=figure_number,
                                 href=href,
                                 original_name=original_name,
                                 sort_order=figure_number,
+                                image=image,
                             )
-                            figure.file.save(href, content, save=True)
                     source_ready = True
             if action == "save_source" and source_ready:
                 messages.success(request, _("Body source saved."))

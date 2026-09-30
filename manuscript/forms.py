@@ -67,10 +67,12 @@ class ManuscriptCreateForm(ManuscriptAdminForm):
     def clean_source_docx(self):
         return validate_docx_file(self.cleaned_data.get("source_docx"))
 
-    def save_wagtail_document(self, upload):
+    def save_wagtail_document(self, upload, collection=None):
         from wagtail.documents.models import Document
 
         document = Document(title=upload.name)
+        if collection is not None:
+            document.collection = collection
         document.file.save(upload.name, upload, save=True)
         return document
 

@@ -1,13 +1,12 @@
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from wagtail.documents.models import Document
 
 from front.tests.test_docx import make_docx_bytes
-from manuscript.models import Manuscript, ManuscriptFigureFile
+from manuscript.models import Manuscript
 from manuscript.services.marking import (
     MarkingError,
     mark_body,
@@ -17,6 +16,7 @@ from manuscript.services.marking import (
     save_references_from_payload,
     save_references_marked_xml,
 )
+from manuscript.tests.helpers import attach_manuscript_figure
 from reference.data_utils import build_ref_list
 
 User = get_user_model()
@@ -161,14 +161,12 @@ class MarkingSnapshotTests(TestCase):
         }
         self.manuscript.body_source_text = "See Figure 1."
         self.manuscript.save(update_fields=["body_source_text"])
-        figure = ManuscriptFigureFile(
-            manuscript=self.manuscript,
+        attach_manuscript_figure(
+            self.manuscript,
             number=1,
             href="fig-1.jpg",
             original_name="fig-1.tif",
-            sort_order=1,
         )
-        figure.file.save("fig-1.jpg", ContentFile(b"\xff\xd8fakejpeg"), save=True)
         mark_body(self.manuscript, user=self.user)
         self.assertEqual(
             mock_resolve.call_args.kwargs["image_hrefs"],

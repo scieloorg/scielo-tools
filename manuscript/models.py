@@ -1,11 +1,17 @@
+from io import BytesIO
+from pathlib import Path
+
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from modelcluster.fields import ParentalKey
 from modelcluster.models import ClusterableModel
+from PIL import Image as PILImage
 from wagtail.admin.panels import FieldPanel
-from wagtail.models import Orderable
+from wagtail.images import get_image_model, get_image_model_string
+from wagtail.models import Collection, GroupCollectionPermission, Orderable
 
 
 class ArticleType(models.Model):
@@ -179,13 +185,20 @@ class ManuscriptFigureFile(Orderable):
     number = models.PositiveIntegerField(_("Figure number"))
     href = models.CharField(_("Href"), max_length=64)
     original_name = models.CharField(_("Original name"), max_length=255)
-    file = models.FileField(_("File"), upload_to="manuscript/figures/%Y/%m/")
+    image = models.ForeignKey(
+        get_image_model_string(),
+        verbose_name=_("Image"),
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
 
     panels = [
         FieldPanel("number"),
         FieldPanel("href"),
         FieldPanel("original_name"),
-        FieldPanel("file"),
+        FieldPanel("image"),
     ]
 
     def __str__(self):
@@ -201,6 +214,44 @@ class ManuscriptFigureFile(Orderable):
                 name="uniq_manuscript_figure_file_number",
             )
         ]
+
+
+def get_or_create_manuscript_collection(name):
+    name = Path(str(name or "")).name.strip()[:255]
+    if not name:
+        name = "untitled"
+    root = Collection.get_first_root_node()
+    existing = Collection.objects.child_of(root).filter(name=name).first()
+    if existing:
+        return existing
+    collection = root.add_child(name=name)
+    for perm in GroupCollectionPermission.objects.filter(collection=root):
+        GroupCollectionPermission.objects.create(
+            collection=collection,
+            group=perm.group,
+            permission=perm.permission,
+        )
+    return collection
+
+
+def create_figure_image(title, data, filename, collection=None):
+    source = BytesIO(data)
+    pil = PILImage.open(source)
+    pil.load()
+    if pil.mode != "RGB":
+        pil = pil.convert("RGB")
+    jpeg = BytesIO()
+    pil.save(jpeg, format="JPEG")
+    jpeg.seek(0)
+    width, height = pil.size
+    image = get_image_model()(title=title, width=width, height=height)
+    if collection is not None:
+        image.collection = collection
+    image.file.save(filename, ContentFile(jpeg.getvalue(), name=filename), save=False)
+    image.width = width
+    image.height = height
+    image.save()
+    return image
 
 
 class ManuscriptReference(Orderable):

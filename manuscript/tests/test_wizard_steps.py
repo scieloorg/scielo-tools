@@ -11,6 +11,8 @@ from django.utils.translation import gettext as _
 from django.utils.translation import override
 from lxml import etree
 from PIL import Image
+from wagtail.images import get_image_model
+from wagtail.models import Collection
 
 from body.data_utils import get_body_xml
 from front.data_utils import get_front_xml
@@ -21,6 +23,8 @@ from manuscript.models import (
     ManuscriptMarkingRunStatus,
     ManuscriptReference,
     ManuscriptStatus,
+    create_figure_image,
+    get_or_create_manuscript_collection,
 )
 from reference.data_utils import build_ref_list
 
@@ -671,10 +675,159 @@ class WizardStepLabelTests(TestCase):
             )
         )
         self.assertEqual(hrefs, ["fig-1.jpg", "fig-2.jpg", "fig-3.jpg"])
+        images = get_image_model().objects.filter(
+            pk__in=self.manuscript.figure_files.values_list("image_id", flat=True)
+        )
+        self.assertEqual(images.count(), 3)
         listed = self.client.get(url)
         self.assertContains(listed, "fig-1.jpg")
         self.assertContains(listed, "fig-2.jpg")
         self.assertContains(listed, "fig-3.jpg")
+        self.assertContains(listed, "<img")
+        for stored in self.manuscript.figure_files.select_related("image"):
+            self.assertIsNotNone(stored.image.width)
+            self.assertGreater(stored.image.width, 0)
+            self.assertIsNotNone(stored.image.height)
+            self.assertGreater(stored.image.height, 0)
+            self.assertEqual(stored.image.collection.name, "figures")
+            self.assertContains(
+                listed, reverse("wagtailimages:edit", args=[stored.image_id])
+            )
+
+    def test_create_figure_image_sets_width_and_height(self):
+        upload = jpeg_upload("fig-1.jpg", color=(255, 0, 0))
+        image = create_figure_image("1 fig-1.jpg", upload.read(), "fig-1.jpg")
+        self.assertEqual(image.width, 2)
+        self.assertEqual(image.height, 2)
+        image.refresh_from_db()
+        self.assertEqual(image.width, 2)
+        self.assertEqual(image.height, 2)
+
+    def test_create_figure_image_assigns_collection(self):
+        collection = get_or_create_manuscript_collection("pkg-collection")
+        upload = jpeg_upload("fig-1.jpg", color=(255, 0, 0))
+        image = create_figure_image(
+            "1 fig-1.jpg",
+            upload.read(),
+            "fig-1.jpg",
+            collection,
+        )
+        self.assertEqual(image.collection_id, collection.pk)
+        image.refresh_from_db()
+        self.assertEqual(image.collection_id, collection.pk)
+        self.assertEqual(image.collection.name, "pkg-collection")
+
+    def test_body_save_source_zip_uses_package_collection(self):
+        self.manuscript.status = ManuscriptStatus.BODY
+        self.manuscript.save(update_fields=["status"])
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w") as zipped:
+            jpeg = jpeg_upload("fig-1.jpg", color=(0, 0, 255))
+            zipped.writestr("fig-1.jpg", jpeg.read())
+        archive.seek(0)
+        url = reverse("manuscript_step_body", args=[self.manuscript.pk])
+        response = self.client.post(
+            url,
+            {
+                "action": "save_source",
+                "source_text": "Body paragraph mentioning Figure 1.",
+                "images_zip": SimpleUploadedFile(
+                    "1676-0611-bn-rpass-11-26-1.zip",
+                    archive.getvalue(),
+                    content_type="application/zip",
+                ),
+            },
+        )
+        self.assertRedirects(response, url)
+        stored = self.manuscript.figure_files.select_related("image").get()
+        self.assertEqual(stored.image.collection.name, "1676-0611-bn-rpass-11-26-1")
+
+    def test_body_save_source_loose_images_use_manuscript_title_collection(self):
+        self.manuscript.status = ManuscriptStatus.BODY
+        self.manuscript.save(update_fields=["status"])
+        url = reverse("manuscript_step_body", args=[self.manuscript.pk])
+        response = self.client.post(
+            url,
+            {
+                "action": "save_source",
+                "source_text": "Body paragraph mentioning Figure 1.",
+                "images": [jpeg_upload("fig-1.jpg", color=(255, 0, 0))],
+            },
+        )
+        self.assertRedirects(response, url)
+        stored = self.manuscript.figure_files.select_related("image").get()
+        self.assertEqual(stored.image.collection.name, "bn-2025-1834")
+
+    def test_body_save_source_reuses_collection_for_same_zip(self):
+        self.manuscript.status = ManuscriptStatus.BODY
+        self.manuscript.save(update_fields=["status"])
+        url = reverse("manuscript_step_body", args=[self.manuscript.pk])
+        first_archive = io.BytesIO()
+        with zipfile.ZipFile(first_archive, "w") as zipped:
+            jpeg = jpeg_upload("fig-1.jpg", color=(255, 0, 0))
+            zipped.writestr("fig-1.jpg", jpeg.read())
+        first_archive.seek(0)
+        first = self.client.post(
+            url,
+            {
+                "action": "save_source",
+                "source_text": "Body paragraph mentioning Figure 1.",
+                "images_zip": SimpleUploadedFile(
+                    "1676-0611-bn-rpass-11-26-1.zip",
+                    first_archive.getvalue(),
+                    content_type="application/zip",
+                ),
+            },
+        )
+        self.assertRedirects(first, url)
+        first_collection_id = (
+            self.manuscript.figure_files.select_related("image")
+            .get()
+            .image.collection_id
+        )
+        second_archive = io.BytesIO()
+        with zipfile.ZipFile(second_archive, "w") as zipped:
+            jpeg = jpeg_upload("fig-1.jpg", color=(0, 0, 255))
+            zipped.writestr("fig-1.jpg", jpeg.read())
+        second_archive.seek(0)
+        second = self.client.post(
+            url,
+            {
+                "action": "save_source",
+                "source_text": "Body paragraph mentioning Figure 1.",
+                "images_zip": SimpleUploadedFile(
+                    "1676-0611-bn-rpass-11-26-1.zip",
+                    second_archive.getvalue(),
+                    content_type="application/zip",
+                ),
+            },
+        )
+        self.assertRedirects(second, url)
+        stored = self.manuscript.figure_files.select_related("image").get()
+        self.assertEqual(stored.image.collection_id, first_collection_id)
+        self.assertEqual(
+            Collection.objects.filter(name="1676-0611-bn-rpass-11-26-1").count(),
+            1,
+        )
+
+    def test_body_save_source_empty_title_uses_manuscript_pk_collection(self):
+        self.manuscript.title = ""
+        self.manuscript.status = ManuscriptStatus.BODY
+        self.manuscript.save(update_fields=["title", "status"])
+        url = reverse("manuscript_step_body", args=[self.manuscript.pk])
+        response = self.client.post(
+            url,
+            {
+                "action": "save_source",
+                "source_text": "Body paragraph mentioning Figure 1.",
+                "images": [jpeg_upload("fig-1.jpg", color=(255, 0, 0))],
+            },
+        )
+        self.assertRedirects(response, url)
+        stored = self.manuscript.figure_files.select_related("image").get()
+        self.assertEqual(
+            stored.image.collection.name, f"manuscript-{self.manuscript.pk}"
+        )
 
     def test_body_save_source_replaces_figure_by_number(self):
         self.manuscript.status = ManuscriptStatus.BODY
@@ -688,6 +841,7 @@ class WizardStepLabelTests(TestCase):
                 "images": [jpeg_upload("fig-1.jpg", color=(255, 0, 0))],
             },
         )
+        first_image_id = self.manuscript.figure_files.get().image_id
         response = self.client.post(
             url,
             {
@@ -701,6 +855,8 @@ class WizardStepLabelTests(TestCase):
         stored = self.manuscript.figure_files.get()
         self.assertEqual(stored.href, "fig-1.jpg")
         self.assertEqual(stored.number, 1)
+        self.assertNotEqual(stored.image_id, first_image_id)
+        self.assertFalse(get_image_model().objects.filter(pk=first_image_id).exists())
 
     def test_body_save_source_rejects_invalid_image_filename(self):
         self.manuscript.status = ManuscriptStatus.BODY
