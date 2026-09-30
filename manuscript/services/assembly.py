@@ -262,11 +262,13 @@ def generate_packtools_pdf(xml_text, xml_name, figures):
         with open(xml_path, "w", encoding="utf-8") as fh:
             fh.write(xml_text)
         for figure in figures:
+            if not figure.href or not figure.image_id or not figure.image.file:
+                continue
             dest = os.path.join(tmp, figure.href)
             parent = os.path.dirname(dest)
             if parent:
                 os.makedirs(parent, exist_ok=True)
-            with figure.file.open("rb") as src, open(dest, "wb") as dst:
+            with figure.image.file.open("rb") as src, open(dest, "wb") as dst:
                 dst.write(src.read())
         layout = (getattr(settings, "PACKTOOLS_PDF_LAYOUT", "") or "").strip()
         if layout and os.path.isfile(layout):
@@ -342,7 +344,7 @@ def build_sps_zip(manuscript, include_pdf=False):
         manuscript.assembled_xml,
         acronym=_acronym_from_manuscript(manuscript),
     )
-    figures = list(manuscript.figure_files.all().order_by("number"))
+    figures = list(manuscript.figure_files.select_related("image").order_by("number"))
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(f"{stem}.xml", packed_xml.encode("utf-8"))
@@ -351,14 +353,18 @@ def build_sps_zip(manuscript, include_pdf=False):
             figure = _figure_for_href(figures, old_href, index)
             if figure is None or figure.pk in written:
                 continue
-            with figure.file.open("rb") as fh:
+            if not figure.image_id or not figure.image.file:
+                continue
+            with figure.image.file.open("rb") as fh:
                 archive.writestr(new_name, fh.read())
             written.add(figure.pk)
         for figure in figures:
             if figure.pk in written:
                 continue
+            if not figure.image_id or not figure.image.file:
+                continue
             name = f"{stem}-gf{figure.number:02d}{_figure_extension(figure.href)}"
-            with figure.file.open("rb") as fh:
+            with figure.image.file.open("rb") as fh:
                 archive.writestr(name, fh.read())
         if pdf_bytes is not None:
             archive.writestr(f"{stem}.pdf", pdf_bytes)

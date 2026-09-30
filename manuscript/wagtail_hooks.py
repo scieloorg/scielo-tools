@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.templatetags.static import static
@@ -19,6 +21,7 @@ from manuscript.models import (
     Manuscript,
     ManuscriptStatus,
     OriginalLanguage,
+    get_or_create_manuscript_collection,
 )
 from manuscript.services.intake import ManuscriptIntakeError, extract_all_from_docx
 from manuscript.services.workflow import current_step_url_name
@@ -40,7 +43,14 @@ class ManuscriptCreateView(CreateView):
         manuscript.status = ManuscriptStatus.DRAFT
         docx = form.cleaned_data.get("source_docx")
         if docx:
-            manuscript.source_document = form.save_wagtail_document(docx)
+            collection_name = Path(getattr(docx, "name", "") or "").stem.strip()
+            if not collection_name:
+                collection_name = (manuscript.title or "").strip()
+            if not collection_name:
+                manuscript.save()
+                collection_name = f"manuscript-{manuscript.pk}"
+            collection = get_or_create_manuscript_collection(collection_name)
+            manuscript.source_document = form.save_wagtail_document(docx, collection)
         manuscript.save()
 
         if docx:

@@ -4,6 +4,7 @@ import re
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from wagtail.documents.models import Document
+from wagtail.images import get_image_model
 
 from manuscript.models import Manuscript, ManuscriptFigureFile
 from xml_manager.models import SPSPackageValidation
@@ -39,19 +40,30 @@ def _delete_file_and_unreferenced_family(file_field):
         referenced.update(
             Document.objects.filter(file__in=family).values_list("file", flat=True)
         )
-        referenced.update(
-            ManuscriptFigureFile.objects.filter(file__in=family).values_list(
-                "file", flat=True
-            )
-        )
     for family_name in family:
         if family_name and family_name not in referenced:
             storage.delete(family_name)
 
 
+def delete_unused_manuscript_image(image_id):
+    if not image_id:
+        return
+    if ManuscriptFigureFile.objects.filter(image_id=image_id).exists():
+        return
+    Image = get_image_model()
+    image = Image.objects.filter(pk=image_id).first()
+    if image is None:
+        return
+    for rendition in list(image.renditions.all()):
+        _delete_file_and_unreferenced_family(rendition.file)
+        rendition.delete()
+    _delete_file_and_unreferenced_family(image.file)
+    image.delete()
+
+
 @receiver(post_delete, sender=ManuscriptFigureFile)
-def delete_manuscript_figure_storage(sender, instance, **kwargs):
-    _delete_file_and_unreferenced_family(instance.file)
+def delete_manuscript_figure_image(sender, instance, **kwargs):
+    delete_unused_manuscript_image(instance.image_id)
 
 
 @receiver(post_delete, sender=Document)

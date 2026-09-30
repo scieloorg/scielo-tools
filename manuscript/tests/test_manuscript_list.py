@@ -3,6 +3,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from wagtail.documents.models import Document
+from wagtail.models import Collection
 
 from front.tests.test_docx import make_docx_bytes
 from manuscript.models import Manuscript, ManuscriptStatus
@@ -114,3 +115,90 @@ class ManuscriptCreateIntakeTests(TestCase):
         self.assertEqual(manuscript.front_counts.get("ref_count"), "2")
         self.assertIn("Received: 05/08/2025", manuscript.front_source_text)
         self.assertIn("Accepted: 27/03/2026", manuscript.front_source_text)
+
+    def test_create_from_docx_uses_filename_collection(self):
+        upload = SimpleUploadedFile(
+            "bn-2025-1834.docx",
+            make_docx_bytes(
+                [
+                    "Título de teste",
+                    "Ana Silva",
+                    "Introduction",
+                    "Corpo do artigo",
+                    "References",
+                    "Smith J. A paper. 2020.",
+                ]
+            ),
+            content_type=(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            ),
+        )
+        response = self.client.post(
+            reverse("wagtailsnippets_manuscript_manuscript:add"),
+            {
+                "title": "From package docx",
+                "article_type": "research-article",
+                "language": "en",
+                "specific_use": "sps-1.10",
+                "source_docx": upload,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        manuscript = Manuscript.objects.get(title="From package docx")
+        self.assertEqual(manuscript.source_document.collection.name, "bn-2025-1834")
+
+    def test_create_from_docx_reuses_collection_for_same_filename(self):
+        payload = make_docx_bytes(
+            [
+                "Título de teste",
+                "Ana Silva",
+                "Introduction",
+                "Corpo do artigo",
+                "References",
+                "Smith J. A paper. 2020.",
+            ]
+        )
+        content_type = (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        first = self.client.post(
+            reverse("wagtailsnippets_manuscript_manuscript:add"),
+            {
+                "title": "First package docx",
+                "article_type": "research-article",
+                "language": "en",
+                "specific_use": "sps-1.10",
+                "source_docx": SimpleUploadedFile(
+                    "bn-2025-1834.docx",
+                    payload,
+                    content_type=content_type,
+                ),
+            },
+        )
+        self.assertEqual(first.status_code, 302)
+        first_collection_id = Manuscript.objects.get(
+            title="First package docx"
+        ).source_document.collection_id
+        second = self.client.post(
+            reverse("wagtailsnippets_manuscript_manuscript:add"),
+            {
+                "title": "Second package docx",
+                "article_type": "research-article",
+                "language": "en",
+                "specific_use": "sps-1.10",
+                "source_docx": SimpleUploadedFile(
+                    "bn-2025-1834.docx",
+                    payload,
+                    content_type=content_type,
+                ),
+            },
+        )
+        self.assertEqual(second.status_code, 302)
+        second_manuscript = Manuscript.objects.get(title="Second package docx")
+        self.assertEqual(
+            second_manuscript.source_document.collection_id, first_collection_id
+        )
+        self.assertEqual(
+            Collection.objects.filter(name="bn-2025-1834").count(),
+            1,
+        )

@@ -89,9 +89,9 @@ def _jats_table_section_html(section, wrapper, header):
 
 def figure_urls_for_manuscript(manuscript):
     urls = {}
-    for item in manuscript.figure_files.all():
-        if item.href and item.file:
-            urls[item.href] = item.file.url
+    for item in manuscript.figure_files.select_related("image"):
+        if item.href and item.image_id and item.image.file:
+            urls[item.href] = item.image.file.url
     return urls
 
 

@@ -9,6 +9,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from wagtail.documents.models import Document
+from wagtail.images import get_image_model
 
 from manuscript.models import (
     Manuscript,
@@ -16,6 +17,7 @@ from manuscript.models import (
     ManuscriptPublication,
     ManuscriptReference,
 )
+from manuscript.tests.helpers import attach_manuscript_figure
 from xml_manager.models import SPSPackageValidation, SPSPackageValidationStatus
 
 
@@ -60,14 +62,12 @@ class ManuscriptDeleteCleanupTests(TestCase):
             validation=validation,
             creator=self.user,
         )
-        figure = ManuscriptFigureFile(
-            manuscript=manuscript,
+        figure = attach_manuscript_figure(
+            manuscript,
             number=1,
             href="fig-1.jpg",
             original_name="fig-1.jpg",
-            sort_order=1,
         )
-        figure.file.save("fig-1.jpg", ContentFile(b"jpeg-bytes"), save=True)
         ManuscriptReference.objects.create(
             manuscript=manuscript,
             mixed_citation="Author A. Article.",
@@ -86,7 +86,8 @@ class ManuscriptDeleteCleanupTests(TestCase):
             "exc_doc": exc_doc,
             "validation": validation,
             "figure": figure,
-            "figure_path": figure.file.path,
+            "image": figure.image,
+            "figure_path": figure.image.file.path,
             "source_path": source.file.path,
             "package_path": package.file.path,
             "csv_path": csv_doc.file.path,
@@ -98,6 +99,9 @@ class ManuscriptDeleteCleanupTests(TestCase):
         self.assertFalse(Manuscript.objects.filter(pk=manuscript.pk).exists())
         self.assertFalse(
             ManuscriptFigureFile.objects.filter(manuscript_id=manuscript.pk).exists()
+        )
+        self.assertFalse(
+            get_image_model().objects.filter(pk=payload["image"].pk).exists()
         )
         self.assertFalse(
             ManuscriptReference.objects.filter(manuscript_id=manuscript.pk).exists()
@@ -226,24 +230,18 @@ class ManuscriptDeleteCleanupTests(TestCase):
         self.assertFalse(Document.objects.filter(pk=second.pk).exists())
         self.assertFalse(os.path.exists(second_path))
 
-    def test_delete_removes_replaced_figure_files_on_disk(self):
+    def test_delete_removes_figure_image_and_file(self):
         manuscript = Manuscript.objects.create(title="Figs", creator=self.user)
-        figure = ManuscriptFigureFile(
-            manuscript=manuscript,
+        figure = attach_manuscript_figure(
+            manuscript,
             number=1,
             href="fig-1.jpg",
             original_name="fig-1.jpg",
-            sort_order=1,
         )
-        figure.file.save("fig-1.jpg", ContentFile(b"jpeg-v2"), save=True)
-        leftover_name = posixpath.join(
-            posixpath.dirname(figure.file.name), "fig-1_abc1234.jpg"
-        )
-        leftover_path = figure.file.storage.path(leftover_name)
-        figure.file.storage.save(leftover_name, ContentFile(b"jpeg-v1"))
-        figure_path = figure.file.path
+        image = figure.image
+        figure_path = image.file.path
 
         manuscript.delete()
 
+        self.assertFalse(get_image_model().objects.filter(pk=image.pk).exists())
         self.assertFalse(os.path.exists(figure_path))
-        self.assertFalse(os.path.exists(leftover_path))
