@@ -59,8 +59,8 @@ class WizardStepLabelTests(TestCase):
         self.assertIn(">Front<", content)
         self.assertIn(">Body<", content)
         self.assertIn(">Back<", content)
-        self.assertIn(">Validar</a>", content)
-        self.assertIn(">Pacote</a>", content)
+        self.assertIn(">Validar<", content)
+        self.assertIn(">Pacote<", content)
         self.assertEqual(content.count('class="manuscript-wizard__step-arrow"'), 4)
         self.assertNotIn(">Corpo</a>", content)
         self.assertNotIn(">Verso</a>", content)
@@ -110,7 +110,12 @@ class WizardStepLabelTests(TestCase):
     @patch("front.tasks.resolve_front_result")
     def test_mark_uses_persisted_front_counts(self, mock_resolve):
         def fake_resolve(
-            text, user=None, output_type="json", language=None, counts=None
+            text,
+            user=None,
+            output_type="json",
+            language=None,
+            counts=None,
+            on_progress=None,
         ):
             data = {
                 "titles": [{"kind": "main", "text": "Hello", "language": "en"}],
@@ -215,8 +220,8 @@ class WizardStepLabelTests(TestCase):
         self.assertRegex(content, r'is-complete[^>]*data-marking-part="body"')
         self.assertRegex(content, r'active[^>]*data-marking-part="back"')
         self.assertNotRegex(content, r'is-complete[^>]*data-marking-part="back"')
-        self.assertNotIn('is-complete">Validar</a>', content)
-        self.assertNotIn('is-complete">Pacote</a>', content)
+        self.assertNotRegex(content, r'is-complete[^>]*data-marking-part="validate"')
+        self.assertNotRegex(content, r'is-complete[^>]*data-marking-part="package"')
 
     def test_ready_status_marks_validate_complete(self):
         self.manuscript.status = ManuscriptStatus.READY
@@ -228,9 +233,9 @@ class WizardStepLabelTests(TestCase):
         self.assertRegex(content, r'is-complete[^>]*data-marking-part="front"')
         self.assertRegex(content, r'is-complete[^>]*data-marking-part="body"')
         self.assertRegex(content, r'is-complete[^>]*data-marking-part="back"')
-        self.assertIn('is-complete">Validar</a>', content)
-        self.assertIn('active">Pacote</a>', content)
-        self.assertNotIn('is-complete">Pacote</a>', content)
+        self.assertRegex(content, r'is-complete[^>]*data-marking-part="validate"')
+        self.assertRegex(content, r'active[^>]*data-marking-part="package"')
+        self.assertNotRegex(content, r'is-complete[^>]*data-marking-part="package"')
 
     def test_published_status_marks_package_complete(self):
         self.manuscript.status = ManuscriptStatus.PUBLISHED
@@ -239,7 +244,7 @@ class WizardStepLabelTests(TestCase):
             reverse("manuscript_step_package", args=[self.manuscript.pk])
         )
         content = response.content.decode()
-        self.assertIn('active is-complete">Pacote</a>', content)
+        self.assertRegex(content, r'active is-complete[^>]*data-marking-part="package"')
 
     def test_idle_steps_have_no_complete_or_error(self):
         response = self.client.get(
@@ -249,8 +254,8 @@ class WizardStepLabelTests(TestCase):
         self.assertNotRegex(content, r'is-complete[^>]*data-marking-part="front"')
         self.assertNotRegex(content, r'is-error[^>]*data-marking-part="front"')
         self.assertNotRegex(content, r'is-running[^>]*data-marking-part="front"')
-        self.assertNotIn('is-complete">Validar</a>', content)
-        self.assertNotIn("is-error", content.split(">Validar</a>", 1)[0][-80:])
+        self.assertNotRegex(content, r'is-complete[^>]*data-marking-part="validate"')
+        self.assertNotRegex(content, r'is-error[^>]*data-marking-part="validate"')
 
     def test_done_marking_marks_part_complete(self):
         ManuscriptMarkingRun.objects.create(
@@ -1047,7 +1052,7 @@ class ValidateStepUiTests(TestCase):
         self.assertIn("Invalid reference", content)
         self.assertNotIn('name="action" value="open_step"', content)
         self.assertNotContains(response, "Go to step")
-        self.assertIn("is-error", content.split(">Validar</a>", 1)[0][-80:])
+        self.assertRegex(content, r'is-error[^>]*data-marking-part="validate"')
 
     def test_validation_without_errors_marks_validate_complete(self):
         from wagtail.documents.models import Document
@@ -1089,17 +1094,16 @@ class ValidateStepUiTests(TestCase):
             reverse("manuscript_step_validate", args=[self.manuscript.pk])
         )
         content = response.content.decode()
-        self.assertIn('is-complete">Validar</a>', content)
-        self.assertNotIn("is-error", content.split(">Validar</a>", 1)[0][-80:])
+        self.assertRegex(content, r'is-complete[^>]*data-marking-part="validate"')
+        self.assertNotRegex(content, r'is-error[^>]*data-marking-part="validate"')
 
     def test_idle_validate_has_no_complete_or_error(self):
         response = self.client.get(
             reverse("manuscript_step_validate", args=[self.manuscript.pk])
         )
         content = response.content.decode()
-        validate_link = content.split(">Validar</a>", 1)[0][-120:]
-        self.assertNotIn("is-complete", validate_link)
-        self.assertNotIn("is-error", validate_link)
+        self.assertNotRegex(content, r'is-complete[^>]*data-marking-part="validate"')
+        self.assertNotRegex(content, r'is-error[^>]*data-marking-part="validate"')
 
     def test_missing_validation_csv_shows_rerun_message(self):
         from wagtail.documents.models import Document

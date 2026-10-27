@@ -93,6 +93,24 @@ def delete_manuscript_related(sender, instance, **kwargs):
         if package:
             documents.append(package)
     if (
+        instance.generated_pdf_id
+        and not Manuscript.objects.filter(
+            generated_pdf_id=instance.generated_pdf_id
+        ).exists()
+    ):
+        pdf_doc = Document.objects.filter(pk=instance.generated_pdf_id).first()
+        if pdf_doc:
+            documents.append(pdf_doc)
+    if (
+        instance.generated_html_id
+        and not Manuscript.objects.filter(
+            generated_html_id=instance.generated_html_id
+        ).exists()
+    ):
+        html_doc = Document.objects.filter(pk=instance.generated_html_id).first()
+        if html_doc:
+            documents.append(html_doc)
+    if (
         instance.validation_id
         and not Manuscript.objects.filter(validation_id=instance.validation_id).exists()
     ):

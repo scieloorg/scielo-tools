@@ -95,13 +95,20 @@
     color: var(--scielo-black, #000);
 }
 
-.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn {
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn,
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn:hover {
     position: relative;
     overflow: hidden;
+    background: var(--scielo-white, #fff);
+    border-color: var(--scielo-black, #000);
+    color: var(--scielo-black, #000);
+    transition: none;
 }
 
 .scielo-ds .manuscript-wizard__steps .nav-link.is-complete,
-.scielo-ds .manuscript-wizard__steps .nav-link.is-complete:hover {
+.scielo-ds .manuscript-wizard__steps .nav-link.is-complete:hover,
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-complete,
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-complete:hover {
     background: var(--scielo-positive, #2c9d45);
     border-color: var(--scielo-positive, #2c9d45);
     color: var(--scielo-white, #fff);
@@ -110,16 +117,24 @@
 .scielo-ds .manuscript-wizard__steps .nav-link.active,
 .scielo-ds .manuscript-wizard__steps .nav-link.active:hover,
 .scielo-ds .manuscript-wizard__steps .nav-link.is-complete.active,
-.scielo-ds .manuscript-wizard__steps .nav-link.is-complete.active:hover {
+.scielo-ds .manuscript-wizard__steps .nav-link.is-complete.active:hover,
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.active,
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.active:hover,
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-complete.active,
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-complete.active:hover {
     background: var(--scielo-text-subtle, #6c6b6b);
     border-color: var(--scielo-text-subtle, #6c6b6b);
     color: var(--scielo-white, #fff);
 }
 
 .scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-running,
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-running:hover,
 .scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-running.active,
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-running.active:hover,
 .scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-complete.is-running,
-.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-complete.is-running.active {
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-complete.is-running:hover,
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-complete.is-running.active,
+.scielo-ds .nav-pills .nav-link.manuscript-wizard__step-btn.is-complete.is-running.active:hover {
     background: var(--scielo-white, #fff);
     border-color: var(--scielo-black, #000);
     color: var(--scielo-black, #000);
@@ -170,8 +185,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 0.35rem;
     color: var(--scielo-white, #fff);
     pointer-events: none;
+    transition: clip-path 0.25s ease;
 }
 
 .manuscript-wizard__step-percent {

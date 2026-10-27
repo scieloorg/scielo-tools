@@ -121,6 +121,22 @@ class Manuscript(ClusterableModel):
         related_name="manuscript_sps_packages",
         verbose_name=_("SPS package"),
     )
+    generated_pdf = models.ForeignKey(
+        "wagtaildocs.Document",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="manuscript_generated_pdfs",
+        verbose_name=_("Generated PDF"),
+    )
+    generated_html = models.ForeignKey(
+        "wagtaildocs.Document",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="manuscript_generated_htmls",
+        verbose_name=_("Generated HTML"),
+    )
     validation = models.ForeignKey(
         "xml_manager.SPSPackageValidation",
         on_delete=models.SET_NULL,
@@ -285,6 +301,10 @@ class ManuscriptMarkingPart(models.TextChoices):
     FRONT = "front", _("Front")
     BODY = "body", _("Body")
     BACK = "back", _("Back")
+    VALIDATE = "validate", _("Validate")
+    PDF = "pdf", _("PDF")
+    HTML = "html", _("HTML")
+    PACKAGE = "package", _("Package")
 
 
 class ManuscriptMarkingRunStatus(models.TextChoices):

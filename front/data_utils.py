@@ -1496,23 +1496,20 @@ def get_front_xml(data):
         if not _blank(corresp):
             _text_el(notes, "corresp", corresp, attrib={"id": "c01"})
         for fn_item in author_notes.get("fns") or []:
-            if isinstance(fn_item, dict):
-                fn_type = str(fn_item.get("fn_type") or "").strip()
-                label = fn_item.get("label")
-                text = fn_item.get("text")
-                fn_id = fn_item.get("id")
-                attrib = {}
-                if fn_type:
-                    attrib["fn-type"] = fn_type
-                if not _blank(fn_id):
-                    attrib["id"] = str(fn_id).strip()
-                if not attrib and _blank(label) and _blank(text):
-                    continue
-                fn = etree.SubElement(notes, "fn", attrib=attrib)
-                _text_el(fn, "label", label)
-                _text_el(fn, "p", text)
-            elif not _blank(fn_item):
-                _text_el(notes, "fn", fn_item)
+            if not isinstance(fn_item, dict):
+                continue
+            fn_type = str(fn_item.get("fn_type") or "").strip()
+            if not fn_type:
+                continue
+            label = fn_item.get("label")
+            text = fn_item.get("text")
+            fn_id = fn_item.get("id")
+            attrib = {"fn-type": fn_type}
+            if not _blank(fn_id):
+                attrib["id"] = str(fn_id).strip()
+            fn = etree.SubElement(notes, "fn", attrib=attrib)
+            _text_el(fn, "label", label)
+            _text_el(fn, "p", text)
         if list(notes):
             article_meta.append(notes)
 
@@ -1702,14 +1699,23 @@ def get_front_xml(data):
 
 
 def resolve_front_result(
-    front_text, user=None, output_type="json", language=None, counts=None
+    front_text,
+    user=None,
+    output_type="json",
+    language=None,
+    counts=None,
+    on_progress=None,
 ):
+    if on_progress is not None:
+        on_progress(15)
     normalized = normalize_front_text(front_text)
     checksum = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
 
     try:
         record = Front.objects.get(checksum=checksum)
     except Front.DoesNotExist:
+        if on_progress is not None:
+            on_progress(40)
         marked = None
         raw = ""
         for attempt in range(3):
@@ -1727,8 +1733,12 @@ def resolve_front_result(
             raise FrontLlamaUnavailableError(
                 "Front Llama returned invalid JSON"
             ) from None
+        if on_progress is not None:
+            on_progress(75)
         marked = apply_language_fallback(marked, language)
         marked = apply_text_fields(marked, front_text)
+        if on_progress is not None:
+            on_progress(90)
         xml = get_front_xml(marked)
         try:
             record, created = Front.objects.get_or_create(
@@ -1754,6 +1764,8 @@ def resolve_front_result(
         marked = dict(marked or {})
         marked["counts"] = counts
         xml = get_front_xml(marked)
+    if on_progress is not None:
+        on_progress(95)
     if output_type == "xml":
         data = xml
     else:

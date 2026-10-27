@@ -15,7 +15,10 @@ TASK_TIME_LIMIT = 31 * 60
 def mark_front_text(
     self, text, language=None, counts=None, user_id=None, output_type="json"
 ):
-    self.update_state(state="PROGRESS", meta={"percent": 10})
+    def on_progress(percent):
+        self.update_state(state="PROGRESS", meta={"percent": int(percent)})
+
+    on_progress(10)
     user = None
     if user_id is not None:
         user = get_user_model().objects.filter(pk=user_id).first()
@@ -25,4 +28,5 @@ def mark_front_text(
         output_type=output_type,
         language=language,
         counts=counts,
+        on_progress=on_progress,
     )

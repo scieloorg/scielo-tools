@@ -95,11 +95,13 @@ def _acronym_from_manuscript(manuscript):
     return journal_acronym_from_text(manuscript.front_source_text)
 
 
-def sps_package_stem(xml_text, acronym=""):
+def sps_package_stem(xml_text, acronym="", fallback_stem=""):
     stripped = xml_text or ""
     try:
         root = etree.fromstring(stripped.encode("utf-8"))
     except etree.XMLSyntaxError as exc:
+        if fallback_stem:
+            return fallback_stem
         raise AssemblyError(_("Assembled XML is invalid")) from exc
     issn = (
         _xml_text(root, './/issn[@pub-type="epub"]')
@@ -121,6 +123,8 @@ def sps_package_stem(xml_text, acronym=""):
     if not acronym:
         missing.append("acronym")
     if missing:
+        if fallback_stem:
+            return fallback_stem
         raise AssemblyError(
             _("SPS package name is missing %(fields)s") % {"fields": ", ".join(missing)}
         )
@@ -136,11 +140,15 @@ def sps_package_stem(xml_text, acronym=""):
             parts.append(_pad_numeric(issue))
         page = fpage or elocation
         if not page:
+            if fallback_stem:
+                return fallback_stem
             raise AssemblyError(_("SPS package name is missing pagination"))
         parts.append(page)
     else:
         doi = _doi_suffix(_xml_text(root, './/article-id[@pub-id-type="doi"]'))
         if not doi:
+            if fallback_stem:
+                return fallback_stem
             raise AssemblyError(_("SPS package name is missing DOI"))
         parts.append(doi)
     return "-".join(parts)
@@ -160,8 +168,8 @@ def _figure_extension(href):
     return ext
 
 
-def package_xml_with_sps_names(xml_text, acronym=""):
-    stem = sps_package_stem(xml_text, acronym=acronym)
+def package_xml_with_sps_names(xml_text, acronym="", fallback_stem=""):
+    stem = sps_package_stem(xml_text, acronym=acronym, fallback_stem=fallback_stem)
     root = etree.fromstring(xml_text.encode("utf-8"))
     href_map = {}
     graphics = root.xpath(".//*[local-name()='fig']/*[local-name()='graphic']")
@@ -223,18 +231,23 @@ _PACKTOOLS_PDF_CHARACTER_STYLES = (
 )
 
 
-def assemble_manuscript_xml(manuscript):
-    if not (manuscript.front_marked_xml or "").strip():
+def assemble_manuscript_xml(manuscript, allow_partial=False):
+    front_xml = (manuscript.front_marked_xml or "").strip()
+    body_xml = (manuscript.body_marked_xml or "").strip()
+    back_xml = (build_manuscript_ref_list_xml(manuscript) or "").strip()
+    if not allow_partial:
+        if not front_xml:
+            raise AssemblyError(_("Front XML is missing"))
+        if not body_xml:
+            raise AssemblyError(_("Body XML is missing"))
+        if not back_xml:
+            raise AssemblyError(_("Reference list XML is missing"))
+    elif not (front_xml or body_xml or back_xml):
         raise AssemblyError(_("Front XML is missing"))
-    if not (manuscript.body_marked_xml or "").strip():
-        raise AssemblyError(_("Body XML is missing"))
-    back_xml = build_manuscript_ref_list_xml(manuscript)
-    if not back_xml.strip():
-        raise AssemblyError(_("Reference list XML is missing"))
     xml = generate_xml_sps(
-        manuscript.front_marked_xml,
-        manuscript.body_marked_xml,
-        back_xml,
+        front_xml or "<front/>",
+        body_xml or "<body/>",
+        back_xml or "<back/>",
         article_type=manuscript.article_type,
         language=manuscript.language or None,
         specific_use=manuscript.specific_use,
@@ -244,15 +257,20 @@ def assemble_manuscript_xml(manuscript):
     return xml
 
 
-def refresh_assembled_xml(manuscript):
-    if not (manuscript.front_marked_xml or "").strip():
+def refresh_assembled_xml(manuscript, allow_partial=False):
+    if not allow_partial:
+        if not (manuscript.front_marked_xml or "").strip():
+            return None
+        if not (manuscript.body_marked_xml or "").strip():
+            return None
+        back_xml = build_manuscript_ref_list_xml(manuscript)
+        if not back_xml.strip():
+            return None
+        return assemble_manuscript_xml(manuscript)
+    try:
+        return assemble_manuscript_xml(manuscript, allow_partial=True)
+    except AssemblyError, ValueError:
         return None
-    if not (manuscript.body_marked_xml or "").strip():
-        return None
-    back_xml = build_manuscript_ref_list_xml(manuscript)
-    if not back_xml.strip():
-        return None
-    return assemble_manuscript_xml(manuscript)
 
 
 def generate_packtools_pdf(xml_text, xml_name, figures):
@@ -330,9 +348,30 @@ def generate_packtools_pdf(xml_text, xml_name, figures):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def build_sps_zip(manuscript, include_pdf=False):
+def _save_or_replace_manuscript_document(
+    manuscript, attr_name, filename, content_bytes
+):
+    doc = getattr(manuscript, attr_name, None)
+    if getattr(manuscript, f"{attr_name}_id", None) and doc is not None:
+        if doc.file:
+            doc.file.delete(save=False)
+        doc.file.save(filename, ContentFile(content_bytes), save=True)
+        doc.title = filename
+        doc.save()
+        return doc
+    doc = Document(title=filename)
+    doc.file.save(filename, ContentFile(content_bytes), save=True)
+    setattr(manuscript, attr_name, doc)
+    manuscript.save(update_fields=[attr_name, "updated"])
+    return doc
+
+
+def build_sps_zip(manuscript, include_pdf=False, allow_fallback_stem=False):
     if not (manuscript.assembled_xml or "").strip():
-        assemble_manuscript_xml(manuscript)
+        assemble_manuscript_xml(manuscript, allow_partial=allow_fallback_stem)
+    fallback_stem = (
+        f"manuscript-{manuscript.pk or 'draft'}" if allow_fallback_stem else ""
+    )
     pdf_bytes = None
     if include_pdf:
         pdf_bytes = generate_packtools_pdf(
@@ -340,10 +379,25 @@ def build_sps_zip(manuscript, include_pdf=False):
             "article.xml",
             list(manuscript.figure_files.all()),
         )
+    elif (
+        manuscript.generated_pdf_id
+        and manuscript.generated_pdf
+        and manuscript.generated_pdf.file
+    ):
+        try:
+            with manuscript.generated_pdf.file.open("rb") as pdf_fh:
+                pdf_bytes = pdf_fh.read()
+        except OSError:
+            pdf_bytes = None
     stem, packed_xml, href_map = package_xml_with_sps_names(
         manuscript.assembled_xml,
         acronym=_acronym_from_manuscript(manuscript),
+        fallback_stem=fallback_stem,
     )
+    if include_pdf and pdf_bytes is not None:
+        _save_or_replace_manuscript_document(
+            manuscript, "generated_pdf", f"{stem}.pdf", pdf_bytes
+        )
     figures = list(manuscript.figure_files.select_related("image").order_by("number"))
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
@@ -370,19 +424,74 @@ def build_sps_zip(manuscript, include_pdf=False):
             archive.writestr(f"{stem}.pdf", pdf_bytes)
     buffer.seek(0)
     zip_name = f"{stem}.zip"
-    if manuscript.sps_package_id:
-        if manuscript.sps_package.file:
-            manuscript.sps_package.file.delete(save=False)
-        manuscript.sps_package.file.save(
-            zip_name, ContentFile(buffer.read()), save=True
+    return _save_or_replace_manuscript_document(
+        manuscript, "sps_package", zip_name, buffer.read()
+    )
+
+
+def generate_manuscript_pdf_document(manuscript):
+    if not (manuscript.assembled_xml or "").strip():
+        assemble_manuscript_xml(manuscript, allow_partial=True)
+    fallback_stem = f"manuscript-{manuscript.pk or 'draft'}"
+    stem = sps_package_stem(
+        manuscript.assembled_xml,
+        acronym=_acronym_from_manuscript(manuscript),
+        fallback_stem=fallback_stem,
+    )
+    pdf_bytes = generate_packtools_pdf(
+        manuscript.assembled_xml,
+        "article.xml",
+        list(manuscript.figure_files.all()),
+    )
+    doc = _save_or_replace_manuscript_document(
+        manuscript, "generated_pdf", f"{stem}.pdf", pdf_bytes
+    )
+    build_sps_zip(manuscript, include_pdf=False, allow_fallback_stem=True)
+    return doc
+
+
+def generate_manuscript_html_document(manuscript):
+    from django.template.loader import render_to_string
+
+    from manuscript.preview import (
+        ManuscriptPreviewError,
+        apply_figure_urls,
+        figure_urls_for_manuscript,
+        preview_article_xml,
+        render_article_preview,
+        render_article_preview_packtools,
+    )
+
+    if not (manuscript.assembled_xml or "").strip():
+        assemble_manuscript_xml(manuscript, allow_partial=True)
+    fallback_stem = f"manuscript-{manuscript.pk or 'draft'}"
+    stem = sps_package_stem(
+        manuscript.assembled_xml,
+        acronym=_acronym_from_manuscript(manuscript),
+        fallback_stem=fallback_stem,
+    )
+    figure_urls = figure_urls_for_manuscript(manuscript)
+    article_xml = preview_article_xml(manuscript, "article")
+    try:
+        raw_html = render_article_preview_packtools(
+            article_xml,
+            language=manuscript.language,
         )
-        manuscript.sps_package.title = zip_name
-        manuscript.sps_package.save()
-        document = manuscript.sps_package
-    else:
-        document = Document(title=zip_name)
-        buffer.seek(0)
-        document.file.save(zip_name, ContentFile(buffer.read()), save=True)
-        manuscript.sps_package = document
-        manuscript.save(update_fields=["sps_package", "updated"])
-    return document
+        preview_html = apply_figure_urls(
+            raw_html,
+            figure_urls,
+            xml_text=article_xml,
+        )
+    except ManuscriptPreviewError:
+        preview_html = render_article_preview(article_xml, figure_urls=figure_urls)
+    rendered = render_to_string(
+        "manuscript/article_preview_frame.html",
+        {
+            "manuscript": manuscript,
+            "preview_html": preview_html,
+            "part": "article",
+        },
+    )
+    return _save_or_replace_manuscript_document(
+        manuscript, "generated_html", f"{stem}.html", rendered.encode("utf-8")
+    )

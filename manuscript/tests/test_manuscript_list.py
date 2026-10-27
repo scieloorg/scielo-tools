@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -6,7 +8,13 @@ from wagtail.documents.models import Document
 from wagtail.models import Collection
 
 from front.tests.test_docx import make_docx_bytes
-from manuscript.models import Manuscript, ManuscriptStatus
+from manuscript.models import (
+    Manuscript,
+    ManuscriptMarkingPart,
+    ManuscriptMarkingRun,
+    ManuscriptMarkingRunStatus,
+    ManuscriptStatus,
+)
 
 
 class ManuscriptListDisplayTests(TestCase):
@@ -75,7 +83,15 @@ class ManuscriptCreateIntakeTests(TestCase):
         )
         self.client.force_login(user)
 
-    def test_create_from_docx_persists_front_counts(self):
+    @patch("body.tasks.mark_body_text.apply_async")
+    @patch("front.tasks.mark_front_text.apply_async")
+    @patch("reference.tasks.mark_reference_texts_task.apply_async")
+    def test_create_from_docx_persists_front_counts_and_enqueues_back_first(
+        self, mock_back, mock_front, mock_body
+    ):
+        back_result = MagicMock()
+        back_result.id = "task-back-1"
+        mock_back.return_value = back_result
         upload = SimpleUploadedFile(
             "article.docx",
             make_docx_bytes(
@@ -110,13 +126,46 @@ class ManuscriptCreateIntakeTests(TestCase):
         )
         self.assertEqual(response.status_code, 302)
         manuscript = Manuscript.objects.get(title="From docx")
+        self.assertRedirects(
+            response,
+            reverse("manuscript_step_front", args=[manuscript.pk]),
+            fetch_redirect_response=False,
+        )
         self.assertEqual(manuscript.front_counts.get("fig_count"), "2")
         self.assertEqual(manuscript.front_counts.get("table_count"), "1")
         self.assertEqual(manuscript.front_counts.get("ref_count"), "2")
         self.assertIn("Received: 05/08/2025", manuscript.front_source_text)
         self.assertIn("Accepted: 27/03/2026", manuscript.front_source_text)
+        mock_back.assert_called_once()
+        mock_front.assert_not_called()
+        mock_body.assert_not_called()
+        runs = {
+            run.part: run
+            for run in ManuscriptMarkingRun.objects.filter(manuscript=manuscript)
+        }
+        self.assertEqual(
+            runs[ManuscriptMarkingPart.BACK].status,
+            ManuscriptMarkingRunStatus.PENDING,
+        )
+        self.assertEqual(runs[ManuscriptMarkingPart.BACK].task_id, "task-back-1")
+        self.assertEqual(
+            runs[ManuscriptMarkingPart.FRONT].status,
+            ManuscriptMarkingRunStatus.PENDING,
+        )
+        self.assertEqual(runs[ManuscriptMarkingPart.FRONT].task_id, "")
+        self.assertEqual(
+            runs[ManuscriptMarkingPart.BODY].status,
+            ManuscriptMarkingRunStatus.PENDING,
+        )
+        self.assertEqual(runs[ManuscriptMarkingPart.BODY].task_id, "")
 
-    def test_create_from_docx_uses_filename_collection(self):
+    @patch("body.tasks.mark_body_text.apply_async")
+    @patch("front.tasks.mark_front_text.apply_async")
+    @patch("reference.tasks.mark_reference_texts_task.apply_async")
+    def test_create_from_docx_uses_filename_collection(
+        self, mock_back, mock_front, mock_body
+    ):
+        mock_back.return_value = MagicMock(id="task-back")
         upload = SimpleUploadedFile(
             "bn-2025-1834.docx",
             make_docx_bytes(
@@ -147,7 +196,13 @@ class ManuscriptCreateIntakeTests(TestCase):
         manuscript = Manuscript.objects.get(title="From package docx")
         self.assertEqual(manuscript.source_document.collection.name, "bn-2025-1834")
 
-    def test_create_from_docx_reuses_collection_for_same_filename(self):
+    @patch("body.tasks.mark_body_text.apply_async")
+    @patch("front.tasks.mark_front_text.apply_async")
+    @patch("reference.tasks.mark_reference_texts_task.apply_async")
+    def test_create_from_docx_reuses_collection_for_same_filename(
+        self, mock_back, mock_front, mock_body
+    ):
+        mock_back.return_value = MagicMock(id="task-back")
         payload = make_docx_bytes(
             [
                 "Título de teste",
