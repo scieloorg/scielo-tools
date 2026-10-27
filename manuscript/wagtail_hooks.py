@@ -24,6 +24,7 @@ from manuscript.models import (
     get_or_create_manuscript_collection,
 )
 from manuscript.services.intake import ManuscriptIntakeError, extract_all_from_docx
+from manuscript.services.marking_jobs import enqueue_manuscript_marking
 from manuscript.services.workflow import current_step_url_name
 
 
@@ -67,6 +68,7 @@ class ManuscriptCreateView(CreateView):
                 manuscript.front_counts = extracted.get("counts") or {}
                 manuscript.status = ManuscriptStatus.FRONT
                 manuscript.save()
+                enqueue_manuscript_marking(manuscript, user=self.request.user)
                 for warning in extracted.get("errors") or []:
                     messages.warning(self.request, warning)
             except ManuscriptIntakeError as exc:

@@ -1,8 +1,10 @@
 from celery.result import AsyncResult
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from manuscript.models import (
+    Manuscript,
     ManuscriptMarkingPart,
     ManuscriptMarkingRun,
     ManuscriptMarkingRunStatus,
@@ -19,12 +21,28 @@ MARKING_PARTS = (
     ManuscriptMarkingPart.BODY,
     ManuscriptMarkingPart.BACK,
 )
+QUEUE_ORDER = (
+    ManuscriptMarkingPart.BACK,
+    ManuscriptMarkingPart.FRONT,
+    ManuscriptMarkingPart.BODY,
+)
 
 
 def part_is_active(manuscript, part):
     return manuscript.marking_runs.filter(
         part=part, status__in=ACTIVE_STATUSES
     ).exists()
+
+
+def _part_is_dispatched(manuscript, part):
+    return (
+        manuscript.marking_runs.filter(
+            part=part,
+            status__in=ACTIVE_STATUSES,
+        )
+        .exclude(task_id="")
+        .exists()
+    )
 
 
 def prepare_run(manuscript, part):
@@ -65,11 +83,12 @@ def fail_run(manuscript_id, part, error):
     )
 
 
-def enqueue_front(manuscript, user=None, counts=None):
+def enqueue_front(manuscript, user=None, counts=None, allow_queued=False):
     text = (manuscript.front_source_text or "").strip()
     if not text:
         raise MarkingError(_("Front source text is empty"))
-    if part_is_active(manuscript, ManuscriptMarkingPart.FRONT):
+    check_fn = _part_is_dispatched if allow_queued else part_is_active
+    if check_fn(manuscript, ManuscriptMarkingPart.FRONT):
         raise MarkingError(_("Front marking is already running"))
     from front.tasks import mark_front_text
     from manuscript.tasks import fail_marking_run, persist_front_result
@@ -98,11 +117,12 @@ def enqueue_front(manuscript, user=None, counts=None):
     return run
 
 
-def enqueue_body(manuscript, user=None):
+def enqueue_body(manuscript, user=None, allow_queued=False):
     text = (manuscript.body_source_text or "").strip()
     if not text:
         raise MarkingError(_("Body source text is empty"))
-    if part_is_active(manuscript, ManuscriptMarkingPart.BODY):
+    check_fn = _part_is_dispatched if allow_queued else part_is_active
+    if check_fn(manuscript, ManuscriptMarkingPart.BODY):
         raise MarkingError(_("Body marking is already running"))
     from body.tasks import mark_body_text
     from manuscript.tasks import fail_marking_run, persist_body_result
@@ -136,14 +156,15 @@ def enqueue_body(manuscript, user=None):
     return run
 
 
-def enqueue_back(manuscript, user=None):
+def enqueue_back(manuscript, user=None, allow_queued=False):
     text = (manuscript.references_source_text or "").strip()
     if not text:
         raise MarkingError(_("References source text is empty"))
     citations = parse_reference_list(text)
     if not citations:
         raise MarkingError(_("No references found in source text"))
-    if part_is_active(manuscript, ManuscriptMarkingPart.BACK):
+    check_fn = _part_is_dispatched if allow_queued else part_is_active
+    if check_fn(manuscript, ManuscriptMarkingPart.BACK):
         raise MarkingError(_("References marking is already running"))
     from manuscript.tasks import fail_marking_run, persist_back_result
     from reference.tasks import mark_reference_texts_task
@@ -168,6 +189,53 @@ def enqueue_back(manuscript, user=None):
     run.task_id = async_result.id or ""
     run.save(update_fields=["task_id"])
     return run
+
+
+def advance_marking_queue(manuscript_id, user_id=None):
+    manuscript = Manuscript.objects.filter(pk=manuscript_id).first()
+    if manuscript is None:
+        return None
+    if (
+        manuscript.marking_runs.filter(status__in=ACTIVE_STATUSES)
+        .exclude(task_id="")
+        .exists()
+    ):
+        return None
+    user = None
+    if user_id is not None:
+        user = get_user_model().objects.filter(pk=user_id).first()
+    queued_parts = set(
+        manuscript.marking_runs.filter(
+            status=ManuscriptMarkingRunStatus.PENDING,
+            task_id="",
+        ).values_list("part", flat=True)
+    )
+    for part in QUEUE_ORDER:
+        if part not in queued_parts:
+            continue
+        try:
+            if part == ManuscriptMarkingPart.BACK:
+                return enqueue_back(manuscript, user=user, allow_queued=True)
+            if part == ManuscriptMarkingPart.FRONT:
+                return enqueue_front(manuscript, user=user, allow_queued=True)
+            if part == ManuscriptMarkingPart.BODY:
+                return enqueue_body(manuscript, user=user, allow_queued=True)
+        except MarkingError as exc:
+            fail_run(manuscript.pk, part, exc)
+            continue
+    return None
+
+
+def enqueue_manuscript_marking(manuscript, user=None):
+    ref_text = (manuscript.references_source_text or "").strip()
+    if ref_text and parse_reference_list(ref_text):
+        prepare_run(manuscript, ManuscriptMarkingPart.BACK)
+    if (manuscript.front_source_text or "").strip():
+        prepare_run(manuscript, ManuscriptMarkingPart.FRONT)
+    if (manuscript.body_source_text or "").strip():
+        prepare_run(manuscript, ManuscriptMarkingPart.BODY)
+    user_id = user.pk if user is not None else None
+    return advance_marking_queue(manuscript.pk, user_id=user_id)
 
 
 def _part_payload(run):

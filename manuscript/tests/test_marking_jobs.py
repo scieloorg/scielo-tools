@@ -20,10 +20,12 @@ from manuscript.services.marking_jobs import (
     enqueue_back,
     enqueue_body,
     enqueue_front,
+    enqueue_manuscript_marking,
     marking_status_payload,
 )
 from manuscript.services.workflow import WorkflowError, approve_front
 from manuscript.tasks import (
+    fail_marking_run,
     persist_back_result,
     persist_body_result,
     persist_front_result,
@@ -223,6 +225,177 @@ class MarkingJobsTests(TestCase):
         self.manuscript.refresh_from_db()
         self.assertIn("A", self.manuscript.front_marked_xml)
         self.assertIn("B", self.manuscript.body_marked_xml)
+
+    @patch("body.tasks.mark_body_text.apply_async")
+    @patch("front.tasks.mark_front_text.apply_async")
+    @patch("reference.tasks.mark_reference_texts_task.apply_async")
+    def test_enqueue_manuscript_marking_runs_back_then_front_then_body(
+        self, mock_back, mock_front, mock_body
+    ):
+        back_result = MagicMock()
+        back_result.id = "task-back"
+        front_result = MagicMock()
+        front_result.id = "task-front"
+        body_result = MagicMock()
+        body_result.id = "task-body"
+        mock_back.return_value = back_result
+        mock_front.return_value = front_result
+        mock_body.return_value = body_result
+
+        first_run = enqueue_manuscript_marking(self.manuscript, user=self.user)
+        self.assertEqual(first_run.part, ManuscriptMarkingPart.BACK)
+        self.assertEqual(first_run.task_id, "task-back")
+        mock_back.assert_called_once()
+        mock_front.assert_not_called()
+        mock_body.assert_not_called()
+
+        runs = {
+            run.part: run
+            for run in ManuscriptMarkingRun.objects.filter(manuscript=self.manuscript)
+        }
+        self.assertEqual(
+            runs[ManuscriptMarkingPart.BACK].status,
+            ManuscriptMarkingRunStatus.PENDING,
+        )
+        self.assertEqual(runs[ManuscriptMarkingPart.BACK].task_id, "task-back")
+        self.assertEqual(
+            runs[ManuscriptMarkingPart.FRONT].status,
+            ManuscriptMarkingRunStatus.PENDING,
+        )
+        self.assertEqual(runs[ManuscriptMarkingPart.FRONT].task_id, "")
+        self.assertEqual(
+            runs[ManuscriptMarkingPart.BODY].status,
+            ManuscriptMarkingRunStatus.PENDING,
+        )
+        self.assertEqual(runs[ManuscriptMarkingPart.BODY].task_id, "")
+
+        persist_back_result(
+            {
+                "items": [
+                    {
+                        "mixed_citation": "Smith J. Nature. 2024.",
+                        "data": {"reftype": "journal", "source": "Nature"},
+                    }
+                ],
+                "endpoints": "local",
+            },
+            self.manuscript.pk,
+            self.user.pk,
+        )
+        mock_front.assert_called_once()
+        mock_body.assert_not_called()
+        front_run = ManuscriptMarkingRun.objects.get(
+            manuscript=self.manuscript, part=ManuscriptMarkingPart.FRONT
+        )
+        self.assertEqual(front_run.task_id, "task-front")
+
+        persist_front_result(
+            {
+                "data": {
+                    "titles": [
+                        {"kind": "main", "text": "Front title", "language": "en"}
+                    ]
+                }
+            },
+            self.manuscript.pk,
+            self.user.pk,
+        )
+        mock_body.assert_called_once()
+        body_run = ManuscriptMarkingRun.objects.get(
+            manuscript=self.manuscript, part=ManuscriptMarkingPart.BODY
+        )
+        self.assertEqual(body_run.task_id, "task-body")
+
+        persist_body_result(
+            {
+                "data": {
+                    "sections": [
+                        {
+                            "title": "Intro",
+                            "content": [{"type": "p", "text": "Hello"}],
+                            "sections": [],
+                        }
+                    ]
+                }
+            },
+            self.manuscript.pk,
+            self.user.pk,
+        )
+        for part in (
+            ManuscriptMarkingPart.BACK,
+            ManuscriptMarkingPart.FRONT,
+            ManuscriptMarkingPart.BODY,
+        ):
+            run = ManuscriptMarkingRun.objects.get(
+                manuscript=self.manuscript, part=part
+            )
+            self.assertEqual(run.status, ManuscriptMarkingRunStatus.DONE)
+
+    @patch("body.tasks.mark_body_text.apply_async")
+    @patch("front.tasks.mark_front_text.apply_async")
+    @patch("reference.tasks.mark_reference_texts_task.apply_async")
+    def test_fail_marking_run_advances_queue_to_next_part(
+        self, mock_back, mock_front, mock_body
+    ):
+        back_result = MagicMock()
+        back_result.id = "task-back"
+        front_result = MagicMock()
+        front_result.id = "task-front"
+        body_result = MagicMock()
+        body_result.id = "task-body"
+        mock_back.return_value = back_result
+        mock_front.return_value = front_result
+        mock_body.return_value = body_result
+
+        enqueue_manuscript_marking(self.manuscript, user=self.user)
+        fail_marking_run(
+            None,
+            exc="Back LLM failed",
+            manuscript_id=self.manuscript.pk,
+            part=ManuscriptMarkingPart.BACK,
+        )
+        back_run = ManuscriptMarkingRun.objects.get(
+            manuscript=self.manuscript, part=ManuscriptMarkingPart.BACK
+        )
+        self.assertEqual(back_run.status, ManuscriptMarkingRunStatus.ERROR)
+        mock_front.assert_called_once()
+        mock_body.assert_not_called()
+
+        fail_marking_run(
+            None,
+            exc="Front LLM failed",
+            manuscript_id=self.manuscript.pk,
+            part=ManuscriptMarkingPart.FRONT,
+        )
+        front_run = ManuscriptMarkingRun.objects.get(
+            manuscript=self.manuscript, part=ManuscriptMarkingPart.FRONT
+        )
+        self.assertEqual(front_run.status, ManuscriptMarkingRunStatus.ERROR)
+        mock_body.assert_called_once()
+
+    @patch("body.tasks.mark_body_text.apply_async")
+    @patch("front.tasks.mark_front_text.apply_async")
+    @patch("reference.tasks.mark_reference_texts_task.apply_async")
+    def test_enqueue_manuscript_marking_starts_front_when_no_references(
+        self, mock_back, mock_front, mock_body
+    ):
+        front_result = MagicMock()
+        front_result.id = "task-front"
+        mock_front.return_value = front_result
+        self.manuscript.references_source_text = ""
+        self.manuscript.save(update_fields=["references_source_text"])
+
+        first_run = enqueue_manuscript_marking(self.manuscript, user=self.user)
+        self.assertEqual(first_run.part, ManuscriptMarkingPart.FRONT)
+        self.assertEqual(first_run.task_id, "task-front")
+        mock_back.assert_not_called()
+        mock_front.assert_called_once()
+        mock_body.assert_not_called()
+        self.assertFalse(
+            ManuscriptMarkingRun.objects.filter(
+                manuscript=self.manuscript, part=ManuscriptMarkingPart.BACK
+            ).exists()
+        )
 
 
 class MarkingStatusViewTests(TestCase):

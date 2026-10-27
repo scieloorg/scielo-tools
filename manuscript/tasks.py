@@ -8,7 +8,11 @@ from manuscript.services.marking import (
     save_front_marked,
     save_references_items,
 )
-from manuscript.services.marking_jobs import complete_run, fail_run
+from manuscript.services.marking_jobs import (
+    advance_marking_queue,
+    complete_run,
+    fail_run,
+)
 
 
 def _user_from_id(user_id):
@@ -27,8 +31,10 @@ def persist_front_result(result, manuscript_id, user_id=None):
         save_front_marked(manuscript, marked, user=_user_from_id(user_id))
     except Exception as exc:
         fail_run(manuscript_id, "front", exc)
+        advance_marking_queue(manuscript_id, user_id=user_id)
         raise
     complete_run(manuscript_id, "front", endpoints="local")
+    advance_marking_queue(manuscript_id, user_id=user_id)
 
 
 @shared_task
@@ -41,8 +47,10 @@ def persist_body_result(result, manuscript_id, user_id=None):
         save_body_marked(manuscript, marked, user=_user_from_id(user_id))
     except Exception as exc:
         fail_run(manuscript_id, "body", exc)
+        advance_marking_queue(manuscript_id, user_id=user_id)
         raise
     complete_run(manuscript_id, "body", endpoints="local")
+    advance_marking_queue(manuscript_id, user_id=user_id)
 
 
 @shared_task
@@ -58,11 +66,14 @@ def persist_back_result(result, manuscript_id, user_id=None):
         save_references_items(manuscript, items, user=_user_from_id(user_id))
     except MarkingError as exc:
         fail_run(manuscript_id, "back", exc)
+        advance_marking_queue(manuscript_id, user_id=user_id)
         raise
     except Exception as exc:
         fail_run(manuscript_id, "back", exc)
+        advance_marking_queue(manuscript_id, user_id=user_id)
         raise
     complete_run(manuscript_id, "back", endpoints=endpoints)
+    advance_marking_queue(manuscript_id, user_id=user_id)
 
 
 @shared_task
@@ -75,3 +86,4 @@ def fail_marking_run(request, exc=None, traceback=None, manuscript_id=None, part
     if manuscript_id is None or part is None:
         return
     fail_run(manuscript_id, part, error)
+    advance_marking_queue(manuscript_id)
