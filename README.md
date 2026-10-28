@@ -32,7 +32,7 @@ Novas ferramentas são adicionadas como Django apps neste repositório.
 ### Variáveis de ambiente
 
 ```bash
-cp -r .envs.example/.local .envs/.local
+mkdir -p .envs && cp -r .envs.example/.local .envs/
 make configure_git_hooks   # opcional
 ```
 
