@@ -1,4 +1,5 @@
 from django.test import TestCase
+from lxml import etree
 
 from body.data_utils import get_body_xml
 from front.data_utils import get_front_xml
@@ -55,3 +56,54 @@ class GenerateXmlSpsTests(TestCase):
         self.assertIn("Sample title", xml)
         self.assertIn("Body paragraph.", xml)
         self.assertIn('specific-use="sps-1.10"', xml)
+
+    def test_generate_xml_sps_uses_keyword_language_when_configured_lang_is_translation(self):
+        front = get_front_xml(
+            {
+                "titles": [
+                    {"kind": "main", "text": "English title"},
+                    {
+                        "kind": "translated",
+                        "language": "pt",
+                        "text": "Título em português",
+                    },
+                ],
+                "keywords": [
+                    {"language": "en", "keywords": ["Forest"]},
+                    {"language": "pt", "keywords": ["Floresta"]},
+                ],
+                "abstracts": [
+                    {"kind": "main", "title": "Abstract", "text": "English abstract."}
+                ],
+            }
+        )
+        xml = generate_xml_sps(
+            front, MINIMAL_BODY, MINIMAL_BACK, language="pt"
+        )
+        root = etree.fromstring(xml.encode())
+        self.assertEqual(
+            root.get("{http://www.w3.org/XML/1998/namespace}lang"),
+            "en",
+        )
+
+    def test_generate_xml_sps_keeps_original_language_when_translation_is_other(self):
+        front = get_front_xml(
+            {
+                "titles": [
+                    {"kind": "main", "text": "Título em português"},
+                    {"kind": "translated", "language": "en", "text": "English title"},
+                ],
+                "keywords": [
+                    {"language": "pt", "keywords": ["Floresta"]},
+                    {"language": "en", "keywords": ["Forest"]},
+                ],
+            }
+        )
+        xml = generate_xml_sps(
+            front, MINIMAL_BODY, MINIMAL_BACK, language="pt"
+        )
+        root = etree.fromstring(xml.encode())
+        self.assertEqual(
+            root.get("{http://www.w3.org/XML/1998/namespace}lang"),
+            "pt",
+        )

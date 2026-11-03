@@ -10,7 +10,7 @@
     color: var(--scielo-text-emphasis);
 }
 
-.scielo-ds a {
+.scielo-ds a:not(.button) {
     color: var(--scielo-interaction);
 }
 

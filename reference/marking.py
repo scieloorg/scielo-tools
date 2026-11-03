@@ -2,6 +2,7 @@ import contextvars
 import json
 import logging
 
+from celery.exceptions import SoftTimeLimitExceeded
 from django.conf import settings
 
 from reference.exceptions import (
@@ -21,6 +22,7 @@ LLAMA_ERRORS = (
     ReferenceLlamaDisabledError,
     ReferenceLlamaMisconfiguredError,
     ReferenceLlamaUnavailableError,
+    SoftTimeLimitExceeded,
 )
 
 
@@ -169,10 +171,12 @@ def mark_reference_texts(texts, on_progress=None):
             for line in chunk:
                 choices = list(mark_reference(line))
                 marked.append(choices[0] if choices else None)
+                if on_progress is not None:
+                    on_progress(len(marked), total)
         else:
             marked.extend(batch_contents)
-        if on_progress is not None:
-            on_progress(len(marked), total)
+            if on_progress is not None:
+                on_progress(len(marked), total)
 
     return marked
 

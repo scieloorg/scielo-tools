@@ -1,3 +1,45 @@
+.articleTxt > .row {
+    flex-wrap: nowrap;
+}
+
+.articleTxt > .row > nav {
+    flex: 0 0 34%;
+    max-width: 34%;
+    width: 34%;
+}
+
+.articleTxt > .row > div {
+    flex: 1 1 auto;
+    max-width: 66%;
+    width: 66%;
+    min-width: 0;
+}
+
+.articleCtt .articleMenu {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    background: #fff;
+}
+
+.articleCtt .articleMenu a {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+    .articleTxt > .row {
+        flex-wrap: wrap;
+    }
+
+    .articleTxt > .row > nav,
+    .articleTxt > .row > div {
+        flex: 0 0 100%;
+        max-width: 100%;
+        width: 100%;
+    }
+}
+
 figure.fig {
     margin: 1rem 0;
     max-width: 100%;
@@ -15,4 +57,116 @@ figure.fig img.graphic {
 
 figure.fig figcaption {
     margin-top: 0.5rem;
+}
+
+.articleCtt .fig .thumbImg,
+.ModalDefault .fig .thumbImg {
+    position: relative;
+    height: 150px !important;
+    min-height: 150px !important;
+    line-height: normal !important;
+    font-size: inherit !important;
+    text-indent: 0 !important;
+    overflow: hidden !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    background: #fff !important;
+}
+
+.articleCtt .fig .thumbImg::before,
+.ModalDefault .fig .thumbImg::before {
+    content: none !important;
+    display: none !important;
+}
+
+.articleCtt .fig .thumbImg img,
+.ModalDefault .fig .thumbImg img {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.articleCtt .table .thumbOff,
+.ModalDefault .table .thumbOff {
+    position: relative;
+    height: 150px !important;
+    line-height: 140px !important;
+    font-size: 0.95rem !important;
+    font-weight: 600;
+    font-family: inherit !important;
+    color: #555 !important;
+    text-align: center;
+    text-indent: 0 !important;
+    background: #f8f9fa !important;
+}
+
+.articleCtt .table .thumbOff::before,
+.ModalDefault .table .thumbOff::before {
+    content: none !important;
+    display: none !important;
+}
+
+.ModalTables .modal-body::after {
+    content: none !important;
+    display: none !important;
+}
+
+.modal.is-open {
+    display: block !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    background-color: rgba(0, 0, 0, 0.55);
+}
+
+.modal.is-open .modal-dialog {
+    max-width: min(1000px, 92vw);
+    margin: 2rem auto;
+    transform: none !important;
+}
+
+.modal.is-open .modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.modal.is-open .modal-header .modal-title {
+    order: 1;
+    flex: 1 1 auto;
+}
+
+.modal.is-open .modal-header .link-newWindow {
+    order: 2;
+    margin-left: auto;
+}
+
+.modal.is-open .modal-header .close {
+    order: 3;
+    border: 0;
+    background: transparent;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+}
+
+.ModalFigs .modal-body {
+    text-align: center;
+}
+
+.ModalFigs .modal-body img {
+    display: block;
+    max-width: 100%;
+    max-height: 75vh;
+    width: auto;
+    height: auto;
+    margin: 0 auto;
+    object-fit: contain;
 }

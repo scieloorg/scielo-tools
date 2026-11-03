@@ -2,6 +2,7 @@ import io
 import os
 import posixpath
 import zipfile
+from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
@@ -14,9 +15,12 @@ from wagtail.images import get_image_model
 from manuscript.models import (
     Manuscript,
     ManuscriptFigureFile,
+    ManuscriptMarkingPart,
+    ManuscriptMarkingRun,
     ManuscriptPublication,
     ManuscriptReference,
 )
+from manuscript.services.marking_jobs import enqueue_manuscript_marking
 from manuscript.tests.helpers import attach_manuscript_figure
 from xml_manager.models import SPSPackageValidation, SPSPackageValidationStatus
 
@@ -245,3 +249,35 @@ class ManuscriptDeleteCleanupTests(TestCase):
 
         self.assertFalse(get_image_model().objects.filter(pk=image.pk).exists())
         self.assertFalse(os.path.exists(figure_path))
+
+    @patch("config.celery_app.app.control.revoke")
+    @patch("reference.tasks.mark_reference_texts_task.apply_async")
+    def test_delete_revokes_active_task_and_starts_next_manuscript(
+        self, mock_back, mock_revoke
+    ):
+        first_task = MagicMock(id="active-task-1")
+        second_task = MagicMock(id="active-task-2")
+        mock_back.side_effect = [first_task, second_task]
+
+        first = Manuscript.objects.create(
+            title="First queued",
+            creator=self.user,
+            references_source_text="Smith J. Nature. 2024.",
+        )
+        second = Manuscript.objects.create(
+            title="Second queued",
+            creator=self.user,
+            references_source_text="Doe A. Science. 2025.",
+        )
+        enqueue_manuscript_marking(first, user=self.user)
+        enqueue_manuscript_marking(second, user=self.user)
+        self.assertEqual(mock_back.call_count, 1)
+
+        first.delete()
+
+        mock_revoke.assert_called_once_with("active-task-1", terminate=True)
+        self.assertEqual(mock_back.call_count, 2)
+        second_run = ManuscriptMarkingRun.objects.get(
+            manuscript=second, part=ManuscriptMarkingPart.BACK
+        )
+        self.assertEqual(second_run.task_id, "active-task-2")

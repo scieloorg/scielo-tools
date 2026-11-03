@@ -273,10 +273,19 @@ a.button-secondary:hover {
     overflow: visible;
 }
 
-.custom-admin-logo-label {
+.custom-admin-logo-meta {
     position: absolute;
-    right: 0.1rem;
-    bottom: 0.35rem;
+    right: -0.15rem;
+    bottom: -0.4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.15rem;
+}
+
+.custom-admin-logo-label {
+    position: static;
+    margin-right: 0.25rem;
     font-family: var(--scielo-font);
     font-size: 0.8rem;
     font-weight: 700;
@@ -289,8 +298,26 @@ a.button-secondary:hover {
     -webkit-font-smoothing: antialiased;
 }
 
+.custom-admin-version {
+    display: block;
+    font-family: var(--scielo-font);
+    font-size: 0.65rem;
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
+    text-align: right;
+    color: var(--scielo-interaction, #3867ce);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+a.custom-admin-version:hover {
+    color: var(--scielo-interaction-hover, #2b4fa0);
+    text-decoration: underline;
+}
+
 .sidebar-custom-branding {
-    padding: 1.25rem 0.75rem 0.75rem;
+    padding: 1.25rem 0.75rem 1.1rem;
     margin: 0.5rem auto 0.25rem;
     border-bottom: 1px solid var(--scielo-border, #ccc);
 }
@@ -309,6 +336,7 @@ a.button-secondary:hover {
     width: 2.5rem;
 }
 
+.sidebar--slim .custom-admin-logo-meta,
 .sidebar--slim .custom-admin-logo-label {
     display: none;
 }
@@ -321,8 +349,8 @@ a.button-secondary:hover {
 
 .login-logo .custom-admin-logo-meta {
     position: absolute;
-    right: 0.1rem;
-    bottom: 0.35rem;
+    right: -0.15rem;
+    bottom: -0.4rem;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
@@ -331,6 +359,7 @@ a.button-secondary:hover {
 
 .login-logo .custom-admin-logo-label {
     position: static;
+    margin-right: 0.25rem;
     font-size: 0.9rem;
 }
 
@@ -347,7 +376,7 @@ body.login .login-logo {
 .login-logo .custom-admin-version--login {
     display: block;
     font-family: var(--scielo-font);
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     font-weight: 500;
     line-height: 1.2;
     letter-spacing: 0.02em;

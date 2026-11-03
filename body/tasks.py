@@ -22,7 +22,10 @@ def mark_body_text(
     user_id=None,
     output_type="json",
 ):
-    self.update_state(state="PROGRESS", meta={"percent": 10})
+    def on_progress(percent):
+        self.update_state(state="PROGRESS", meta={"percent": int(percent)})
+
+    on_progress(10)
     user = None
     if user_id is not None:
         user = get_user_model().objects.filter(pk=user_id).first()
@@ -34,4 +37,5 @@ def mark_body_text(
         tables=tables,
         figures=figures,
         image_hrefs=image_hrefs,
+        on_progress=on_progress,
     )

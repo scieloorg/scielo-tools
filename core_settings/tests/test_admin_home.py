@@ -170,7 +170,7 @@ class AdminHomeTests(TestCase):
             'href="https://github.com/scieloorg/scielo-tools/releases/tag/v0.0.3"',
         )
         html = response.content.decode()
-        self.assertLess(html.index(">Account</a>"), html.index(">v0.0.3</a>"))
+        self.assertLess(html.index(">Account</a>"), html.rindex(">v0.0.3</a>"))
 
     @override_settings(WEBAPP_VERSION="0.0.0")
     def test_home_placeholder_version_is_not_a_tag_link(self):

@@ -38,6 +38,7 @@
                                 {% include "wagtailadmin/manuscript/mark_action_button.html" with part="body" active=marking_active.body percent=marking_state.body.percent %}
                             </div>
                         </form>
+                        {% include "wagtailadmin/manuscript/body_figure_list.html" %}
                     </div>
                     <div class="manuscript-source-tabs__panel" role="tabpanel" data-manuscript-source-panel="marked" hidden>
                         <form method="post" class="manuscript-form">
@@ -85,6 +86,7 @@
                         {% include "wagtailadmin/manuscript/mark_action_button.html" with part="body" active=marking_active.body percent=marking_state.body.percent %}
                     </div>
                 </form>
+                {% include "wagtailadmin/manuscript/body_figure_list.html" %}
             {% endif %}
         </div>
     </section>

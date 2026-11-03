@@ -119,7 +119,9 @@ class MultipleFileField(forms.FileField):
             MultipleFileInput(
                 attrs={
                     "class": "form-control",
-                    "accept": ".tif,.tiff,.jpg,.jpeg,image/tiff,image/jpeg",
+                    "accept": (
+                        ".tif,.tiff,.jpg,.jpeg,.png,image/tiff,image/jpeg,image/png"
+                    ),
                     "multiple": True,
                 }
             ),
@@ -139,7 +141,10 @@ class BodyStepForm(StepSourceForm):
     images = MultipleFileField(
         label=_("Package images"),
         required=False,
-        help_text=_("fig-N.tif or fig-N.jpg. You can select more than one file."),
+        help_text=_(
+            "fig-N.tif, fig-N.jpg or any image (.tif, .jpg, .png). "
+            "You can select more than one file."
+        ),
     )
     images_zip = forms.FileField(
         label=_("Images zip"),
