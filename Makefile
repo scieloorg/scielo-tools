@@ -4,6 +4,7 @@ export SCMS_BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 export SCMS_VCS_REF := $(shell git rev-parse --short HEAD)
 export SCMS_WEBAPP_VERSION := v0.0.4
 
+
 default: build
 
 help: ## Show this help
