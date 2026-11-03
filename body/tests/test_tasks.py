@@ -12,7 +12,10 @@ def test_mark_body_text_calls_resolve(monkeypatch):
         tables=None,
         figures=None,
         image_hrefs=None,
+        on_progress=None,
     ):
+        if on_progress is not None:
+            on_progress(50)
         return {"data": {"sections": [{"title": text}]}}
 
     monkeypatch.setattr("body.tasks.resolve_body_result", fake_resolve)

@@ -612,9 +612,7 @@ def test_apply_text_fields_reads_masthead_and_keyword_lines():
     )
     marked = apply_text_fields({"titles": [{"kind": "main", "text": "Title"}]}, text)
     assert marked["journal"]["journal_title"] == "Biota Neotropica"
-    assert marked["journal"]["journal_ids"] == [
-        {"type": "publisher-id", "value": "bn"}
-    ]
+    assert marked["journal"]["journal_ids"] == [{"type": "publisher-id", "value": "bn"}]
     assert marked["keywords"] == [
         {
             "language": "en",
@@ -1202,6 +1200,27 @@ def test_get_front_xml_renders_structured_author_notes():
     assert edited.find("p").text == "Alexander Vibrans"
     coi = notes.find('fn[@fn-type="coi-statement"]')
     assert coi.find("label").text == "Conflicts of Interest"
+
+
+def test_get_front_xml_omits_fn_without_fn_type():
+    xml = get_front_xml(
+        {
+            "titles": [{"kind": "main", "text": "Title"}],
+            "author_notes": {
+                "fns": [
+                    {"text": "Note without type"},
+                    "plain note",
+                    {
+                        "fn_type": "coi-statement",
+                        "text": "No conflict.",
+                    },
+                ]
+            },
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    notes = root.find(".//author-notes")
+    assert [fn.get("fn-type") for fn in notes.findall("fn")] == ["coi-statement"]
 
 
 def test_parse_marked_rejects_invalid_json():

@@ -4,12 +4,19 @@ from front.tasks import mark_front_text
 
 
 def test_mark_front_text_calls_resolve(monkeypatch):
-    monkeypatch.setattr(
-        "front.tasks.resolve_front_result",
-        lambda text, user=None, output_type="json", language=None, counts=None: {
-            "data": {"titles": [{"text": text}]}
-        },
-    )
+    def fake_resolve(
+        text,
+        user=None,
+        output_type="json",
+        language=None,
+        counts=None,
+        on_progress=None,
+    ):
+        if on_progress is not None:
+            on_progress(50)
+        return {"data": {"titles": [{"text": text}]}}
+
+    monkeypatch.setattr("front.tasks.resolve_front_result", fake_resolve)
     monkeypatch.setattr(mark_front_text, "update_state", MagicMock())
     result = mark_front_text.run(
         "Hello front",

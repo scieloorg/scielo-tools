@@ -54,11 +54,47 @@ class AdminLogoTests(TestCase):
         html = response.content.decode()
         self.assertLess(html.index(">Tools</span>"), html.index(">v0.0.3-qa</a>"))
 
+    @override_settings(WEBAPP_VERSION="v0.0.3-qa")
+    def test_admin_sidebar_shows_webapp_version_link_below_tools(self):
+        user = User.objects.create_superuser(
+            username="editor", email="editor@example.com", password="secret"
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("wagtailadmin_home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "custom-admin-logo-meta")
+        self.assertContains(response, "custom-admin-version--sidebar")
+        self.assertContains(response, ">v0.0.3-qa</a>")
+        self.assertContains(
+            response,
+            'href="https://github.com/scieloorg/scielo-tools/releases/tag/v0.0.3-qa"',
+        )
+        html = response.content.decode()
+        self.assertLess(
+            html.index(">Tools</span>"),
+            html.index("custom-admin-version--sidebar"),
+        )
+
     @override_settings(WEBAPP_VERSION="0.0.0")
     def test_login_placeholder_version_is_not_a_tag_link(self):
         response = self.client.get(reverse("wagtailadmin_login"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, ">0.0.0</span>")
+        self.assertNotContains(response, "releases/tag/")
+
+    @override_settings(WEBAPP_VERSION="0.0.0")
+    def test_admin_sidebar_placeholder_version_is_not_a_tag_link(self):
+        user = User.objects.create_superuser(
+            username="editor", email="editor@example.com", password="secret"
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("wagtailadmin_home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            '<span class="custom-admin-version '
+            'custom-admin-version--sidebar">0.0.0</span>',
+        )
         self.assertNotContains(response, "releases/tag/")
 
     def test_favicon_svg_is_published(self):

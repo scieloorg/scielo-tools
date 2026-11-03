@@ -1,0 +1,47 @@
+{% load i18n wagtailadmin_tags %}
+<div
+    class="manuscript-bulk-package"
+    data-manuscript-package="{{ manuscript.pk }}"
+    data-add-figures-url="{% url 'manuscript_api_add_figure' manuscript.pk %}"
+>
+    <div class="manuscript-bulk-package__header">
+        <strong>{{ manuscript.title }}</strong>
+        <a href="{% url 'manuscript_step_front' manuscript.pk %}" class="button button-small button-secondary">
+            {% trans "Open marking" %}
+        </a>
+    </div>
+
+    <div class="drop-zone manuscript-bulk-package__dropzone" data-package-dropzone>
+        <p>{% trans "Add images for this package (.tif, .tiff, .jpg, .jpeg, .png or .zip). You can rename each image to fig-1, fig-2, etc. below." %}</p>
+        <form
+            action="{% url 'manuscript_api_add_figure' manuscript.pk %}"
+            method="POST"
+            enctype="multipart/form-data"
+            data-package-figure-upload-form
+            novalidate
+        >
+            {% csrf_token %}
+            <div class="replace-file-input">
+                <button class="button button-small bicolor button--icon" type="button">
+                    {% icon name="image" wrapped=1 %}
+                    {% trans "Add package images" %}
+                </button>
+                <input
+                    type="file"
+                    name="files[]"
+                    data-url="{% url 'manuscript_api_add_figure' manuscript.pk %}"
+                    multiple
+                    accept=".tif,.tiff,.jpg,.jpeg,.png,.zip,image/tiff,image/jpeg,image/png,application/zip"
+                >
+            </div>
+        </form>
+    </div>
+
+    <p class="status-msg failure" data-package-figure-error hidden></p>
+
+    <ul class="upload-list multiple manuscript-package-figures" data-package-figures-list>
+        {% for fig in manuscript.figure_files.all %}
+            {% include "wagtailadmin/manuscript/figure_upload_item.html" with manuscript=manuscript fig=fig %}
+        {% endfor %}
+    </ul>
+</div>

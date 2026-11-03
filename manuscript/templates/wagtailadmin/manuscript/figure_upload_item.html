@@ -1,0 +1,70 @@
+{% load i18n wagtailadmin_tags wagtailimages_tags %}
+<li
+    class="row upload-list__item upload-complete manuscript-figure-item"
+    data-figure-id="{{ fig.pk }}"
+    data-figure-number="{{ fig.number }}"
+>
+    <div class="left col3">
+        <div class="preview{% if fig.image %} hasthumb{% endif %}">
+            <div class="thumb">
+                {% icon name="image" %}
+                {% if fig.image %}
+                    {% image fig.image max-150x150 as fig_thumb %}
+                    <a href="{% url 'wagtailimages:edit' fig.image_id %}" target="_blank">
+                        <img src="{{ fig_thumb.url }}" width="{{ fig_thumb.width }}" height="{{ fig_thumb.height }}" alt="{{ fig.href }}" class="manuscript-figure-item__thumb">
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="manuscript-figure-item__filename">{{ fig.original_name }}</div>
+    </div>
+    <div class="right col9">
+        <p class="status-msg update-success" data-figure-status hidden>
+            {% trans "Image updated." %}
+        </p>
+        <p class="status-msg failure error_messages" data-figure-error hidden></p>
+        <form
+            method="post"
+            action="{% url 'manuscript_api_update_figure' manuscript.pk fig.pk %}"
+            class="manuscript-figure-edit-form"
+            data-figure-update-form
+            novalidate
+        >
+            <ul class="fields">
+                {% csrf_token %}
+                <li>
+                    <div class="w-field__wrapper">
+                        <label class="w-field__label" for="id_figure_href_{{ fig.pk }}">
+                            {% trans "Image name in package" %}
+                        </label>
+                        <div class="w-field w-field--char_field w-field--text_input">
+                            <div class="w-field__input">
+                                <input
+                                    id="id_figure_href_{{ fig.pk }}"
+                                    type="text"
+                                    name="href"
+                                    value="{{ fig.href }}"
+                                >
+                            </div>
+                            <div class="w-field__help">
+                                {% trans "Original file:" %} <code>{{ fig.original_name }}</code> — {% trans "Use fig-1, fig-2, etc." %}
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <button type="submit" class="button">
+                        {% trans "Update" %}
+                    </button>
+                    <button
+                        type="button"
+                        class="delete button no"
+                        data-figure-delete-url="{% url 'manuscript_api_delete_figure' manuscript.pk fig.pk %}"
+                    >
+                        {% trans "Delete" %}
+                    </button>
+                </li>
+            </ul>
+        </form>
+    </div>
+</li>

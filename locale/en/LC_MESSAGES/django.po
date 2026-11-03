@@ -1107,6 +1107,11 @@ msgstr "Invalid JSON"
 msgid "Manuscript “%(title)s” created."
 msgstr "Manuscript “%(title)s” created."
 
+#: manuscript/wagtail_hooks.py
+#, python-format
+msgid "Manuscript “%(title)s” re-marked."
+msgstr "Manuscript “%(title)s” re-marked."
+
 #: manuscript/wagtail_hooks.py:187
 msgid "Continue marking"
 msgstr "Continue marking"

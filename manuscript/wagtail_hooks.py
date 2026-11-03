@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 from django.templatetags.static import static
@@ -10,9 +8,9 @@ from wagtail import hooks
 from wagtail.admin.navigation import get_site_for_user
 from wagtail.admin.site_summary import SummaryItem
 from wagtail.admin.ui.tables import Column
-from wagtail.admin.widgets.button import Button
+from wagtail.admin.widgets.button import Button, HeaderButton
 from wagtail.snippets.models import register_snippet
-from wagtail.snippets.views.snippets import CreateView, SnippetViewSet
+from wagtail.snippets.views.snippets import CreateView, IndexView, SnippetViewSet
 
 from config.menu import get_menu_order
 from manuscript.forms import ManuscriptAdminForm, ManuscriptCreateForm
@@ -21,9 +19,12 @@ from manuscript.models import (
     Manuscript,
     ManuscriptStatus,
     OriginalLanguage,
-    get_or_create_manuscript_collection,
 )
-from manuscript.services.intake import ManuscriptIntakeError, extract_all_from_docx
+from manuscript.services.intake import (
+    ManuscriptIntakeError,
+    ingest_docx_into_manuscript,
+)
+from manuscript.services.marking_jobs import marking_status_payload
 from manuscript.services.workflow import current_step_url_name
 
 
@@ -42,43 +43,56 @@ class ManuscriptCreateView(CreateView):
         manuscript.updated_by = self.request.user
         manuscript.status = ManuscriptStatus.DRAFT
         docx = form.cleaned_data.get("source_docx")
+        created = True
         if docx:
-            collection_name = Path(getattr(docx, "name", "") or "").stem.strip()
-            if not collection_name:
-                collection_name = (manuscript.title or "").strip()
-            if not collection_name:
-                manuscript.save()
-                collection_name = f"manuscript-{manuscript.pk}"
-            collection = get_or_create_manuscript_collection(collection_name)
-            manuscript.source_document = form.save_wagtail_document(docx, collection)
-        manuscript.save()
-
-        if docx:
-            docx.seek(0)
             try:
-                extracted = extract_all_from_docx(docx)
-                manuscript.front_source_text = extracted.get("front_text") or ""
-                manuscript.body_source_text = extracted.get("body_text") or ""
-                manuscript.references_source_text = (
-                    extracted.get("references_text") or ""
+                manuscript, extracted, created = ingest_docx_into_manuscript(
+                    manuscript, docx, user=self.request.user
                 )
-                manuscript.body_tables = extracted.get("tables") or []
-                manuscript.body_figures = extracted.get("figures") or []
-                manuscript.front_counts = extracted.get("counts") or {}
-                manuscript.status = ManuscriptStatus.FRONT
-                manuscript.save()
-                for warning in extracted.get("errors") or []:
-                    messages.warning(self.request, warning)
             except ManuscriptIntakeError as exc:
                 messages.error(self.request, str(exc))
+                return self.form_invalid(form)
+            for warning in extracted.get("errors") or []:
+                messages.warning(self.request, warning)
+        else:
+            manuscript.save()
 
-        messages.success(
-            self.request,
-            _("Manuscript “%(title)s” created.") % {"title": manuscript.title},
-        )
+        if created:
+            messages.success(
+                self.request,
+                _("Manuscript “%(title)s” created.") % {"title": manuscript.title},
+            )
+        else:
+            messages.success(
+                self.request,
+                _("Manuscript “%(title)s” re-marked.") % {"title": manuscript.title},
+            )
         return HttpResponseRedirect(
             reverse("manuscript_step_front", args=[manuscript.pk])
         )
+
+
+class ManuscriptIndexView(IndexView):
+    def get_base_queryset(self):
+        return (
+            super()
+            .get_base_queryset()
+            .select_related("source_document", "validation", "sps_package")
+            .prefetch_related("marking_runs", "references")
+        )
+
+    def get_header_buttons(self):
+        buttons = list(super().get_header_buttons())
+        if self.permission_policy.user_has_permission(self.request.user, "add"):
+            buttons.append(
+                HeaderButton(
+                    _("Bulk upload"),
+                    url=reverse("manuscript_bulk_upload"),
+                    icon_name="upload",
+                    priority=20,
+                )
+            )
+        return buttons
 
 
 class ManuscriptWorkflowColumn(Column):
@@ -87,6 +101,41 @@ class ManuscriptWorkflowColumn(Column):
         url = reverse(url_name, args=[instance.pk])
         label = instance.get_status_display()
         return format_html('<a href="{}">{}</a>', url, label)
+
+
+class ManuscriptProgressColumn(Column):
+    def get_value(self, instance):
+        overall = marking_status_payload(instance)["overall"]
+        percent = overall["percent"]
+        status = overall["status"]
+        active = status in ("pending", "running")
+        status_class = ""
+        if active:
+            status_class = " is-running"
+        elif status == "error":
+            status_class = " is-error"
+        elif status == "done" or percent == 100:
+            status_class = " is-complete"
+        status_url = reverse("manuscript_api_marking_status", args=[instance.pk])
+        return format_html(
+            '<div class="manuscript-list-progress{}" '
+            'data-manuscript-list-progress="{}" '
+            'data-marking-status-url="{}" '
+            'data-marking-active="{}">'
+            '<span class="manuscript-list-progress__bar" role="progressbar" '
+            'aria-valuemin="0" aria-valuemax="100" aria-valuenow="{}">'
+            '<span class="manuscript-list-progress__fill" style="width: {}%"></span>'
+            "</span>"
+            '<span class="manuscript-list-progress__percent">{}%</span>'
+            "</div>",
+            status_class,
+            instance.pk,
+            status_url,
+            "true" if active else "false",
+            percent,
+            percent,
+            percent,
+        )
 
 
 class ManuscriptSourceDocumentColumn(Column):
@@ -146,6 +195,7 @@ register_snippet(OriginalLanguageViewSet)
 
 class ManuscriptViewSet(SnippetViewSet):
     model = Manuscript
+    index_view_class = ManuscriptIndexView
     add_view_class = ManuscriptCreateView
     icon = "manuscript"
     menu_name = "manuscript"
@@ -156,6 +206,7 @@ class ManuscriptViewSet(SnippetViewSet):
     list_display = (
         "title",
         ManuscriptWorkflowColumn("status", label=_("Status")),
+        ManuscriptProgressColumn("progress", label=_("Progress")),
         ManuscriptSourceDocumentColumn("source_document", label=_("Source DOCX")),
         CatalogCodeColumn("article_type", ArticleType, label=_("Article type")),
         CatalogCodeColumn("language", OriginalLanguage, label=_("Original language")),
@@ -203,6 +254,14 @@ def manuscript_admin_css():
     return format_html(
         '<link rel="stylesheet" href="{}">',
         static("manuscript/css/wizard.css"),
+    )
+
+
+@hooks.register("insert_global_admin_js")
+def manuscript_admin_js():
+    return format_html(
+        '<script src="{}" defer></script>',
+        static("manuscript/js/wizard.js"),
     )
 
 

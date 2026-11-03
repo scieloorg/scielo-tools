@@ -11,5 +11,15 @@
 {% else %}
     {% include "wagtailadmin/includes/scielo_logo_mark.html" with logo_class="custom-admin-logo" %}
 {% endif %}
-    <span class="custom-admin-logo-label">Tools</span>
+    <span class="custom-admin-logo-meta">
+        <span class="custom-admin-logo-label">Tools</span>
+        {% if WEBAPP_VERSION_URL %}
+        <a class="custom-admin-version custom-admin-version--sidebar"
+           href="{{ WEBAPP_VERSION_URL }}"
+           target="_blank"
+           rel="noopener noreferrer">{{ WEBAPP_VERSION }}</a>
+        {% else %}
+        <span class="custom-admin-version custom-admin-version--sidebar">{{ WEBAPP_VERSION }}</span>
+        {% endif %}
+    </span>
 </span>

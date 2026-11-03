@@ -1,0 +1,13 @@
+{% load i18n %}
+{% with figures=manuscript.figure_files.all %}
+    {% if figures %}
+        <div class="manuscript-field" data-manuscript-figure-manager>
+            <p>{% trans "Uploaded images" %}</p>
+            <ul class="upload-list multiple manuscript-figure-files" data-package-figures-list>
+                {% for fig in figures %}
+                    {% include "wagtailadmin/manuscript/figure_upload_item.html" with manuscript=manuscript fig=fig %}
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+{% endwith %}

@@ -1,0 +1,63 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n static wagtailadmin_tags %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'manuscript/css/wizard.css' %}">
+{% endblock %}
+
+{% block main_content %}
+    <div class="nice-padding scielo-ds manuscript-bulk-upload" data-redirect-url="{{ list_url }}">
+        <div class="drop-zone">
+            <p>{% trans "Drag and drop .docx manuscripts into this area to upload immediately." %}</p>
+            <p>{% trans "The package name will be extracted automatically from each uploaded file name." %}</p>
+
+            <form
+                id="manuscript-bulk-upload-form"
+                action="{% url 'manuscript_bulk_upload' %}"
+                method="POST"
+                enctype="multipart/form-data"
+                novalidate
+            >
+                {% csrf_token %}
+                <div class="replace-file-input">
+                    <button class="button bicolor button--icon" type="button">
+                        {% icon name="plus" wrapped=1 %}
+                        {% trans "Or choose from your computer" %}
+                    </button>
+                    <input
+                        id="id_manuscript_bulk_files"
+                        type="file"
+                        name="files[]"
+                        data-url="{% url 'manuscript_bulk_upload' %}"
+                        multiple
+                        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    >
+                </div>
+                <noscript>
+                    <button type="submit" class="button">{% trans "Upload" %}</button>
+                </noscript>
+            </form>
+        </div>
+
+        <div id="overall-progress" class="progress progress-secondary" hidden>
+            <div class="bar" style="width: 0%;">0%</div>
+        </div>
+
+        <ul id="upload-list" class="upload-list multiple"></ul>
+
+        <div id="bulk-upload-complete-actions" class="manuscript-actions" hidden>
+            <a href="{{ list_url }}" class="button">
+                {% trans "Go to manuscripts list" %}
+            </a>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    <script src="{% versioned_static 'wagtailadmin/js/vendor/jquery.iframe-transport.js' %}"></script>
+    <script src="{% versioned_static 'wagtailadmin/js/vendor/jquery.fileupload.js' %}"></script>
+    <script src="{% versioned_static 'wagtailadmin/js/vendor/jquery.fileupload-process.js' %}"></script>
+    <script src="{% static 'manuscript/js/bulk-upload.js' %}" defer></script>
+{% endblock %}

@@ -13,6 +13,7 @@ from body.images import (
     attach_figure_hrefs,
     collect_image_assets,
     collect_image_hrefs,
+    normalize_figure_identifier,
     parse_figure_filename,
 )
 
@@ -29,6 +30,12 @@ def make_tiff_bytes(size=(2, 2), color=(255, 0, 0)):
 def make_jpeg_bytes(size=(2, 2), color=(0, 255, 0)):
     buffer = io.BytesIO()
     Image.new("RGB", size, color=color).save(buffer, format="JPEG")
+    return buffer.getvalue()
+
+
+def make_png_bytes(size=(2, 2), color=(0, 0, 255)):
+    buffer = io.BytesIO()
+    Image.new("RGB", size, color=color).save(buffer, format="PNG")
     return buffer.getvalue()
 
 
@@ -186,3 +193,29 @@ def test_get_body_xml_emits_graphic_href_from_attached_images():
     assert graphic is not None
     assert graphic.get("id") == "g1"
     assert graphic.get(XLINK_HREF) == "fig-1.jpg"
+
+
+def test_normalize_figure_identifier_accepts_numbers_and_fig_names():
+    assert normalize_figure_identifier("1") == (1, "fig-1.jpg")
+    assert normalize_figure_identifier("fig-2") == (2, "fig-2.jpg")
+    assert normalize_figure_identifier("fig-03.jpg") == (3, "fig-3.jpg")
+    assert normalize_figure_identifier("Figure 4.png") == (4, "fig-4.jpg")
+    with pytest.raises(BodyImageError, match="Invalid figure identifier"):
+        normalize_figure_identifier("invalid-name")
+
+
+def test_collect_image_assets_allows_any_filename_and_preserves_original():
+    assets = collect_image_assets(
+        images=[
+            uploaded_image("mapa_brasil.png", make_png_bytes(), "image/png"),
+            uploaded_image("grafico_resultado.tif", make_tiff_bytes(), "image/tiff"),
+        ],
+        allow_any_filename=True,
+        reserved_numbers=[1],
+    )
+    assert set(assets) == {"2", "3"}
+    assert assets["2"]["href"] == "fig-2.jpg"
+    assert assets["2"]["original_name"] == "mapa_brasil.png"
+    assert assets["2"]["bytes"].startswith(b"\xff\xd8")
+    assert assets["3"]["href"] == "fig-3.jpg"
+    assert assets["3"]["original_name"] == "grafico_resultado.tif"

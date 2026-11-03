@@ -19,5 +19,143 @@
                 </div>
             </div>
         </article>
+        <script>
+            (function () {
+                var menu = document.querySelector(".articleMenu");
+                if (menu) {
+                    var links = Array.prototype.slice.call(
+                        menu.querySelectorAll(":scope > li > a[href^='#']")
+                    );
+                    var markers = links.map(function (link) {
+                        return document.getElementsByName(
+                            link.getAttribute("href").slice(1)
+                        )[0];
+                    });
+
+                    function setCurrent(index) {
+                        Array.prototype.forEach.call(
+                            menu.querySelectorAll(":scope > li"),
+                            function (item, itemIndex) {
+                                var on = itemIndex === index;
+                                item.classList.toggle("active", on);
+                                item.classList.toggle("selected", on);
+                            }
+                        );
+                        var current = menu.querySelectorAll(":scope > li")[index];
+                        if (
+                            current &&
+                            menu.scrollHeight > menu.clientHeight
+                        ) {
+                            var itemTop = current.offsetTop;
+                            var itemBottom = itemTop + current.offsetHeight;
+                            if (itemTop < menu.scrollTop) {
+                                menu.scrollTop = itemTop;
+                            } else if (
+                                itemBottom > menu.scrollTop + menu.clientHeight
+                            ) {
+                                menu.scrollTop = itemBottom - menu.clientHeight;
+                            }
+                        }
+                    }
+
+                    function onScroll() {
+                        var y = window.scrollY || document.documentElement.scrollTop;
+                        var current = 0;
+                        markers.forEach(function (marker, index) {
+                            if (!marker) {
+                                return;
+                            }
+                            var top = marker.getBoundingClientRect().top + y;
+                            if (y + 80 >= top) {
+                                current = index;
+                            }
+                        });
+                        setCurrent(current);
+                    }
+
+                    menu.addEventListener("click", function (event) {
+                        var link = event.target.closest("a[href^='#']");
+                        if (!link || !menu.contains(link)) {
+                            return;
+                        }
+                        var marker = document.getElementsByName(
+                            link.getAttribute("href").slice(1)
+                        )[0];
+                        if (!marker) {
+                            return;
+                        }
+                        event.preventDefault();
+                        var top =
+                            marker.getBoundingClientRect().top +
+                            (window.scrollY || 0) -
+                            16;
+                        window.scrollTo({
+                            top: Math.max(0, top),
+                            behavior: "smooth",
+                        });
+                    });
+
+                    if (links.length) {
+                        setCurrent(0);
+                        window.addEventListener("scroll", onScroll, {
+                            passive: true,
+                        });
+                    }
+                }
+
+                function closeAllModals() {
+                    document.querySelectorAll(".modal.is-open").forEach(function (modal) {
+                        modal.classList.remove("is-open", "show");
+                        modal.setAttribute("aria-hidden", "true");
+                    });
+                    document.body.classList.remove("modal-open");
+                }
+
+                function openModalBySelector(selector) {
+                    if (!selector || !selector.startsWith("#")) {
+                        return false;
+                    }
+                    var id = selector.slice(1);
+                    var modal = document.getElementById(id);
+                    if (!modal) {
+                        return false;
+                    }
+                    closeAllModals();
+                    modal.querySelectorAll(".modal-body").forEach(function (body) {
+                        body.classList.add("cached");
+                    });
+                    modal.classList.add("is-open", "show");
+                    modal.setAttribute("aria-hidden", "false");
+                    document.body.classList.add("modal-open");
+                    return true;
+                }
+
+                document.addEventListener("click", function (event) {
+                    var trigger = event.target.closest("[data-toggle='modal'][data-target]");
+                    if (trigger) {
+                        var target = trigger.getAttribute("data-target");
+                        if (openModalBySelector(target)) {
+                            event.preventDefault();
+                        }
+                        return;
+                    }
+                    var dismiss = event.target.closest("[data-dismiss='modal'], .modal .close");
+                    if (dismiss) {
+                        event.preventDefault();
+                        closeAllModals();
+                        return;
+                    }
+                    if (event.target.classList && event.target.classList.contains("modal") && event.target.classList.contains("is-open")) {
+                        closeAllModals();
+                    }
+                });
+
+                document.addEventListener("keydown", function (event) {
+                    if (event.key === "Escape") {
+                        closeAllModals();
+                    }
+                });
+            })();
+        </script>
     </body>
 </html>

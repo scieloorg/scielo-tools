@@ -1,12 +1,22 @@
 import posixpath
 import re
 
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from wagtail.documents.models import Document
 from wagtail.images import get_image_model
 
-from manuscript.models import Manuscript, ManuscriptFigureFile
+from manuscript.models import (
+    Manuscript,
+    ManuscriptFigureFile,
+    ManuscriptMarkingRun,
+    ManuscriptMarkingRunStatus,
+)
+from manuscript.services.marking_jobs import (
+    ACTIVE_STATUSES,
+    advance_marking_queue,
+    revoke_task_ids,
+)
 from xml_manager.models import SPSPackageValidation
 
 _UNIQUE_BEFORE_EXT = re.compile(r"_[A-Za-z0-9]{7}(?=\.)")
@@ -71,6 +81,12 @@ def delete_document_storage(sender, instance, **kwargs):
     _delete_file_and_unreferenced_family(instance.file)
 
 
+@receiver(pre_delete, sender=ManuscriptMarkingRun)
+def revoke_deleted_marking_run(sender, instance, **kwargs):
+    if instance.task_id and instance.status in ACTIVE_STATUSES:
+        revoke_task_ids([instance.task_id])
+
+
 @receiver(post_delete, sender=Manuscript)
 def delete_manuscript_related(sender, instance, **kwargs):
     documents = []
@@ -92,6 +108,24 @@ def delete_manuscript_related(sender, instance, **kwargs):
         package = Document.objects.filter(pk=instance.sps_package_id).first()
         if package:
             documents.append(package)
+    if (
+        instance.generated_pdf_id
+        and not Manuscript.objects.filter(
+            generated_pdf_id=instance.generated_pdf_id
+        ).exists()
+    ):
+        pdf_doc = Document.objects.filter(pk=instance.generated_pdf_id).first()
+        if pdf_doc:
+            documents.append(pdf_doc)
+    if (
+        instance.generated_html_id
+        and not Manuscript.objects.filter(
+            generated_html_id=instance.generated_html_id
+        ).exists()
+    ):
+        html_doc = Document.objects.filter(pk=instance.generated_html_id).first()
+        if html_doc:
+            documents.append(html_doc)
     if (
         instance.validation_id
         and not Manuscript.objects.filter(validation_id=instance.validation_id).exists()
@@ -121,3 +155,9 @@ def delete_manuscript_related(sender, instance, **kwargs):
         and not Manuscript.objects.filter(validation_id=instance.validation_id).exists()
     ):
         SPSPackageValidation.objects.filter(pk=instance.validation_id).delete()
+
+    if ManuscriptMarkingRun.objects.filter(
+        status=ManuscriptMarkingRunStatus.PENDING,
+        task_id="",
+    ).exists():
+        advance_marking_queue()

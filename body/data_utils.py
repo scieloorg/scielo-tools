@@ -590,13 +590,18 @@ def resolve_body_result(
     tables=None,
     figures=None,
     image_hrefs=None,
+    on_progress=None,
 ):
+    if on_progress is not None:
+        on_progress(15)
     normalized = normalize_body_text(body_text)
     checksum = body_checksum(normalized)
 
     try:
         record = Body.objects.get(checksum=checksum)
     except Body.DoesNotExist:
+        if on_progress is not None:
+            on_progress(45)
         raw = mark_body(body_text)
         marked = parse_marked(raw)
         if marked is None:
@@ -609,12 +614,16 @@ def resolve_body_result(
             raise BodyLlamaUnavailableError(
                 "Body Llama returned invalid JSON"
             ) from None
+        if on_progress is not None:
+            on_progress(80)
         if figures:
             marked.setdefault("figures", [])
             marked["figures"] = list(marked.get("figures") or []) + [
                 item for item in figures if isinstance(item, dict)
             ]
         marked = apply_body_rules(marked, body_text, tables=tables)
+        if on_progress is not None:
+            on_progress(95)
         xml = get_body_xml(marked)
         try:
             record, created = Body.objects.get_or_create(
@@ -640,6 +649,8 @@ def resolve_body_result(
         marked = copy.deepcopy(record.marked)
         attach_figure_hrefs(marked, image_hrefs)
         xml = get_body_xml(marked)
+    if on_progress is not None:
+        on_progress(95)
     if output_type == "xml":
         data = xml
     else:

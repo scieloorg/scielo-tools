@@ -1205,6 +1205,11 @@ msgstr ""
 msgid "Manuscript “%(title)s” created."
 msgstr ""
 
+#: manuscript/wagtail_hooks.py
+#, python-format
+msgid "Manuscript “%(title)s” re-marked."
+msgstr "Manuscrito “%(title)s” remarcado."
+
 #: manuscript/wagtail_hooks.py:187
 msgid "Continue marking"
 msgstr ""

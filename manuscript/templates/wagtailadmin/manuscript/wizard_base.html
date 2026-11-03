@@ -9,7 +9,7 @@
 {% block extra_js %}
     {{ block.super }}
     {% include "wagtailadmin/manuscript/i18n_script.html" %}
-    <script src="{% static 'manuscript/js/wizard.js' %}"></script>
+    <script src="{% static 'manuscript/js/wizard.js' %}" defer></script>
 {% endblock %}
 
 {% block main_content %}
@@ -64,16 +64,25 @@
                         </li>
                         <li class="manuscript-wizard__step-arrow" aria-hidden="true"></li>
                         <li class="nav-item">
-                            <a href="{% url 'manuscript_step_validate' manuscript.pk %}" class="nav-link{% if step == 'validate' %} active{% endif %}{% if validate_is_complete %} is-complete{% endif %}{% if validate_has_error %} is-error{% endif %}">Validar</a>
+                            {% include "wagtailadmin/manuscript/step_part_link.html" with part="validate" label="Validar" url_name="manuscript_step_validate" active=marking_active.validate state=marking_state.validate.status percent=marking_state.validate.percent is_complete=validate_is_complete has_error=validate_has_error %}
                         </li>
                         <li class="manuscript-wizard__step-arrow" aria-hidden="true"></li>
                         <li class="nav-item">
-                            <a href="{% url 'manuscript_step_package' manuscript.pk %}" class="nav-link{% if step == 'package' %} active{% endif %}{% if 'package' in completed_steps %} is-complete{% endif %}">Pacote</a>
+                            {% include "wagtailadmin/manuscript/step_part_link.html" with part="package" label="Pacote" url_name="manuscript_step_package" active=marking_active.package state=marking_state.package.status percent=marking_state.package.percent %}
                         </li>
                     </ul>
                 </nav>
             </div>
-            <h2 class="manuscript-wizard__preview-title">{% trans "Preview" %}</h2>
+            <div class="manuscript-wizard__preview-title">
+                <h2>{% trans "Preview" %}</h2>
+                <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary manuscript-wizard__preview-expand-btn"
+                    data-preview-expand-open
+                >
+                    {% trans "Expand preview" %}
+                </button>
+            </div>
             <div class="manuscript-wizard__editor">
                 {% block wizard_editor %}{% endblock %}
             </div>
@@ -87,6 +96,43 @@
             </aside>
             <div class="manuscript-wizard__editor-extra">{% block wizard_editor_extra %}{% endblock %}</div>
         </div>
+        <dialog
+            id="manuscript-preview-modal"
+            class="manuscript-preview-modal"
+            aria-labelledby="manuscript-preview-modal-title"
+        >
+            <div class="manuscript-preview-modal__content">
+                <div class="manuscript-preview-modal__header">
+                    <h2 id="manuscript-preview-modal-title" class="manuscript-preview-modal__title">
+                        {{ manuscript.title }} — {% trans "Preview" %}
+                    </h2>
+                    <div class="manuscript-preview-modal__actions">
+                        <a
+                            id="manuscript-preview-modal-newtab"
+                            href="{{ preview_src }}"
+                            target="_blank"
+                            rel="noopener"
+                            class="btn btn-sm btn-outline-secondary"
+                        >
+                            {% trans "Open in new tab" %}
+                        </a>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-secondary"
+                            data-preview-expand-close
+                        >
+                            {% trans "Close" %}
+                        </button>
+                    </div>
+                </div>
+                <iframe
+                    id="manuscript-preview-modal-frame"
+                    class="manuscript-preview-modal__frame"
+                    src="{{ preview_src }}"
+                    title="{% trans 'Preview' %}"
+                ></iframe>
+            </div>
+        </dialog>
         {% block wizard_footer %}{% endblock %}
     </div>
 {% endblock %}

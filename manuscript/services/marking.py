@@ -10,6 +10,7 @@ from body.exceptions import (
     BodyLlamaMisconfiguredError,
     BodyLlamaUnavailableError,
 )
+from body.images import attach_figure_hrefs
 from front.data_utils import get_front_xml, resolve_front_result
 from front.exceptions import (
     FrontDocxError,
@@ -140,21 +141,17 @@ def mark_body(manuscript, user=None, language=None):
         )
     except LLAMA_ERRORS as exc:
         raise MarkingError(str(exc)) from exc
-    marked = result.get("data") or {}
-    manuscript.body_marked = marked
-    manuscript.body_marked_xml = get_body_xml(marked)
-    if user is not None:
-        manuscript.updated_by = user
-    manuscript.save(
-        update_fields=["body_marked", "body_marked_xml", "updated", "updated_by"]
-    )
-    _sync_assembled_xml(manuscript)
-    return manuscript
+    return save_body_marked(manuscript, result.get("data") or {}, user=user)
 
 
 def save_body_marked(manuscript, marked, user=None):
     if not isinstance(marked, dict):
         raise MarkingError(_("Body marked data must be a JSON object"))
+    image_hrefs = {
+        str(item.number): item.href for item in manuscript.figure_files.all()
+    }
+    if image_hrefs:
+        attach_figure_hrefs(marked, image_hrefs)
     manuscript.body_marked = marked
     manuscript.body_marked_xml = get_body_xml(marked)
     if user is not None:

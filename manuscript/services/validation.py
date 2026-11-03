@@ -85,8 +85,8 @@ def group_validation_rows_by_response(rows):
     ]
 
 
-def run_manuscript_validation(manuscript, user=None):
-    build_sps_zip(manuscript)
+def run_manuscript_validation(manuscript, user=None, allow_fallback_stem=True):
+    build_sps_zip(manuscript, allow_fallback_stem=allow_fallback_stem)
     package = manuscript.sps_package
 
     try:

@@ -551,3 +551,19 @@ class ManuscriptAssemblyTests(TestCase):
         ):
             pdf_bytes = generate_packtools_pdf(xml, "wide-table.xml", [])
         self.assertEqual(pdf_bytes, b"%PDF-from-mock")
+
+    def test_generate_packtools_pdf_handles_missing_front_metadata_elements(self):
+        xml = "<article><front/><body/><back/></article>"
+
+        def fake_convert(docx_path, *args, **kwargs):
+            pdf_path = docx_path[:-5] + ".pdf"
+            with open(pdf_path, "wb") as fh:
+                fh.write(b"%PDF-minimal")
+            return pdf_path
+
+        with patch(
+            "manuscript.services.assembly.packtools_file_utils.convert_docx_to_pdf",
+            side_effect=fake_convert,
+        ):
+            pdf_bytes = generate_packtools_pdf(xml, "minimal.xml", [])
+        self.assertEqual(pdf_bytes, b"%PDF-minimal")

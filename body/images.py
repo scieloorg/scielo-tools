@@ -9,7 +9,13 @@ from body.exceptions import BodyImageError
 from body.utils import float_number, iter_content_lists
 
 FIG_FILE_RE = re.compile(r"^fig-(\d+)\.(tif|tiff|jpg|jpeg)$", re.IGNORECASE)
+ANY_IMAGE_EXT_RE = re.compile(r"^.+?\.(tif|tiff|jpg|jpeg|png)$", re.IGNORECASE)
+FIG_IDENTIFIER_RE = re.compile(
+    r"^(?:fig(?:ure|ura)?[-_\s]*)?(\d+)(?:\.(?:tif|tiff|jpg|jpeg|png))?$",
+    re.IGNORECASE,
+)
 TIFF_EXTS = {"tif", "tiff"}
+CONVERT_TO_JPEG_EXTS = {"tif", "tiff", "png"}
 
 
 def parse_figure_filename(name):
@@ -20,10 +26,29 @@ def parse_figure_filename(name):
     return str(int(match.group(1))), match.group(2).lower()
 
 
+def parse_image_extension(name):
+    basename = os.path.basename(str(name or "").replace("\\", "/"))
+    match = ANY_IMAGE_EXT_RE.match(basename)
+    if not match:
+        return None
+    return match.group(1).lower()
+
+
+def normalize_figure_identifier(value):
+    text = os.path.basename(str(value or "").strip().replace("\\", "/"))
+    match = FIG_IDENTIFIER_RE.match(text)
+    if not match:
+        raise BodyImageError(f"Invalid figure identifier: {value}")
+    number = int(match.group(1))
+    if number < 1:
+        raise BodyImageError(f"Invalid figure identifier: {value}")
+    return number, f"fig-{number}.jpg"
+
+
 def figure_jpeg_bytes(name, data, ext):
     if not data:
         raise BodyImageError(f"Empty image file: {os.path.basename(name)}")
-    if ext not in TIFF_EXTS:
+    if ext not in CONVERT_TO_JPEG_EXTS:
         return data
     try:
         image = Image.open(io.BytesIO(data))
@@ -42,16 +67,54 @@ def figure_jpeg_bytes(name, data, ext):
         ) from exc
 
 
-def collect_image_assets(images=None, images_zip=None):
+def collect_image_assets(
+    images=None,
+    images_zip=None,
+    allow_any_filename=False,
+    reserved_numbers=None,
+):
     assets = {}
+    used_numbers = {int(n) for n in (reserved_numbers or []) if str(n).isdigit()}
+    next_number = 1
     for uploaded in images or []:
         name = getattr(uploaded, "name", "") or ""
         parsed = parse_figure_filename(name)
         if parsed is None:
-            raise BodyImageError(f"Invalid image filename: {os.path.basename(name)}")
-        number, ext = parsed
-        if number in assets:
-            raise BodyImageError(f"Duplicate figure number: {number}")
+            if not allow_any_filename:
+                raise BodyImageError(
+                    f"Invalid image filename: {os.path.basename(name)}"
+                )
+            ext = parse_image_extension(name)
+            if ext is None:
+                raise BodyImageError(
+                    f"Invalid image filename: {os.path.basename(name)}"
+                )
+            basename_stem = os.path.splitext(
+                os.path.basename(str(name).replace("\\", "/"))
+            )[0]
+            stem_match = FIG_IDENTIFIER_RE.match(basename_stem)
+            if (
+                stem_match
+                and int(stem_match.group(1)) >= 1
+                and int(stem_match.group(1)) not in used_numbers
+                and str(int(stem_match.group(1))) not in assets
+            ):
+                number = str(int(stem_match.group(1)))
+            else:
+                while next_number in used_numbers or str(next_number) in assets:
+                    next_number += 1
+                number = str(next_number)
+                next_number += 1
+        else:
+            number, ext = parsed
+            if number in assets:
+                if not allow_any_filename:
+                    raise BodyImageError(f"Duplicate figure number: {number}")
+                while next_number in used_numbers or str(next_number) in assets:
+                    next_number += 1
+                number = str(next_number)
+                next_number += 1
+        used_numbers.add(int(number))
         data = uploaded.read()
         if hasattr(uploaded, "seek"):
             uploaded.seek(0)
@@ -75,10 +138,37 @@ def collect_image_assets(images=None, images_zip=None):
             continue
         parsed = parse_figure_filename(info.filename)
         if parsed is None:
-            continue
-        number, ext = parsed
-        if number in assets:
-            raise BodyImageError(f"Duplicate figure number: {number}")
+            if not allow_any_filename:
+                continue
+            ext = parse_image_extension(info.filename)
+            if ext is None:
+                continue
+            basename_stem = os.path.splitext(
+                os.path.basename(info.filename.replace("\\", "/"))
+            )[0]
+            stem_match = FIG_IDENTIFIER_RE.match(basename_stem)
+            if (
+                stem_match
+                and int(stem_match.group(1)) >= 1
+                and int(stem_match.group(1)) not in used_numbers
+                and str(int(stem_match.group(1))) not in assets
+            ):
+                number = str(int(stem_match.group(1)))
+            else:
+                while next_number in used_numbers or str(next_number) in assets:
+                    next_number += 1
+                number = str(next_number)
+                next_number += 1
+        else:
+            number, ext = parsed
+            if number in assets:
+                if not allow_any_filename:
+                    raise BodyImageError(f"Duplicate figure number: {number}")
+                while next_number in used_numbers or str(next_number) in assets:
+                    next_number += 1
+                number = str(next_number)
+                next_number += 1
+        used_numbers.add(int(number))
         data = archive.read(info)
         jpeg = figure_jpeg_bytes(info.filename, data, ext)
         assets[number] = {

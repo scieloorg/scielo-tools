@@ -22,5 +22,5 @@ wagtail-json-widget==0.0.9
 
 # Packtools (SPS package validation)
 # ------------------------------------------------------------------------------
-git+https://git@github.com/scieloorg/packtools@4.17.6#egg=packtools
+git+https://git@github.com/scieloorg/packtools@4.18.3#egg=packtools
 requests>=2.34.2
