@@ -44,6 +44,18 @@ def generate_xml_sps(
         back.append(back_root)
 
     xml_lang = (language or "").strip()
+    trans_langs = {
+        (node.get(XML_LANG) or "").strip()
+        for node in front.findall(".//trans-title-group")
+        if (node.get(XML_LANG) or "").strip()
+    }
+    original_langs = {
+        (node.get(XML_LANG) or "").strip()
+        for node in front.findall(".//kwd-group")
+        if (node.get(XML_LANG) or "").strip()
+    } - trans_langs
+    if xml_lang and xml_lang in trans_langs and len(original_langs) == 1:
+        xml_lang = next(iter(original_langs))
     if not xml_lang:
         for abstract in front.findall(".//abstract"):
             value = (abstract.get(XML_LANG) or "").strip()

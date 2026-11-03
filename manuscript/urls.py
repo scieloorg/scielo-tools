@@ -3,6 +3,7 @@ from django.urls import path
 from manuscript import views
 
 urlpatterns = [
+    path("bulk-upload/", views.bulk_upload, name="manuscript_bulk_upload"),
     path("<int:pk>/front/", views.step_front, name="manuscript_step_front"),
     path("<int:pk>/body/", views.step_body, name="manuscript_step_body"),
     path("<int:pk>/back/", views.step_back, name="manuscript_step_back"),
@@ -25,6 +26,21 @@ urlpatterns = [
         "<int:pk>/api/references/<int:ref_pk>/remark/",
         views.api_remark_reference,
         name="manuscript_api_remark_reference",
+    ),
+    path(
+        "<int:pk>/api/figures/add/",
+        views.api_add_figure,
+        name="manuscript_api_add_figure",
+    ),
+    path(
+        "<int:pk>/api/figures/<int:figure_pk>/update/",
+        views.api_update_figure,
+        name="manuscript_api_update_figure",
+    ),
+    path(
+        "<int:pk>/api/figures/<int:figure_pk>/delete/",
+        views.api_delete_figure,
+        name="manuscript_api_delete_figure",
     ),
     path("<int:pk>/api/publish/", views.api_publish, name="manuscript_api_publish"),
 ]

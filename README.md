@@ -43,7 +43,19 @@ make build
 make up
 ```
 
-A aplicação fica em http://localhost:8000 (container `django`).
+Para acessar a aplicação pela primeira vez, crie um superusuário informando usuário, e-mail e senha:
+
+```bash
+make django_createsuperuser
+```
+
+Caso precise alterar a senha de um usuário existente:
+
+```bash
+docker compose -f local.yml run --rm django python manage.py changepassword NOME_UTILIZADOR
+```
+
+A aplicação fica em http://localhost:8000 (container `django`), redirecionando para o login do painel em `/admin/` (ou `/django-admin/` para o admin do Django).
 
 ### Produção
 

@@ -150,6 +150,44 @@ class MarkingJobsTests(TestCase):
         )
         self.assertEqual(body_run.endpoints, "local")
 
+    def test_persist_body_resyncs_existing_figure_hrefs(self):
+        from manuscript.tests.helpers import attach_manuscript_figure
+
+        attach_manuscript_figure(self.manuscript, number=1, href="fig-1.jpg")
+        ManuscriptMarkingRun.objects.create(
+            manuscript=self.manuscript,
+            part=ManuscriptMarkingPart.BODY,
+            status=ManuscriptMarkingRunStatus.PENDING,
+        )
+        persist_body_result(
+            {
+                "data": {
+                    "sections": [
+                        {
+                            "title": "Results",
+                            "content": [
+                                {
+                                    "type": "fig",
+                                    "id": "f1",
+                                    "label": "Figure 1",
+                                    "caption": "Map",
+                                }
+                            ],
+                            "sections": [],
+                        }
+                    ]
+                }
+            },
+            self.manuscript.pk,
+            self.user.pk,
+        )
+        self.manuscript.refresh_from_db()
+        self.assertEqual(
+            self.manuscript.body_marked["sections"][0]["content"][0]["href"],
+            "fig-1.jpg",
+        )
+        self.assertIn('xlink:href="fig-1.jpg"', self.manuscript.body_marked_xml)
+
     def test_persist_back_records_both_endpoints(self):
         ManuscriptMarkingRun.objects.create(
             manuscript=self.manuscript,
@@ -508,6 +546,157 @@ class MarkingJobsTests(TestCase):
         self.assertEqual(payload["validate"]["percent"], 100)
         self.assertEqual(payload["package"]["status"], ManuscriptMarkingRunStatus.DONE)
         self.assertEqual(payload["package"]["percent"], 100)
+        self.assertEqual(payload["overall"]["percent"], 80)
+        ManuscriptMarkingRun.objects.create(
+            manuscript=self.manuscript,
+            part=ManuscriptMarkingPart.BACK,
+            status=ManuscriptMarkingRunStatus.DONE,
+        )
+        payload = marking_status_payload(self.manuscript)
+        self.assertEqual(payload["overall"]["status"], ManuscriptMarkingRunStatus.DONE)
+        self.assertEqual(payload["overall"]["percent"], 100)
+
+    @patch("manuscript.tasks.generate_manuscript_html_task.apply_async")
+    @patch("manuscript.tasks.generate_manuscript_pdf_task.apply_async")
+    @patch("manuscript.tasks.run_manuscript_validation_task.apply_async")
+    @patch("body.tasks.mark_body_text.apply_async")
+    @patch("front.tasks.mark_front_text.apply_async")
+    @patch("reference.tasks.mark_reference_texts_task.apply_async")
+    def test_five_manuscripts_process_sequentially_without_stalling(
+        self,
+        mock_back,
+        mock_front,
+        mock_body,
+        mock_val,
+        mock_pdf,
+        mock_html,
+    ):
+        counter = {"n": 0}
+
+        def next_async(*_args, **_kwargs):
+            counter["n"] += 1
+            res = MagicMock()
+            res.id = f"task-{counter['n']}"
+            return res
+
+        for mock_fn in (
+            mock_back,
+            mock_front,
+            mock_body,
+            mock_val,
+            mock_pdf,
+            mock_html,
+        ):
+            mock_fn.side_effect = next_async
+
+        manuscripts = [self.manuscript]
+        for idx in range(2, 6):
+            manuscripts.append(
+                Manuscript.objects.create(
+                    title=f"Async marking {idx}",
+                    status=ManuscriptStatus.FRONT,
+                    creator=self.user,
+                    front_source_text=f"Front {idx}",
+                    body_source_text=f"Body {idx}",
+                    references_source_text=f"Ref {idx}. Nature. 2024.",
+                )
+            )
+
+        for ms in manuscripts:
+            enqueue_manuscript_marking(ms, user=self.user)
+
+        self.assertEqual(mock_back.call_count, 1)
+        self.assertEqual(mock_front.call_count, 0)
+        self.assertEqual(mock_body.call_count, 0)
+
+        for index, ms in enumerate(manuscripts, start=1):
+            back_run = ManuscriptMarkingRun.objects.get(
+                manuscript=ms, part=ManuscriptMarkingPart.BACK
+            )
+            self.assertTrue(back_run.task_id)
+            persist_back_result(
+                {
+                    "items": [
+                        {
+                            "mixed_citation": f"Ref {index}. Nature. 2024.",
+                            "data": {"reftype": "journal", "source": "Nature"},
+                        }
+                    ],
+                    "endpoints": "local",
+                },
+                ms.pk,
+                self.user.pk,
+            )
+            self.assertEqual(mock_front.call_count, index)
+            persist_front_result(
+                {
+                    "data": {
+                        "titles": [
+                            {
+                                "kind": "main",
+                                "text": f"Title {index}",
+                                "language": "en",
+                            }
+                        ]
+                    }
+                },
+                ms.pk,
+                self.user.pk,
+            )
+            self.assertEqual(mock_body.call_count, index)
+            persist_body_result(
+                {
+                    "data": {
+                        "sections": [
+                            {
+                                "title": "Intro",
+                                "content": [{"type": "p", "text": f"Body {index}"}],
+                                "sections": [],
+                            }
+                        ]
+                    }
+                },
+                ms.pk,
+                self.user.pk,
+            )
+            self.assertEqual(mock_val.call_count, index)
+            self.assertEqual(mock_pdf.call_count, index)
+            self.assertEqual(mock_html.call_count, index)
+            if index < 5:
+                self.assertEqual(mock_back.call_count, index + 1)
+
+        self.assertEqual(mock_back.call_count, 5)
+        self.assertEqual(mock_front.call_count, 5)
+        self.assertEqual(mock_body.call_count, 5)
+
+    @patch("front.tasks.mark_front_text.apply_async")
+    @patch("manuscript.services.marking_jobs.AsyncResult")
+    def test_reconcile_failed_celery_task_marks_error_and_advances_queue(
+        self, mock_async_result, mock_front
+    ):
+        mock_front.return_value = self._async_result()
+        state_obj = MagicMock()
+        state_obj.state = "FAILURE"
+        state_obj.info = RuntimeError("Worker lost")
+        mock_async_result.return_value = state_obj
+
+        ManuscriptMarkingRun.objects.create(
+            manuscript=self.manuscript,
+            part=ManuscriptMarkingPart.BACK,
+            status=ManuscriptMarkingRunStatus.RUNNING,
+            task_id="dead-back-task",
+        )
+        ManuscriptMarkingRun.objects.create(
+            manuscript=self.manuscript,
+            part=ManuscriptMarkingPart.FRONT,
+            status=ManuscriptMarkingRunStatus.PENDING,
+            task_id="",
+        )
+
+        payload = marking_status_payload(self.manuscript)
+        self.assertEqual(payload["back"]["status"], ManuscriptMarkingRunStatus.ERROR)
+        self.assertIn("Worker lost", payload["back"]["error"])
+        mock_front.assert_called_once()
 
 
 class MarkingStatusViewTests(TestCase):

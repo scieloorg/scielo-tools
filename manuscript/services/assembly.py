@@ -10,6 +10,7 @@ from django.core.files.base import ContentFile
 from django.utils.translation import gettext_lazy as _
 from docx import Document as DocxDocument
 from docx.enum.style import WD_STYLE_TYPE
+from docx.shared import Pt
 from lxml import etree
 from packtools.sps.formats.pdf.pipeline import docx as packtools_docx
 from packtools.sps.formats.pdf.renderer.docx import table as packtools_table
@@ -296,12 +297,57 @@ def generate_packtools_pdf(xml_text, xml_name, figures):
             layout_doc = DocxDocument()
             for name in _PACKTOOLS_PDF_PARAGRAPH_STYLES:
                 if name not in layout_doc.styles:
-                    layout_doc.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
+                    style = layout_doc.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
+                    if name == "SCL Paragraph":
+                        style.font.size = Pt(10)
             for name in _PACKTOOLS_PDF_CHARACTER_STYLES:
                 if name not in layout_doc.styles:
                     layout_doc.styles.add_style(name, WD_STYLE_TYPE.CHARACTER)
             layout_doc.save(base_layout)
         xml_tree = packtools_xml_utils.get_xml_tree(xml_path)
+        if isinstance(xml_tree, etree._Element | etree._ElementTree):
+            root_el = (
+                xml_tree.getroot()
+                if isinstance(xml_tree, etree._ElementTree)
+                else xml_tree
+            )
+            if not root_el.get("article-type"):
+                root_el.set("article-type", "research-article")
+            if not root_el.get("{http://www.w3.org/XML/1998/namespace}lang"):
+                root_el.set("{http://www.w3.org/XML/1998/namespace}lang", "en")
+            front_el = root_el.find("front")
+            if front_el is None:
+                front_el = etree.SubElement(root_el, "front")
+            if root_el.find(".//journal-title") is None:
+                jm = front_el.find("journal-meta")
+                if jm is None:
+                    jm = etree.SubElement(front_el, "journal-meta")
+                jtg = jm.find("journal-title-group")
+                if jtg is None:
+                    jtg = etree.SubElement(jm, "journal-title-group")
+                etree.SubElement(jtg, "journal-title").text = ""
+            am = front_el.find("article-meta")
+            if am is None:
+                am = etree.SubElement(front_el, "article-meta")
+            if root_el.find('.//article-id[@pub-id-type="doi"]') is None:
+                doi_el = etree.SubElement(
+                    am, "article-id", attrib={"pub-id-type": "doi"}
+                )
+                doi_el.text = ""
+            heading_xpath = './/subj-group[@subj-group-type="heading"]/subject'
+            if root_el.find(heading_xpath) is None:
+                ac = am.find("article-categories")
+                if ac is None:
+                    ac = etree.SubElement(am, "article-categories")
+                sg = etree.SubElement(
+                    ac, "subj-group", attrib={"subj-group-type": "heading"}
+                )
+                etree.SubElement(sg, "subject").text = ""
+            if root_el.find(".//article-title") is None:
+                tg = am.find("title-group")
+                if tg is None:
+                    tg = etree.SubElement(am, "title-group")
+                etree.SubElement(tg, "article-title").text = ""
         original_num_cols = packtools_table._determine_num_cols
         original_merge = packtools_table._merge_horizontally
 

@@ -73,7 +73,16 @@
                     </ul>
                 </nav>
             </div>
-            <h2 class="manuscript-wizard__preview-title">{% trans "Preview" %}</h2>
+            <div class="manuscript-wizard__preview-title">
+                <h2>{% trans "Preview" %}</h2>
+                <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary manuscript-wizard__preview-expand-btn"
+                    data-preview-expand-open
+                >
+                    {% trans "Expand preview" %}
+                </button>
+            </div>
             <div class="manuscript-wizard__editor">
                 {% block wizard_editor %}{% endblock %}
             </div>
@@ -87,6 +96,43 @@
             </aside>
             <div class="manuscript-wizard__editor-extra">{% block wizard_editor_extra %}{% endblock %}</div>
         </div>
+        <dialog
+            id="manuscript-preview-modal"
+            class="manuscript-preview-modal"
+            aria-labelledby="manuscript-preview-modal-title"
+        >
+            <div class="manuscript-preview-modal__content">
+                <div class="manuscript-preview-modal__header">
+                    <h2 id="manuscript-preview-modal-title" class="manuscript-preview-modal__title">
+                        {{ manuscript.title }} — {% trans "Preview" %}
+                    </h2>
+                    <div class="manuscript-preview-modal__actions">
+                        <a
+                            id="manuscript-preview-modal-newtab"
+                            href="{{ preview_src }}"
+                            target="_blank"
+                            rel="noopener"
+                            class="btn btn-sm btn-outline-secondary"
+                        >
+                            {% trans "Open in new tab" %}
+                        </a>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-secondary"
+                            data-preview-expand-close
+                        >
+                            {% trans "Close" %}
+                        </button>
+                    </div>
+                </div>
+                <iframe
+                    id="manuscript-preview-modal-frame"
+                    class="manuscript-preview-modal__frame"
+                    src="{{ preview_src }}"
+                    title="{% trans 'Preview' %}"
+                ></iframe>
+            </div>
+        </dialog>
         {% block wizard_footer %}{% endblock %}
     </div>
 {% endblock %}

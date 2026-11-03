@@ -8,6 +8,7 @@ from django.utils.safestring import SafeString
 from django.utils.translation import gettext
 from lxml import etree
 from lxml import html as lhtml
+
 from packtools import HTMLGenerator
 
 logger = logging.getLogger(__name__)
@@ -342,33 +343,86 @@ def render_back_preview(references):
 
 
 def _article_language(assembled_xml, language):
-    if (language or "").strip():
-        return language.strip()[:2]
     stripped = re.sub(r"<!DOCTYPE[^>]+>", "", assembled_xml or "", count=1)
     try:
         root = etree.fromstring(stripped.encode("utf-8"))
     except etree.XMLSyntaxError:
-        return "en"
-    xml_lang = root.get("{http://www.w3.org/XML/1998/namespace}lang") or ""
-    return (xml_lang.strip() or "en")[:2]
+        root = None
+    if root is not None:
+        xml_lang = (
+            root.get("{http://www.w3.org/XML/1998/namespace}lang") or ""
+        ).strip()
+        if xml_lang:
+            return xml_lang[:2]
+    if (language or "").strip():
+        return language.strip()[:2]
+    return "en"
+
+
+def _class_token(token):
+    return "contains(concat(' ', normalize-space(@class), ' '), ' " + token + " ')"
 
 
 def _packtools_article_txt_html(html_document):
-    nodes = html_document.xpath(
-        "//*[contains(concat(' ', normalize-space(@class), ' '), ' articleTxt ')]"
-    )
+    nodes = html_document.xpath(f"//*[{_class_token('articleTxt')}]")
     if not nodes:
         return None
     node = nodes[0]
-    return format_html(
-        "{}",
-        SafeString(
-            "".join(
-                etree.tostring(child, encoding="unicode", method="html")
-                for child in node
+    menus = node.xpath(f".//*[{_class_token('articleMenu')}]")
+    if menus:
+        menu = menus[0]
+        for child in list(menu):
+            menu.remove(child)
+        sections = node.xpath(
+            f".//*[@id='articleText']//*[{_class_token('articleSection')}]"
+        )
+        added = 0
+        for index, section in enumerate(sections):
+            anchor_name = f"articleSection{index}"
+            if not section.xpath(f"./a[@name='{anchor_name}']"):
+                marker = lhtml.Element("a")
+                marker.set("name", anchor_name)
+                section.insert(0, marker)
+            label = (section.get("data-anchor") or "").strip()
+            if not label:
+                continue
+            item = lhtml.Element("li")
+            item.set(
+                "class",
+                "list-group-item active selected" if added == 0 else "list-group-item",
             )
-        ),
+            link = lhtml.Element("a")
+            link.set("href", f"#{anchor_name}")
+            link.text = label
+            item.append(link)
+            titles = section.xpath(f".//*[{_class_token('articleSectionTitle')}]")
+            if len(titles) > 1:
+                sub = lhtml.Element("ul")
+                for title_index, title in enumerate(titles):
+                    sub_name = f"as{index}-heading{title_index}"
+                    previous = title.getprevious()
+                    if previous is None or previous.get("name") != sub_name:
+                        sub_marker = lhtml.Element("a")
+                        sub_marker.set("name", sub_name)
+                        title.addprevious(sub_marker)
+                    sub_item = lhtml.Element("li")
+                    sub_link = lhtml.Element("a")
+                    sub_link.set("href", f"#{sub_name}")
+                    sub_link.text = "".join(title.itertext()).strip()
+                    sub_item.append(sub_link)
+                    sub.append(sub_item)
+                item.append(sub)
+            menu.append(item)
+            added += 1
+    parts = [etree.tostring(child, encoding="unicode", method="html") for child in node]
+    modals = html_document.xpath(
+        "//*[contains(concat(' ', normalize-space(@class), ' '), ' ModalFigs ') "
+        "or contains(concat(' ', normalize-space(@class), ' '), ' ModalTables ') "
+        "or @id='ModalArticles']"
     )
+    for modal in modals:
+        parts.append(etree.tostring(modal, encoding="unicode", method="html"))
+    return format_html("{}", SafeString("".join(parts)))
 
 
 def apply_figure_urls(html_content, figure_urls, xml_text=None):
@@ -389,15 +443,37 @@ def apply_figure_urls(html_content, figure_urls, xml_text=None):
         graphic = fig.find("graphic")
         href = (graphic.get(XLINK_HREF) or "").strip() if graphic is not None else ""
         url = figure_urls.get(href)
+        if not url and fig_id:
+            match = re.search(r"(\d+)", fig_id)
+            if match:
+                url = figure_urls.get(f"fig-{int(match.group(1))}.jpg")
         if not fig_id or not url:
             continue
-        nodes = document.xpath(f'//*[@id="{fig_id}"]//*[contains(@class, "thumbOff")]')
-        if not nodes or nodes[0].find(".//img") is not None:
-            continue
-        img = lhtml.Element("img")
-        img.set("src", url)
-        img.set("alt", fig_id)
-        nodes[0].insert(0, img)
+        modal_nodes = document.xpath(f'//*[@id="ModalFig{fig_id}"]')
+        for modal in modal_nodes:
+            for modal_img in modal.findall(".//img"):
+                modal_img.set("src", url)
+            for modal_link in modal.xpath('.//a[contains(@class, "link-newWindow")]'):
+                modal_link.set("href", url)
+        thumbs = document.xpath(
+            f'//*[@id="{fig_id}"]//*[contains(@class, "thumbOff")] | '
+            f'//a[@data-target="#ModalFig{fig_id}"]//*[contains(@class, "thumbOff")]'
+        )
+        for thumb in thumbs:
+            classes = [
+                cls for cls in (thumb.get("class") or "").split() if cls != "thumbOff"
+            ]
+            if "thumbImg" not in classes:
+                classes.append("thumbImg")
+            thumb.set("class", " ".join(classes))
+            existing_img = thumb.find(".//img")
+            if existing_img is not None:
+                existing_img.set("src", url)
+                continue
+            img = lhtml.Element("img")
+            img.set("src", url)
+            img.set("alt", fig_id)
+            thumb.insert(0, img)
     return SafeString(
         "".join(
             etree.tostring(child, encoding="unicode", method="html")
@@ -449,7 +525,9 @@ def render_article_preview_packtools(assembled_xml, language=None):
     lang = _article_language(assembled_xml, language)
     tree = etree.ElementTree(root)
     try:
-        generator = HTMLGenerator.parse(tree, valid_only=False)
+        generator = HTMLGenerator.parse(tree, valid_only=False, xslt="3.0")
+        if generator.languages and lang not in generator.languages:
+            lang = generator.language or generator.languages[0]
         html_root = generator.generate(lang)
         full_html = etree.tostring(html_root, encoding="unicode", method="html")
     except Exception as exc:

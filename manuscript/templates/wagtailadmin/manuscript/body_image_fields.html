@@ -1,4 +1,4 @@
-{% load i18n wagtailimages_tags %}
+{% load i18n %}
 <div class="manuscript-field">
     {{ form.images.label_tag }}
     {{ form.images }}
@@ -15,25 +15,3 @@
     {% endif %}
     {{ form.images_zip.errors }}
 </div>
-{% with figures=manuscript.figure_files.all %}
-    {% if figures %}
-        <div class="manuscript-field">
-            <p>{% trans "Uploaded images" %}</p>
-            <ul class="manuscript-figure-files">
-                {% for fig in figures %}
-                    <li>
-                        {% if fig.image %}
-                            {% image fig.image max-120x120 as fig_thumb %}
-                            <a href="{% url 'wagtailimages:edit' fig.image_id %}">
-                                <img src="{{ fig_thumb.url }}" alt="{{ fig.href }}">
-                                {{ fig.href }}
-                            </a>
-                        {% else %}
-                            {{ fig.href }}
-                        {% endif %}
-                    </li>
-                {% endfor %}
-            </ul>
-        </div>
-    {% endif %}
-{% endwith %}

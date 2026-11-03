@@ -317,6 +317,9 @@ class PreviewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, figure.image.file.url)
         self.assertContains(response, "Preview figure.")
+        self.assertContains(response, 'class="thumbImg"')
+        self.assertContains(response, 'data-target="#ModalFigf1"')
+        self.assertContains(response, 'id="ModalFigf1"')
 
     def test_render_article_preview_shows_figure_image(self):
         user = User.objects.create_superuser(
@@ -381,6 +384,7 @@ class PreviewTests(TestCase):
         self.assertContains(response, "vendor/scielo-ds/css/bootstrap.css")
         self.assertContains(response, "vendor/scielo-ds/css/article.css")
         self.assertContains(response, "manuscript/css/preview.css")
+        self.assertContains(response, 'document.querySelector(".articleMenu")')
         self.assertContains(response, "article-title")
         self.assertContains(response, "Preview title")
 
@@ -436,6 +440,59 @@ class PreviewTests(TestCase):
         self.assertIn("Packtools title", html)
         self.assertIn("Packtools paragraph.", html)
         self.assertIn("article-title", html)
+        self.assertIn('class="articleMenu list-group mt-4"', html)
+        self.assertIn('class="list-group-item active selected"', html)
+        self.assertIn(">Text</a>", html)
+        self.assertIn(">References</a>", html)
+        self.assertIn('name="articleSection0"', html)
+
+    def test_preview_part_succeeds_when_manuscript_language_differs_from_xml_lang(self):
+        user = User.objects.create_superuser(
+            username="langmismatch",
+            email="langmismatch@example.com",
+            password="secret",
+        )
+        manuscript = Manuscript.objects.create(
+            title="floram-2024-0058",
+            status=ManuscriptStatus.FRONT,
+            creator=user,
+            language="pt",
+            front_marked_xml=get_front_xml(
+                {
+                    "titles": [
+                        {
+                            "kind": "main",
+                            "text": "Morphophysiological and Biochemical Responses",
+                            "language": "en",
+                        },
+                        {
+                            "kind": "translated",
+                            "text": "Respostas morfofisiológicas e bioquímicas",
+                            "language": "pt",
+                        },
+                    ],
+                    "keywords": [
+                        {
+                            "language": "en",
+                            "title": "Keywords",
+                            "keywords": ["Glyphosate"],
+                        },
+                        {
+                            "language": "pt",
+                            "title": "Palavras-chave",
+                            "keywords": ["Glifosato"],
+                        },
+                    ],
+                }
+            ),
+        )
+        self.client.force_login(user)
+        response = self.client.get(
+            reverse("manuscript_preview_part", args=[manuscript.pk, "front"])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "packtools generation failed")
+        self.assertContains(response, "Morphophysiological and Biochemical Responses")
 
     def test_render_article_preview_packtools_raises_on_empty_xml(self):
         with self.assertRaises(ManuscriptPreviewError):
@@ -528,3 +585,31 @@ class PreviewTests(TestCase):
             response,
             reverse("manuscript_preview_part", args=[manuscript.pk, "article"]),
         )
+
+    def test_wizard_steps_render_expandable_preview_modal(self):
+        user = User.objects.create_superuser(
+            username="previewmodal",
+            email="previewmodal@example.com",
+            password="secret",
+        )
+        manuscript = self._assembled_manuscript(user)
+        manuscript.status = ManuscriptStatus.READY
+        manuscript.save(update_fields=["status"])
+        self.client.force_login(user)
+
+        step_expectations = (
+            ("manuscript_step_front", "front"),
+            ("manuscript_step_body", "body"),
+            ("manuscript_step_back", "back"),
+            ("manuscript_step_validate", "article"),
+            ("manuscript_step_package", "article"),
+        )
+        for url_name, part in step_expectations:
+            response = self.client.get(reverse(url_name, args=[manuscript.pk]))
+            self.assertEqual(response.status_code, 200)
+            preview_url = reverse("manuscript_preview_part", args=[manuscript.pk, part])
+            self.assertContains(response, "data-preview-expand-open")
+            self.assertContains(response, 'id="manuscript-preview-modal"')
+            self.assertContains(response, 'id="manuscript-preview-modal-frame"')
+            self.assertContains(response, "data-preview-expand-close")
+            self.assertContains(response, f'src="{preview_url}"')

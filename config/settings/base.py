@@ -282,6 +282,7 @@ CELERY_TASK_TIME_LIMIT = 5 * 60
 CELERY_TASK_SOFT_TIME_LIMIT = 4 * 60
 # https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-track-started
 CELERY_TASK_TRACK_STARTED = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 # http://docs.celeryproject.org/en/latest/userguide/configuration.html#beat-scheduler
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 # http://docs.celeryproject.org/en/latest/userguide/configuration.html
@@ -355,4 +356,4 @@ BODY_CHUNK_CHARS = env.int("BODY_CHUNK_CHARS", default=8000)
 LIBREOFFICE_BINARY = env("LIBREOFFICE_BINARY", default="")
 PACKTOOLS_PDF_LAYOUT = env("PACKTOOLS_PDF_LAYOUT", default="")
 
-WEBAPP_VERSION = env("SCMS_WEBAPP_VERSION", default="v0.0.3-qa")
+WEBAPP_VERSION = env("SCMS_WEBAPP_VERSION", default="v0.0.4")

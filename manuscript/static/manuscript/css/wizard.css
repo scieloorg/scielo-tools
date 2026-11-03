@@ -245,8 +245,14 @@
     grid-area: preview-title;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
     margin: 0;
     min-height: 2.75rem;
+}
+
+.manuscript-wizard__preview-title h2 {
+    margin: 0;
     font-size: 1.1rem;
 }
 
@@ -355,7 +361,8 @@
 
 .manuscript-figure-files {
     margin: 0.25rem 0 0;
-    padding-left: 1.25rem;
+    padding-left: 0;
+    list-style: none;
 }
 
 .manuscript-toolbar {
@@ -442,4 +449,174 @@
 .manuscript-wysiwyg details.accordion-item[open] > summary::before {
     transform: rotate(45deg);
 }
+
+.manuscript-list-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 7.5rem;
+}
+
+.manuscript-list-progress__bar {
+    position: relative;
+    flex: 1 1 4.5rem;
+    height: 0.55rem;
+    overflow: hidden;
+    border-radius: 50rem;
+    background: var(--scielo-bg-gray-2, #e9ecef);
+}
+
+.manuscript-list-progress__fill {
+    display: block;
+    height: 100%;
+    width: 0;
+    border-radius: inherit;
+    background: var(--scielo-positive, #2c9d45);
+    transition: width 0.25s ease;
+}
+
+.manuscript-list-progress.is-error .manuscript-list-progress__fill {
+    background: var(--scielo-danger, #dc3545);
+}
+
+.manuscript-list-progress__percent {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.manuscript-bulk-package {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--scielo-border, #dee2e6);
+}
+
+.manuscript-bulk-package__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.manuscript-bulk-package__dropzone {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem 1rem;
+}
+
+.manuscript-package-figures,
+.manuscript-figure-files {
+    margin: 0.5rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.manuscript-figure-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1rem;
+    list-style: none;
+    padding: 1rem;
+    border-top: 1px solid var(--scielo-border, #dee2e6);
+}
+
+.manuscript-figure-item .left {
+    flex: 0 0 150px;
+    width: 150px;
+    text-align: center;
+    word-break: break-all;
+}
+
+.manuscript-figure-item .right {
+    flex: 1 1 240px;
+    min-width: 0;
+}
+
+.manuscript-figure-item__filename {
+    margin-top: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--scielo-text-subtle, #6c6b6b);
+}
+
+.manuscript-figure-item__thumb {
+    max-width: 150px;
+    max-height: 150px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--scielo-radius, 4px);
+    border: 1px solid var(--scielo-border, #dee2e6);
+}
+
+.upload-list .manuscript-figure-item .status-msg:not([hidden]) {
+    display: block;
+}
+
+.manuscript-figure-edit-form .fields {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.manuscript-figure-edit-form .fields > li + li {
+    margin-top: 0.75rem;
+}
+
+.manuscript-preview-modal {
+    width: min(1280px, 92vw);
+    height: 88vh;
+    max-width: 92vw;
+    max-height: 88vh;
+    padding: 0;
+    border: 1px solid var(--scielo-border, #dee2e6);
+    border-radius: var(--scielo-radius, 6px);
+    background: var(--scielo-white, #fff);
+    box-shadow: var(--scielo-shadow-2, 0 12px 32px rgba(0, 0, 0, 0.25));
+    overflow: hidden;
+}
+
+.manuscript-preview-modal::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.manuscript-preview-modal__content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+
+.manuscript-preview-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--scielo-border, #dee2e6);
+    background: var(--scielo-bg-gray-1, #f8f9fa);
+}
+
+.manuscript-preview-modal__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.manuscript-preview-modal__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.manuscript-preview-modal__frame {
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: var(--scielo-white, #fff);
+}
+
+
+
 

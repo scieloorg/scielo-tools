@@ -33,8 +33,11 @@ def persist_front_result(result, manuscript_id, user_id=None):
     marked = result.get("data") if isinstance(result, dict) else {}
     if not isinstance(marked, dict):
         marked = {}
+    manuscript = Manuscript.objects.filter(pk=manuscript_id).first()
+    if manuscript is None:
+        advance_marking_queue()
+        return
     try:
-        manuscript = Manuscript.objects.get(pk=manuscript_id)
         save_front_marked(manuscript, marked, user=_user_from_id(user_id))
     except Exception as exc:
         fail_run(manuscript_id, "front", exc)
@@ -49,8 +52,11 @@ def persist_body_result(result, manuscript_id, user_id=None):
     marked = result.get("data") if isinstance(result, dict) else {}
     if not isinstance(marked, dict):
         marked = {}
+    manuscript = Manuscript.objects.filter(pk=manuscript_id).first()
+    if manuscript is None:
+        advance_marking_queue()
+        return
     try:
-        manuscript = Manuscript.objects.get(pk=manuscript_id)
         save_body_marked(manuscript, marked, user=_user_from_id(user_id))
     except Exception as exc:
         fail_run(manuscript_id, "body", exc)
@@ -68,8 +74,11 @@ def persist_back_result(result, manuscript_id, user_id=None):
         endpoints = result.get("endpoints") or ""
     else:
         items = result if isinstance(result, list) else []
+    manuscript = Manuscript.objects.filter(pk=manuscript_id).first()
+    if manuscript is None:
+        advance_marking_queue()
+        return
     try:
-        manuscript = Manuscript.objects.get(pk=manuscript_id)
         save_references_items(manuscript, items, user=_user_from_id(user_id))
     except MarkingError as exc:
         fail_run(manuscript_id, "back", exc)
@@ -85,10 +94,12 @@ def persist_back_result(result, manuscript_id, user_id=None):
 
 @shared_task(bind=True)
 def run_manuscript_validation_task(self, manuscript_id, user_id=None):
+    manuscript = Manuscript.objects.filter(pk=manuscript_id).first()
+    if manuscript is None:
+        return
     if getattr(self.request, "id", None):
         self.update_state(state="PROGRESS", meta={"percent": 20})
     try:
-        manuscript = Manuscript.objects.get(pk=manuscript_id)
         if getattr(self.request, "id", None):
             self.update_state(state="PROGRESS", meta={"percent": 60})
         validation = run_manuscript_validation(
@@ -111,10 +122,12 @@ def run_manuscript_validation_task(self, manuscript_id, user_id=None):
 
 @shared_task(bind=True)
 def generate_manuscript_pdf_task(self, manuscript_id, user_id=None):
+    manuscript = Manuscript.objects.filter(pk=manuscript_id).first()
+    if manuscript is None:
+        return
     if getattr(self.request, "id", None):
         self.update_state(state="PROGRESS", meta={"percent": 25})
     try:
-        manuscript = Manuscript.objects.get(pk=manuscript_id)
         if getattr(self.request, "id", None):
             self.update_state(state="PROGRESS", meta={"percent": 70})
         generate_manuscript_pdf_document(manuscript)
@@ -128,10 +141,12 @@ def generate_manuscript_pdf_task(self, manuscript_id, user_id=None):
 
 @shared_task(bind=True)
 def generate_manuscript_html_task(self, manuscript_id, user_id=None):
+    manuscript = Manuscript.objects.filter(pk=manuscript_id).first()
+    if manuscript is None:
+        return
     if getattr(self.request, "id", None):
         self.update_state(state="PROGRESS", meta={"percent": 30})
     try:
-        manuscript = Manuscript.objects.get(pk=manuscript_id)
         if getattr(self.request, "id", None):
             self.update_state(state="PROGRESS", meta={"percent": 75})
         generate_manuscript_html_document(manuscript)

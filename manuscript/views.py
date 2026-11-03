@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError as FormValidationError
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
@@ -14,14 +15,19 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from lxml import etree
 from wagtail.admin.auth import require_admin_access
 
-from manuscript.forms import BackStepForm, BodyStepForm, FrontStepForm
+from body.exceptions import BodyImageError
+from body.images import collect_image_assets
+from manuscript.forms import (
+    BackStepForm,
+    BodyStepForm,
+    FrontStepForm,
+    validate_docx_file,
+)
 from manuscript.i18n import get_manuscript_js_i18n
 from manuscript.models import (
     Manuscript,
     ManuscriptFigureFile,
     ManuscriptStatus,
-    create_figure_image,
-    get_or_create_manuscript_collection,
 )
 from manuscript.preview import (
     ManuscriptPreviewError,
@@ -36,6 +42,15 @@ from manuscript.services.assembly import (
     assemble_manuscript_xml,
     build_sps_zip,
     refresh_assembled_xml,
+)
+from manuscript.services.figures import (
+    delete_manuscript_figure,
+    rename_manuscript_figure,
+    save_manuscript_image_assets,
+)
+from manuscript.services.intake import (
+    ManuscriptIntakeError,
+    ingest_docx_into_manuscript,
 )
 from manuscript.services.marking import (
     MarkingError,
@@ -69,12 +84,150 @@ from manuscript.services.workflow import (
     mark_ready,
     open_step,
 )
-from manuscript.signals import delete_unused_manuscript_image
 from xml_manager.models import SPSPackageValidationStatus
 
 
 def _manuscript_or_404(pk):
     return get_object_or_404(Manuscript, pk=pk)
+
+
+def _serialize_manuscript_figures(manuscript, request=None):
+    items = []
+    for fig in manuscript.figure_files.select_related("image").order_by("number"):
+        html = render_to_string(
+            "wagtailadmin/manuscript/figure_upload_item.html",
+            {"manuscript": manuscript, "fig": fig},
+            request=request,
+        )
+        items.append(
+            {
+                "id": fig.pk,
+                "number": fig.number,
+                "href": fig.href,
+                "original_name": fig.original_name,
+                "html": html,
+            }
+        )
+    return items
+
+
+@require_admin_access
+@require_http_methods(["GET", "POST"])
+def bulk_upload(request):
+    list_url = reverse("wagtailsnippets_manuscript_manuscript:list")
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or (
+        "application/json" in (request.headers.get("Accept") or "")
+    )
+    if request.method == "POST":
+        files = request.FILES.getlist("files[]") or request.FILES.getlist("source_docx")
+        if not files and request.FILES:
+            files = [next(iter(request.FILES.values()))]
+        if not files:
+            msg = str(_("Only .docx files are accepted."))
+            if is_ajax:
+                return JsonResponse(
+                    {"success": False, "error_message": msg}, status=400
+                )
+            messages.error(request, msg)
+            return redirect("manuscript_bulk_upload")
+
+        created_items = []
+        errors = []
+        seen_ids = set()
+        for upload in files:
+            try:
+                validate_docx_file(upload)
+            except FormValidationError as exc:
+                err_text = "; ".join(exc.messages)
+                errors.append(f"{upload.name}: {err_text}")
+                continue
+
+            package_name = Path(getattr(upload, "name", "") or "").stem.strip()
+            if not package_name:
+                package_name = "untitled"
+            manuscript = Manuscript(
+                title=package_name,
+                creator=request.user,
+                updated_by=request.user,
+                status=ManuscriptStatus.DRAFT,
+            )
+            try:
+                manuscript, extracted, created = ingest_docx_into_manuscript(
+                    manuscript,
+                    upload,
+                    user=request.user,
+                    sync_metadata=False,
+                )
+            except ManuscriptIntakeError as exc:
+                errors.append(f"{upload.name}: {exc}")
+                continue
+            if manuscript.pk in seen_ids:
+                continue
+            seen_ids.add(manuscript.pk)
+            package_html = render_to_string(
+                "wagtailadmin/manuscript/bulk_upload_package_item.html",
+                {"manuscript": manuscript},
+                request=request,
+            )
+            created_items.append(
+                {
+                    "manuscript_id": manuscript.pk,
+                    "title": manuscript.title,
+                    "reused": not created,
+                    "warnings": extracted.get("errors") or [],
+                    "step_url": reverse("manuscript_step_front", args=[manuscript.pk]),
+                    "add_figures_url": reverse(
+                        "manuscript_api_add_figure", args=[manuscript.pk]
+                    ),
+                    "html": package_html,
+                }
+            )
+
+        if is_ajax:
+            if errors and not created_items:
+                return JsonResponse(
+                    {"success": False, "error_message": "; ".join(errors)},
+                    status=400,
+                )
+            first = created_items[0]
+            return JsonResponse(
+                {
+                    "success": True,
+                    "manuscript_id": first["manuscript_id"],
+                    "title": first["title"],
+                    "reused": first["reused"],
+                    "step_url": first["step_url"],
+                    "add_figures_url": first["add_figures_url"],
+                    "html": first["html"],
+                    "redirect_url": list_url,
+                }
+            )
+
+        for err in errors:
+            messages.error(request, err)
+        if created_items:
+            messages.success(
+                request,
+                _("%(count)d manuscript(s) uploaded for marking.")
+                % {"count": len(created_items)},
+            )
+            return redirect(list_url)
+        return redirect("manuscript_bulk_upload")
+
+    return render(
+        request,
+        "wagtailadmin/manuscript/bulk_upload.html",
+        {
+            "header_title": _("Bulk upload manuscripts"),
+            "header_icon": "manuscript",
+            "list_url": list_url,
+            "breadcrumbs_items": [
+                {"url": reverse("wagtailadmin_home"), "label": _("Home")},
+                {"url": list_url, "label": _("Manuscripts")},
+                {"url": "", "label": _("Bulk upload")},
+            ],
+        },
+    )
 
 
 def _wizard_context(request, manuscript, step, form=None):
@@ -281,7 +434,6 @@ def step_body(request, pk):
                         ]
                     )
                     image_assets = form.cleaned_data.get("image_assets") or {}
-                    collection = None
                     if image_assets:
                         images_zip = form.cleaned_data.get("images_zip")
                         collection_name = ""
@@ -293,39 +445,11 @@ def step_body(request, pk):
                             collection_name = (manuscript.title or "").strip()
                         if not collection_name:
                             collection_name = f"manuscript-{manuscript.pk}"
-                        collection = get_or_create_manuscript_collection(
-                            collection_name
+                        save_manuscript_image_assets(
+                            manuscript,
+                            image_assets,
+                            collection_name=collection_name,
                         )
-                    for number, asset in image_assets.items():
-                        figure_number = int(number)
-                        href = asset["href"]
-                        original_name = asset["original_name"]
-                        image = create_figure_image(
-                            f"{manuscript.pk} {href}",
-                            asset["bytes"],
-                            href,
-                            collection,
-                        )
-                        existing = manuscript.figure_files.filter(
-                            number=figure_number
-                        ).first()
-                        if existing:
-                            old_image_id = existing.image_id
-                            existing.href = href
-                            existing.original_name = original_name
-                            existing.image = image
-                            existing.save()
-                            if old_image_id:
-                                delete_unused_manuscript_image(old_image_id)
-                        else:
-                            ManuscriptFigureFile.objects.create(
-                                manuscript=manuscript,
-                                number=figure_number,
-                                href=href,
-                                original_name=original_name,
-                                sort_order=figure_number,
-                                image=image,
-                            )
                     source_ready = True
             if action == "save_source" and source_ready:
                 messages.success(request, _("Body source saved."))
@@ -640,6 +764,118 @@ def api_remark_reference(request, pk, ref_pk):
             "mixed_citation": ref.mixed_citation,
             "marked": ref.marked,
             "marked_xml": ref.marked_xml,
+        }
+    )
+
+
+@require_admin_access
+@require_POST
+def api_add_figure(request, pk):
+    manuscript = _manuscript_or_404(pk)
+    uploads = request.FILES.getlist("files[]") or request.FILES.getlist("images")
+    images_zip = request.FILES.get("images_zip")
+    if not uploads and not images_zip and request.FILES:
+        uploads = [next(iter(request.FILES.values()))]
+    image_files = []
+    for item in uploads:
+        name = (getattr(item, "name", "") or "").lower()
+        if name.endswith(".zip") and images_zip is None:
+            images_zip = item
+        else:
+            image_files.append(item)
+    if not image_files and not images_zip:
+        return JsonResponse(
+            {"success": False, "error_message": str(_("No image files provided."))},
+            status=400,
+        )
+    reserved = list(manuscript.figure_files.values_list("number", flat=True))
+    try:
+        assets = collect_image_assets(
+            images=image_files,
+            images_zip=images_zip,
+            allow_any_filename=True,
+            reserved_numbers=reserved,
+        )
+    except BodyImageError as exc:
+        return JsonResponse(
+            {"success": False, "error_message": str(exc)},
+            status=400,
+        )
+    if not assets:
+        return JsonResponse(
+            {"success": False, "error_message": str(_("No valid images found."))},
+            status=400,
+        )
+    save_manuscript_image_assets(manuscript, assets)
+    return JsonResponse(
+        {
+            "success": True,
+            "figures": _serialize_manuscript_figures(manuscript, request=request),
+        }
+    )
+
+
+@require_admin_access
+@require_POST
+def api_update_figure(request, pk, figure_pk):
+    manuscript = _manuscript_or_404(pk)
+    figure_file = get_object_or_404(
+        ManuscriptFigureFile, pk=figure_pk, manuscript=manuscript
+    )
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or (
+        "application/json" in (request.headers.get("Accept") or "")
+    )
+    identifier = request.POST.get("href") or request.POST.get("identifier") or ""
+    if not identifier and request.body:
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+        except json.JSONDecodeError:
+            payload = {}
+        if isinstance(payload, dict):
+            identifier = payload.get("href") or payload.get("identifier") or ""
+    try:
+        rename_manuscript_figure(manuscript, figure_file, identifier)
+    except BodyImageError as exc:
+        if not is_ajax:
+            messages.error(request, str(exc))
+            return redirect("manuscript_step_body", pk=pk)
+        return JsonResponse(
+            {"success": False, "error_message": str(exc)},
+            status=400,
+        )
+    figure_file.refresh_from_db()
+    if not is_ajax:
+        messages.success(request, _("Image updated."))
+        return redirect("manuscript_step_body", pk=pk)
+    return JsonResponse(
+        {
+            "success": True,
+            "figure_id": figure_file.pk,
+            "number": figure_file.number,
+            "href": figure_file.href,
+            "figures": _serialize_manuscript_figures(manuscript, request=request),
+        }
+    )
+
+
+@require_admin_access
+@require_POST
+def api_delete_figure(request, pk, figure_pk):
+    manuscript = _manuscript_or_404(pk)
+    figure_file = get_object_or_404(
+        ManuscriptFigureFile, pk=figure_pk, manuscript=manuscript
+    )
+    is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or (
+        "application/json" in (request.headers.get("Accept") or "")
+    )
+    delete_manuscript_figure(manuscript, figure_file)
+    if not is_ajax:
+        return redirect("manuscript_step_body", pk=pk)
+    return JsonResponse(
+        {
+            "success": True,
+            "figure_id": figure_pk,
+            "figures": _serialize_manuscript_figures(manuscript, request=request),
         }
     )
 

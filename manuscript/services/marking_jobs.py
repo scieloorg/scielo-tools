@@ -1,3 +1,6 @@
+import logging
+from datetime import timedelta
+
 from celery.result import AsyncResult
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -8,14 +11,18 @@ from manuscript.models import (
     ManuscriptMarkingPart,
     ManuscriptMarkingRun,
     ManuscriptMarkingRunStatus,
+    ManuscriptStatus,
 )
 from manuscript.services.marking import MarkingError
 from reference.utils.references import parse_reference_list
+
+logger = logging.getLogger(__name__)
 
 ACTIVE_STATUSES = (
     ManuscriptMarkingRunStatus.PENDING,
     ManuscriptMarkingRunStatus.RUNNING,
 )
+STALE_RUN_TIMEOUT = timedelta(minutes=32)
 MARKING_PARTS = (
     ManuscriptMarkingPart.FRONT,
     ManuscriptMarkingPart.BODY,
@@ -35,15 +42,76 @@ POST_MARKING_PARTS = (
     ManuscriptMarkingPart.PDF,
     ManuscriptMarkingPart.HTML,
 )
+PACKAGE_PROGRESS_PARTS = (
+    ManuscriptMarkingPart.FRONT,
+    ManuscriptMarkingPart.BODY,
+    ManuscriptMarkingPart.BACK,
+    ManuscriptMarkingPart.VALIDATE,
+    ManuscriptMarkingPart.PACKAGE,
+)
+
+
+def revoke_task_ids(task_ids):
+    ids = [str(task_id).strip() for task_id in task_ids if str(task_id or "").strip()]
+    if not ids:
+        return
+    from config.celery_app import app as celery_app
+
+    for task_id in dict.fromkeys(ids):
+        try:
+            celery_app.control.revoke(task_id, terminate=True)
+        except Exception as exc:
+            logger.debug("Could not revoke task %s: %s", task_id, exc)
+
+
+def reconcile_stale_runs(manuscript_id=None):
+    qs = (
+        ManuscriptMarkingRun.objects.filter(status__in=ACTIVE_STATUSES)
+        .exclude(part=ManuscriptMarkingPart.PACKAGE)
+        .exclude(task_id="")
+    )
+    if manuscript_id is not None:
+        qs = qs.filter(manuscript_id=manuscript_id)
+    runs = list(qs)
+    if not runs:
+        return False
+    now = timezone.now()
+    changed = False
+    package_refresh_ids = set()
+    for run in runs:
+        if run.started_at and now - run.started_at > STALE_RUN_TIMEOUT:
+            revoke_task_ids([run.task_id])
+            fail_run(run.manuscript_id, run.part, _("Marking task timed out"))
+            changed = True
+            if run.part in (ManuscriptMarkingPart.PDF, ManuscriptMarkingPart.HTML):
+                package_refresh_ids.add(run.manuscript_id)
+            continue
+        try:
+            result = AsyncResult(run.task_id)
+            state = result.state
+            info = result.info
+        except Exception as exc:
+            logger.debug("Could not inspect task %s: %s", run.task_id, exc)
+            continue
+        if state in ("FAILURE", "REVOKED"):
+            fail_run(run.manuscript_id, run.part, str(info or state))
+            changed = True
+            if run.part in (ManuscriptMarkingPart.PDF, ManuscriptMarkingPart.HTML):
+                package_refresh_ids.add(run.manuscript_id)
+    for ms_id in package_refresh_ids:
+        _refresh_package_run_status(ms_id)
+    return changed
 
 
 def part_is_active(manuscript, part):
+    reconcile_stale_runs(manuscript.pk)
     return manuscript.marking_runs.filter(
         part=part, status__in=ACTIVE_STATUSES
     ).exists()
 
 
 def _part_is_dispatched(manuscript, part):
+    reconcile_stale_runs(manuscript.pk)
     return (
         manuscript.marking_runs.filter(
             part=part,
@@ -286,12 +354,28 @@ def enqueue_post_marking_tasks(manuscript, user=None):
     return dispatched
 
 
-def advance_marking_queue(manuscript_id, user_id=None, trigger_post_marking=False):
-    manuscript = Manuscript.objects.filter(pk=manuscript_id).first()
-    if manuscript is None:
-        return None
+def advance_marking_queue(manuscript_id=None, user_id=None, trigger_post_marking=False):
+    reconcile_stale_runs()
+    user = None
+    if user_id is not None:
+        user = get_user_model().objects.filter(pk=user_id).first()
+    manuscript = None
+    if manuscript_id is not None:
+        manuscript = Manuscript.objects.filter(pk=manuscript_id).first()
+        if (
+            manuscript is not None
+            and trigger_post_marking
+            and not manuscript.marking_runs.filter(
+                part__in=QUEUE_ORDER,
+                status__in=ACTIVE_STATUSES,
+            ).exists()
+        ):
+            enqueue_post_marking_tasks(
+                manuscript,
+                user=user or manuscript.updated_by or manuscript.creator,
+            )
     if (
-        manuscript.marking_runs.filter(
+        ManuscriptMarkingRun.objects.filter(
             part__in=QUEUE_ORDER,
             status__in=ACTIVE_STATUSES,
         )
@@ -299,37 +383,58 @@ def advance_marking_queue(manuscript_id, user_id=None, trigger_post_marking=Fals
         .exists()
     ):
         return None
-    user = None
-    if user_id is not None:
-        user = get_user_model().objects.filter(pk=user_id).first()
-    queued_parts = set(
-        manuscript.marking_runs.filter(
+    candidate_ids = []
+    if manuscript is not None:
+        candidate_ids.append(manuscript.pk)
+    waiting_ids = (
+        ManuscriptMarkingRun.objects.filter(
             part__in=QUEUE_ORDER,
             status=ManuscriptMarkingRunStatus.PENDING,
             task_id="",
-        ).values_list("part", flat=True)
+        )
+        .order_by("started_at", "manuscript_id", "id")
+        .values_list("manuscript_id", flat=True)
     )
-    for part in QUEUE_ORDER:
-        if part not in queued_parts:
+    for waiting_id in waiting_ids:
+        if waiting_id not in candidate_ids:
+            candidate_ids.append(waiting_id)
+    for target_id in candidate_ids:
+        target = (
+            manuscript
+            if manuscript is not None and target_id == manuscript.pk
+            else Manuscript.objects.filter(pk=target_id).first()
+        )
+        if target is None:
             continue
-        try:
-            if part == ManuscriptMarkingPart.BACK:
-                return enqueue_back(manuscript, user=user, allow_queued=True)
-            if part == ManuscriptMarkingPart.FRONT:
-                return enqueue_front(manuscript, user=user, allow_queued=True)
-            if part == ManuscriptMarkingPart.BODY:
-                return enqueue_body(manuscript, user=user, allow_queued=True)
-        except MarkingError as exc:
-            fail_run(manuscript.pk, part, exc)
-            continue
-    if (
-        trigger_post_marking
-        and not manuscript.marking_runs.filter(
-            part__in=QUEUE_ORDER,
-            status__in=ACTIVE_STATUSES,
-        ).exists()
-    ):
-        enqueue_post_marking_tasks(manuscript, user=user)
+        target_user = (
+            user
+            if (
+                manuscript is not None
+                and target.pk == manuscript.pk
+                and user is not None
+            )
+            else (target.updated_by or target.creator)
+        )
+        queued_parts = set(
+            target.marking_runs.filter(
+                part__in=QUEUE_ORDER,
+                status=ManuscriptMarkingRunStatus.PENDING,
+                task_id="",
+            ).values_list("part", flat=True)
+        )
+        for part in QUEUE_ORDER:
+            if part not in queued_parts:
+                continue
+            try:
+                if part == ManuscriptMarkingPart.BACK:
+                    return enqueue_back(target, user=target_user, allow_queued=True)
+                if part == ManuscriptMarkingPart.FRONT:
+                    return enqueue_front(target, user=target_user, allow_queued=True)
+                if part == ManuscriptMarkingPart.BODY:
+                    return enqueue_body(target, user=target_user, allow_queued=True)
+            except MarkingError as exc:
+                fail_run(target.pk, part, exc)
+                continue
     return None
 
 
@@ -418,6 +523,13 @@ def _package_payload(runs, manuscript):
 
 def marking_status_payload(manuscript):
     runs = {run.part: run for run in manuscript.marking_runs.all()}
+    if any(run.status in ACTIVE_STATUSES and run.task_id for run in runs.values()):
+        if reconcile_stale_runs(manuscript.pk):
+            advance_marking_queue(manuscript.pk, trigger_post_marking=True)
+            runs = {
+                run.part: run
+                for run in ManuscriptMarkingRun.objects.filter(manuscript=manuscript)
+            }
     payload = {part: _part_payload(runs.get(part)) for part in MARKING_PARTS}
     if (
         payload[ManuscriptMarkingPart.VALIDATE]["status"]
@@ -438,4 +550,81 @@ def marking_status_payload(manuscript):
                 validation.error_message or None
             )
     payload[ManuscriptMarkingPart.PACKAGE] = _package_payload(runs, manuscript)
+    has_front_and_body = bool(
+        (
+            (manuscript.front_source_text or "").strip()
+            or (manuscript.front_marked_xml or "").strip()
+        )
+        and (
+            (manuscript.body_source_text or "").strip()
+            or (manuscript.body_marked_xml or "").strip()
+        )
+    )
+    has_references = bool(
+        (manuscript.references_source_text or "").strip()
+        or ManuscriptMarkingPart.BACK in runs
+        or manuscript.back_approved_at
+        or manuscript.references.all()
+    )
+    applicable_parts = [
+        part
+        for part in PACKAGE_PROGRESS_PARTS
+        if part != ManuscriptMarkingPart.BACK
+        or has_references
+        or not has_front_and_body
+    ]
+    done_by_status = {
+        ManuscriptMarkingPart.FRONT: bool(manuscript.front_approved_at)
+        or bool((manuscript.front_marked_xml or "").strip())
+        or manuscript.status == ManuscriptStatus.PUBLISHED,
+        ManuscriptMarkingPart.BODY: bool(manuscript.body_approved_at)
+        or bool((manuscript.body_marked_xml or "").strip())
+        or manuscript.status == ManuscriptStatus.PUBLISHED,
+        ManuscriptMarkingPart.BACK: bool(manuscript.back_approved_at)
+        or any((ref.marked_xml or "").strip() for ref in manuscript.references.all())
+        or manuscript.status == ManuscriptStatus.PUBLISHED,
+        ManuscriptMarkingPart.VALIDATE: manuscript.status
+        in (
+            ManuscriptStatus.VALIDATED,
+            ManuscriptStatus.READY,
+            ManuscriptStatus.PUBLISHED,
+        ),
+        ManuscriptMarkingPart.PACKAGE: manuscript.status == ManuscriptStatus.PUBLISHED,
+    }
+    part_percents = []
+    part_statuses = []
+    for part in applicable_parts:
+        info = payload[part]
+        status = info["status"]
+        part_statuses.append(status)
+        if status in ACTIVE_STATUSES:
+            pct = info["percent"] or 0
+        elif status == ManuscriptMarkingRunStatus.DONE or done_by_status.get(
+            part, False
+        ):
+            pct = 100
+        elif info["percent"] is not None:
+            pct = info["percent"]
+        else:
+            pct = 0
+        part_percents.append(max(0, min(100, int(pct))))
+    overall_percent = (
+        int(round(sum(part_percents) / len(part_percents))) if part_percents else 0
+    )
+    if any(status in ACTIVE_STATUSES for status in part_statuses):
+        overall_status = (
+            ManuscriptMarkingRunStatus.RUNNING
+            if ManuscriptMarkingRunStatus.RUNNING in part_statuses
+            else ManuscriptMarkingRunStatus.PENDING
+        )
+    elif overall_percent == 100:
+        overall_status = ManuscriptMarkingRunStatus.DONE
+    elif any(status == ManuscriptMarkingRunStatus.ERROR for status in part_statuses):
+        overall_status = ManuscriptMarkingRunStatus.ERROR
+    else:
+        overall_status = ManuscriptMarkingRunStatus.IDLE
+    payload["overall"] = {
+        "status": overall_status,
+        "percent": overall_percent,
+    }
     return payload

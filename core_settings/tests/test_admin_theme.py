@@ -57,9 +57,11 @@ class AdminThemeCssTests(SimpleTestCase):
         self.assertIn("fonts.googleapis.com/css2?family=Noto+Sans", css)
         self.assertNotIn("Helvetica Neue", css)
 
-    def test_ds_link_hover_does_not_recolor_wagtail_buttons(self):
+    def test_ds_link_styles_do_not_recolor_wagtail_buttons(self):
         css_path = find("css/scielo-ds-components.css")
         self.assertIsNotNone(css_path)
         css = Path(css_path).read_text()
+        self.assertIn(".scielo-ds a:not(.button) {", css)
         self.assertIn(".scielo-ds a:not(.button):hover", css)
+        self.assertNotIn(".scielo-ds a {", css)
         self.assertNotIn(".scielo-ds a:hover {", css)

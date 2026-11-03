@@ -66,6 +66,22 @@ def test_append_fpage_lpage_single_fpage_omits_lpage():
     assert root.find("lpage") is None
 
 
+def test_append_fpage_lpage_article_id_copies_lpage():
+    article_number = etree.Element("element-citation")
+    assert append_fpage_lpage(article_number, {"fpage": "e20044"}) is True
+    assert article_number.find("fpage").text == "e20044"
+    assert article_number.find("lpage").text == "e20044"
+
+    long_digits = etree.Element("element-citation")
+    assert append_fpage_lpage(long_digits, {"fpage": "1243092"}) is True
+    assert long_digits.find("fpage").text == "1243092"
+    assert long_digits.find("lpage").text == "1243092"
+
+    explicit = etree.Element("element-citation")
+    assert append_fpage_lpage(explicit, {"fpage": "e20044", "lpage": "e20050"}) is True
+    assert explicit.find("lpage").text == "e20050"
+
+
 def test_append_access_date_with_and_without_year():
     with_year = etree.Element("element-citation")
     append_access_date(with_year, "cited 2025")
@@ -225,6 +241,20 @@ def test_get_xml_confproc():
 
     titled = get_xml(json.dumps({"reftype": "confproc", "title": "Named Conference"}))
     assert titled.find("conf-name").text == "Named Conference"
+
+    conference = get_xml(
+        json.dumps(
+            {
+                "reftype": "conference",
+                "title": "Mapping wetlands",
+                "source": "Proceedings of IGARSS",
+                "date": "2013a",
+            }
+        )
+    )
+    assert conference.get("publication-type") == "confproc"
+    assert conference.find("source").text == "Proceedings of IGARSS"
+    assert conference.find("year").text == "2013"
 
 
 def test_get_xml_data_extra_fields():

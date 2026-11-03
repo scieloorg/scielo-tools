@@ -83,6 +83,13 @@ class Manuscript(ClusterableModel):
         related_name="manuscripts",
         verbose_name=_("Source DOCX"),
     )
+    source_sha256 = models.CharField(
+        _("Source SHA256"),
+        max_length=64,
+        null=True,
+        blank=True,
+        unique=True,
+    )
     article_type = models.CharField(
         _("Article type"),
         max_length=64,

@@ -416,6 +416,29 @@ def test_extract_doi_from_text_and_enrich():
     assert "doi" not in web_enriched or web_enriched.get("doi") in (None, "")
 
 
+def test_enrich_conference_proceedings_source_and_year_suffix():
+    from reference.data_utils import enrich_marked_from_citation
+
+    citation = (
+        "Hess, L. L. (2003). Mapping wetlands in the Amazon Basin using SAR data. "
+        "In Proceedings of the IEEE International Geoscience and Remote Sensing "
+        "Symposium (IGARSS '03) (Vol. 2, pp. 1375–1377). IEEE."
+    )
+    enriched = enrich_marked_from_citation(
+        {"reftype": "conference", "title": "Mapping wetlands", "date": "2003"},
+        citation,
+    )
+    assert enriched["reftype"] == "confproc"
+    assert enriched["source"].startswith("Proceedings of the IEEE")
+    conference_xml = get_xml(json.dumps(enriched))
+    assert conference_xml.get("publication-type") == "confproc"
+    assert conference_xml.find("source").text.startswith("Proceedings of the IEEE")
+    suffixed = get_xml(
+        json.dumps({"reftype": "journal", "date": "2019b", "title": "A", "source": "B"})
+    )
+    assert suffixed.find("year").text == "2019"
+
+
 def test_get_xml_book():
     sample_json = json.dumps(
         {
