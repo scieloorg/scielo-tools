@@ -1046,6 +1046,45 @@ def test_apply_text_fields_reads_history_dates(text, expected):
     assert marked["history"] == expected
 
 
+def test_apply_text_fields_reads_published_label_as_third_history_date():
+    text = "Received: 18 June 2025.\nAccepted: 11 Dec. 2025.\nPublished: 20 Dec. 2025."
+    marked = apply_text_fields({}, text)
+    assert [item["type"] for item in marked["history"]] == [
+        "received",
+        "accepted",
+        "pub",
+    ]
+    assert marked["history"][-1] == {
+        "type": "pub",
+        "day": "20",
+        "month": "12",
+        "year": "2025",
+    }
+    xml = get_front_xml(marked)
+    root = etree.fromstring(xml.encode("utf-8"))
+    history_dates = root.findall(".//history/date")
+    assert [item.get("date-type") for item in history_dates] == [
+        "received",
+        "accepted",
+        "pub",
+    ]
+    published = history_dates[-1]
+    assert published.find("day").text == "20"
+    assert published.find("month").text == "12"
+    assert published.find("year").text == "2025"
+
+
+def test_apply_text_fields_reads_publicado_label_as_history_date():
+    text = "Recebido: 18/06/2025. Aceito: 11/12/2025. Publicado: 20 dez. 2025."
+    marked = apply_text_fields({}, text)
+    assert marked["history"][-1] == {
+        "type": "pub",
+        "day": "20",
+        "month": "12",
+        "year": "2025",
+    }
+
+
 def test_apply_text_fields_reads_published_online_into_history_and_pub_date():
     text = "Received: 18/06/2025. Accepted: 11/12/2025. Published online: 17/09/2026."
     marked = apply_text_fields({}, text)
@@ -1168,6 +1207,22 @@ def test_apply_text_fields_reads_author_contributions_and_editorial_notes():
     assert "no conflict of interest" in fns[1]["text"]
     assert fns[2]["fn_type"] == "other"
     assert fns[2]["label"] == "Ethics"
+
+
+def test_apply_text_fields_reads_inline_editor_and_correspondence():
+    text = (
+        "Title\n"
+        "Associate editor: Bruno Araujo: http://orcid.org/0000-0003-0288-0024\n"
+        "Correspondence to\n"
+        "Belém, PA\n"
+        "e-mail: author@example.com\n"
+        "Authors' contributions\n"
+        "Ana: writing.\n"
+    )
+    marked = apply_text_fields({}, text)
+    assert marked["author_notes"]["corresp"] == "Belém, PA e-mail: author@example.com"
+    assert marked["author_notes"]["fns"][0]["fn_type"] == "edited-by"
+    assert marked["author_notes"]["fns"][0]["text"].startswith("Bruno Araujo")
 
 
 def test_get_front_xml_renders_structured_author_notes():

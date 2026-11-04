@@ -1,3 +1,4 @@
+import zipfile
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
@@ -30,6 +31,7 @@ from manuscript.tasks import (
     persist_body_result,
     persist_front_result,
 )
+from manuscript.tests.helpers import attach_manuscript_figure
 
 
 class MarkingJobsTests(TestCase):
@@ -532,6 +534,14 @@ class MarkingJobsTests(TestCase):
             part=ManuscriptMarkingPart.PACKAGE,
             status=ManuscriptMarkingRunStatus.PENDING,
         )
+        figure = attach_manuscript_figure(
+            self.manuscript,
+            number=1,
+            href="fig-1.jpg",
+            original_name="chart.tif",
+        )
+        with figure.image.file.open("rb") as fh:
+            image_bytes = fh.read()
         run_manuscript_validation_task.run(self.manuscript.pk, self.user.pk)
         generate_manuscript_pdf_task.run(self.manuscript.pk, self.user.pk)
         generate_manuscript_html_task.run(self.manuscript.pk, self.user.pk)
@@ -541,6 +551,11 @@ class MarkingJobsTests(TestCase):
         self.assertIsNotNone(self.manuscript.sps_package_id)
         self.assertIsNotNone(self.manuscript.generated_pdf_id)
         self.assertIsNotNone(self.manuscript.generated_html_id)
+        stem = f"manuscript-{self.manuscript.pk}"
+        with self.manuscript.sps_package.file.open("rb") as fh:
+            with zipfile.ZipFile(fh) as archive:
+                self.assertEqual(archive.read(f"{stem}.pdf"), b"%PDF-1.4")
+                self.assertEqual(archive.read(f"{stem}-gf01.jpg"), image_bytes)
         payload = marking_status_payload(self.manuscript)
         self.assertEqual(payload["validate"]["status"], ManuscriptMarkingRunStatus.DONE)
         self.assertEqual(payload["validate"]["percent"], 100)

@@ -105,7 +105,119 @@ class WizardStepLabelTests(TestCase):
         self.assertIn('"addHistoryDate"', content)
         self.assertIn('"figCount"', content)
         self.assertIn('"received"', content)
+        self.assertIn('"published"', content)
         self.assertIn('"counts"', content)
+
+    def test_front_save_source_adds_published_date_to_history(self):
+        marked = {
+            "titles": [{"kind": "main", "text": "Title", "language": "en"}],
+            "history": [
+                {"type": "received", "day": "18", "month": "06", "year": "2025"},
+                {"type": "accepted", "day": "11", "month": "12", "year": "2025"},
+            ],
+        }
+        self.manuscript.status = ManuscriptStatus.FRONT
+        self.manuscript.front_source_text = (
+            "Received: 18 June 2025.\nAccepted: 11 Dec. 2025."
+        )
+        self.manuscript.front_marked = marked
+        self.manuscript.front_marked_xml = get_front_xml(marked)
+        self.manuscript.save()
+        url = reverse("manuscript_step_front", args=[self.manuscript.pk])
+        response = self.client.post(
+            url,
+            {
+                "action": "save_source",
+                "source_text": (
+                    "Received: 18 June 2025.\n"
+                    "Accepted: 11 Dec. 2025.\n"
+                    "Published: 20 Dec. 2025."
+                ),
+            },
+        )
+        self.assertRedirects(response, url)
+        self.manuscript.refresh_from_db()
+        self.assertEqual(
+            [item["type"] for item in self.manuscript.front_marked["history"]],
+            ["received", "accepted", "pub"],
+        )
+        self.assertEqual(
+            self.manuscript.front_marked["history"][-1]["year"],
+            "2025",
+        )
+        self.assertIn('date-type="pub"', self.manuscript.front_marked_xml)
+        follow = self.client.get(url)
+        self.assertContains(follow, '"type": "pub"')
+
+    def test_front_form_shows_publication_date_already_in_preview(self):
+        marked = {
+            "titles": [{"kind": "main", "text": "Title", "language": "en"}],
+            "history": [
+                {"type": "received", "day": "18", "month": "06", "year": "2025"},
+                {"type": "accepted", "day": "11", "month": "12", "year": "2025"},
+            ],
+            "pub_dates": [
+                {"type": "pub", "day": "20", "month": "12", "year": "2025"},
+            ],
+        }
+        self.manuscript.front_marked = marked
+        self.manuscript.front_marked_xml = get_front_xml(marked)
+        self.manuscript.save()
+        url = reverse("manuscript_step_front", args=[self.manuscript.pk])
+        response = self.client.get(url)
+        self.assertContains(response, '"type": "pub"')
+        self.assertContains(response, '"day": "20"')
+        self.manuscript.refresh_from_db()
+        self.assertEqual(
+            [item["type"] for item in self.manuscript.front_marked["history"]],
+            ["received", "accepted", "pub"],
+        )
+        self.assertIn('date-type="pub"', self.manuscript.front_marked_xml)
+
+    def test_back_save_source_appends_new_reference(self):
+        self.manuscript.status = ManuscriptStatus.BACK
+        self.manuscript.references_source_text = "Author A. First.\nAuthor B. Second."
+        self.manuscript.save()
+        ManuscriptReference.objects.create(
+            manuscript=self.manuscript,
+            mixed_citation="Author A. First.",
+            marked={"reftype": "journal"},
+            marked_xml="<element-citation/>",
+            sort_order=0,
+        )
+        ManuscriptReference.objects.create(
+            manuscript=self.manuscript,
+            mixed_citation="Author B. Second.",
+            marked={"reftype": "journal"},
+            marked_xml="<element-citation/>",
+            sort_order=1,
+        )
+        url = reverse("manuscript_step_back", args=[self.manuscript.pk])
+        response = self.client.post(
+            url,
+            {
+                "action": "save_source",
+                "source_text": (
+                    "Author A. First.\nAuthor B. Second.\nAuthor C. Third."
+                ),
+            },
+        )
+        self.assertRedirects(response, url)
+        citations = list(
+            self.manuscript.references.order_by("sort_order").values_list(
+                "mixed_citation", flat=True
+            )
+        )
+        self.assertEqual(
+            citations,
+            ["Author A. First.", "Author B. Second.", "Author C. Third."],
+        )
+        self.assertEqual(
+            self.manuscript.references.get(mixed_citation="Author A. First.").marked,
+            {"reftype": "journal"},
+        )
+        follow = self.client.get(url)
+        self.assertContains(follow, "Author C. Third.")
 
     @patch("front.tasks.resolve_front_result")
     def test_mark_uses_persisted_front_counts(self, mock_resolve):
@@ -872,12 +984,98 @@ class WizardStepLabelTests(TestCase):
             {
                 "action": "save_source",
                 "source_text": "Body paragraph.",
-                "images": [jpeg_upload("photo.png")],
+                "images": [jpeg_upload("diagram.gif")],
             },
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Invalid image filename")
         self.assertEqual(self.manuscript.figure_files.count(), 0)
+
+    def test_body_save_source_after_marking_includes_loose_image_in_xml(self):
+        marked = {
+            "sections": [
+                {
+                    "title": "Results",
+                    "content": [
+                        {"type": "p", "text": "See Figure 1."},
+                        {
+                            "type": "fig",
+                            "id": "f1",
+                            "label": "Figure 1",
+                            "caption": "Chart.",
+                        },
+                    ],
+                    "sections": [],
+                }
+            ]
+        }
+        self.manuscript.status = ManuscriptStatus.BODY
+        self.manuscript.body_source_text = "See Figure 1."
+        self.manuscript.body_marked = marked
+        self.manuscript.body_marked_xml = get_body_xml(marked)
+        self.manuscript.save(
+            update_fields=[
+                "status",
+                "body_source_text",
+                "body_marked",
+                "body_marked_xml",
+            ]
+        )
+        url = reverse("manuscript_step_body", args=[self.manuscript.pk])
+        response = self.client.post(
+            url,
+            {
+                "action": "save_source",
+                "source_text": "See Figure 1.",
+                "images": [jpeg_upload("photo.png", color=(255, 0, 0))],
+            },
+        )
+        self.assertRedirects(response, url)
+        self.manuscript.refresh_from_db()
+        stored = self.manuscript.figure_files.get()
+        self.assertEqual(stored.href, "fig-1.jpg")
+        self.assertEqual(stored.number, 1)
+        self.assertIn('xlink:href="fig-1.jpg"', self.manuscript.body_marked_xml)
+        self.assertIn("Chart.", self.manuscript.body_marked_xml)
+
+    def test_body_save_source_after_marking_inserts_missing_figure(self):
+        marked = {
+            "sections": [
+                {
+                    "title": "Results",
+                    "content": [
+                        {"type": "p", "text": "Results without a figure block."},
+                    ],
+                    "sections": [],
+                }
+            ]
+        }
+        self.manuscript.status = ManuscriptStatus.BODY
+        self.manuscript.body_source_text = "Results without a figure block."
+        self.manuscript.body_marked = marked
+        self.manuscript.body_marked_xml = get_body_xml(marked)
+        self.manuscript.save(
+            update_fields=[
+                "status",
+                "body_source_text",
+                "body_marked",
+                "body_marked_xml",
+            ]
+        )
+        url = reverse("manuscript_step_body", args=[self.manuscript.pk])
+        response = self.client.post(
+            url,
+            {
+                "action": "save_source",
+                "source_text": "Results without a figure block.",
+                "images": [jpeg_upload("chart.png", color=(0, 0, 255))],
+            },
+        )
+        self.assertRedirects(response, url)
+        self.manuscript.refresh_from_db()
+        self.assertEqual(self.manuscript.figure_files.get().href, "fig-1.jpg")
+        self.assertIn("<graphic", self.manuscript.body_marked_xml)
+        self.assertIn('xlink:href="fig-1.jpg"', self.manuscript.body_marked_xml)
 
     def test_back_step_shows_marked_xml_after_marking(self):
         marked_xml = (

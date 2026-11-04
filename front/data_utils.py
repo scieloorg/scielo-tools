@@ -10,7 +10,13 @@ from lxml import etree
 from front.exceptions import FrontLlamaUnavailableError
 from front.marking import mark_front
 from front.models import Front
-from front.utils import HISTORY_LABEL_RE, PUBLICATION_HISTORY_RE, normalize_front_text
+from front.utils import (
+    ASSOCIATE_EDITOR_INLINE_RE,
+    CORRESPONDENCE_HEADING_RE,
+    HISTORY_LABEL_RE,
+    PUBLICATION_HISTORY_RE,
+    normalize_front_text,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1046,34 +1052,66 @@ def apply_text_fields(data, front_text):
     capture_contrib = False
     associate_editor_name = None
     capture_editor = False
+    corresp_lines = []
+    capture_corresp = False
     coi_lines = []
     capture_coi = False
     ethics_lines = []
     capture_ethics = False
     for line in lines:
+        inline_editor = ASSOCIATE_EDITOR_INLINE_RE.match(line)
+        if inline_editor and not associate_editor_name:
+            associate_editor_name = line.split(":", 1)[1].strip()
+            capture_contrib = False
+            capture_editor = False
+            capture_coi = False
+            capture_ethics = False
+            capture_corresp = False
+            continue
+        if CORRESPONDENCE_HEADING_RE.match(line):
+            capture_corresp = True
+            capture_contrib = False
+            capture_editor = False
+            capture_coi = False
+            capture_ethics = False
+            continue
         if AUTHOR_CONTRIB_HEADING_RE.match(line):
             capture_contrib = True
             capture_editor = False
             capture_coi = False
             capture_ethics = False
+            capture_corresp = False
             continue
         if ASSOCIATE_EDITOR_HEADING_RE.match(line):
             capture_editor = True
             capture_contrib = False
             capture_coi = False
             capture_ethics = False
+            capture_corresp = False
             continue
         if COI_HEADING_RE.match(line):
             capture_coi = True
             capture_contrib = False
             capture_editor = False
             capture_ethics = False
+            capture_corresp = False
             continue
         if ETHICS_HEADING_RE.match(line):
             capture_ethics = True
             capture_contrib = False
             capture_editor = False
             capture_coi = False
+            capture_corresp = False
+            continue
+        if capture_corresp:
+            if EDITORIAL_SECTION_STOP_RE.match(line) or re.match(
+                r"^(?:data\s+availability|disponibilidade\s+de\s+dados)\b",
+                line,
+                re.IGNORECASE,
+            ):
+                capture_corresp = False
+                continue
+            corresp_lines.append(line)
             continue
         if capture_contrib:
             if EDITORIAL_SECTION_STOP_RE.match(line):
@@ -1195,6 +1233,16 @@ def apply_text_fields(data, front_text):
         ]
         notes["fns"] = existing + editorial_fns
         marked["author_notes"] = notes
+    corresp_text = " ".join(corresp_lines).strip()
+    if corresp_text:
+        notes = (
+            dict(marked["author_notes"])
+            if isinstance(marked.get("author_notes"), dict)
+            else {}
+        )
+        if _blank(notes.get("corresp")):
+            notes["corresp"] = corresp_text
+            marked["author_notes"] = notes
     return marked
 
 

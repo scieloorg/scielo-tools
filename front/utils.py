@@ -44,6 +44,18 @@ BACK_HEADING_RE = re.compile(
     re.IGNORECASE,
 )
 
+CORRESPONDENCE_HEADING_RE = re.compile(
+    r"^(?:\d+[.\)]\s*)?(?:"
+    r"correspondence\s+to|"
+    r"correspond[eê]ncia(?:\s+(?:para|a))?"
+    r")\s*:?\s*$",
+    re.IGNORECASE,
+)
+ASSOCIATE_EDITOR_INLINE_RE = re.compile(
+    r"^associate\s+editor\s*:\s*\S",
+    re.IGNORECASE,
+)
+
 EDITORIAL_BACK_HEADING_RE = re.compile(
     r"^(?:\d+[.\)]\s*)?(?:"
     r"authors?'?\s+contributions?|"
@@ -81,9 +93,12 @@ HISTORY_LABEL_RE = re.compile(
     re.IGNORECASE,
 )
 PUBLICATION_HISTORY_RE = re.compile(
-    r"(?<![A-Za-z])(?:published\s+online|publicado\s+online|"
-    r"publicado\s+en\s+línea|publicado\s+en\s+linea|"
-    r"publicação\s+online|publicacao\s+online)\b"
+    r"(?<![A-Za-z])(?:"
+    r"published(?:\s+online)?|"
+    r"publicado(?:\s+online|\s+en\s+l[ií]nea)?|"
+    r"publica[cç][aã]o(?:\s+online)?|"
+    r"publicacion(?:\s+online)?"
+    r")\b"
     r"\s*[:.]?\s*",
     re.IGNORECASE,
 )
@@ -254,6 +269,7 @@ def extract_front_section(text):
                         EDITORIAL_BACK_HEADING_RE.match(nxt)
                         or REFERENCE_HEADING_RE.match(nxt)
                         or ACK_HEADING_RE.match(nxt)
+                        or BACK_HEADING_RE.match(nxt)
                         or HISTORY_LINE_RE.match(nxt)
                         or PUBLICATION_HISTORY_RE.match(nxt)
                         or BODY_HEADING_RE.match(nxt)
@@ -262,8 +278,32 @@ def extract_front_section(text):
                     extras.append(nxt)
                     index += 1
                 continue
-            if HISTORY_LINE_RE.match(stripped) or PUBLICATION_HISTORY_RE.match(
-                stripped
+            if CORRESPONDENCE_HEADING_RE.match(stripped):
+                extras.append(stripped)
+                index += 1
+                while index < len(lines):
+                    nxt = lines[index].strip()
+                    if not nxt:
+                        index += 1
+                        continue
+                    if (
+                        CORRESPONDENCE_HEADING_RE.match(nxt)
+                        or EDITORIAL_BACK_HEADING_RE.match(nxt)
+                        or REFERENCE_HEADING_RE.match(nxt)
+                        or ACK_HEADING_RE.match(nxt)
+                        or HISTORY_LINE_RE.match(nxt)
+                        or PUBLICATION_HISTORY_RE.match(nxt)
+                        or BODY_HEADING_RE.match(nxt)
+                        or BACK_HEADING_RE.match(nxt)
+                    ):
+                        break
+                    extras.append(nxt)
+                    index += 1
+                continue
+            if (
+                HISTORY_LINE_RE.match(stripped)
+                or PUBLICATION_HISTORY_RE.match(stripped)
+                or ASSOCIATE_EDITOR_INLINE_RE.match(stripped)
             ):
                 extras.append(stripped)
             index += 1

@@ -115,8 +115,8 @@ function createReferenceCard(ref) {
     removeButton.className = "btn btn-sm btn-secondary";
     removeButton.textContent = manuscriptT("remove", "Remove");
     removeButton.addEventListener("click", () => {
-        card.remove();
         const referencesWrap = card.closest("[data-back-collapse]");
+        card.remove();
         if (referencesWrap) {
             updateReferencesLabel(referencesWrap);
         }

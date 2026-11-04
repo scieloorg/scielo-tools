@@ -10,6 +10,7 @@ from body.prompts import MESSAGES, RESPONSE_FORMAT
 from body.providers import get_provider
 from body.utils import (
     apply_outline,
+    extract_body_section,
     section_from_plain_text,
     split_body_sections,
 )
@@ -21,6 +22,9 @@ def mark_body(body_text):
     from body.data_utils import parse_marked
 
     try:
+        cleaned = extract_body_section(body_text)
+        if cleaned.strip():
+            body_text = cleaned
         parts = split_body_sections(body_text)
         if not parts:
             parts = [{"title": "", "text": str(body_text or "")}]

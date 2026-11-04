@@ -9,6 +9,7 @@ from front.tests.test_docx import make_docx_bytes
 from manuscript.models import Manuscript
 from manuscript.services.marking import (
     MarkingError,
+    align_publication_history,
     mark_body,
     mark_front,
     mark_references,
@@ -41,6 +42,43 @@ class MarkingSnapshotTests(TestCase):
             "Updated title",
         )
         self.assertIn("Updated title", self.manuscript.front_marked_xml)
+
+    def test_align_publication_history_copies_preview_pub_date_into_history(self):
+        marked = {
+            "history": [
+                {"type": "received", "day": "18", "month": "06", "year": "2025"},
+                {"type": "accepted", "day": "11", "month": "12", "year": "2025"},
+            ],
+            "pub_dates": [
+                {"type": "pub", "day": "20", "month": "12", "year": "2025"},
+            ],
+        }
+        aligned = align_publication_history(marked)
+        self.assertEqual(
+            [item["type"] for item in aligned["history"]],
+            ["received", "accepted", "pub"],
+        )
+        self.assertEqual(aligned["history"][-1]["day"], "20")
+        self.assertIs(align_publication_history(aligned), aligned)
+
+    def test_align_publication_history_reads_pub_date_from_xml(self):
+        marked = {
+            "history": [
+                {"type": "received", "day": "18", "month": "06", "year": "2025"},
+            ],
+        }
+        xml = (
+            "<front><article-meta>"
+            '<pub-date date-type="pub" publication-format="electronic">'
+            "<day>20</day><month>12</month><year>2025</year></pub-date>"
+            '<history><date date-type="received">'
+            "<day>18</day><month>06</month><year>2025</year></date></history>"
+            "</article-meta></front>"
+        )
+        aligned = align_publication_history(marked, xml)
+        self.assertEqual(aligned["history"][-1]["type"], "pub")
+        self.assertEqual(aligned["history"][-1]["day"], "20")
+        self.assertEqual(aligned["pub_dates"][0]["month"], "12")
 
     def test_save_front_marked_keeps_history_and_counts_in_xml(self):
         save_front_marked(
@@ -174,6 +212,56 @@ class MarkingSnapshotTests(TestCase):
         )
         self.manuscript.refresh_from_db()
         self.assertIn("fig-1.jpg", self.manuscript.body_marked_xml)
+
+    @patch("manuscript.services.marking.resolve_body_result")
+    def test_mark_body_rereads_docx_subsections_and_drops_editorial(self, mock_resolve):
+        from body.tests.test_docx import make_docx_bytes as body_docx_bytes
+        from body.utils import NESTED_HEADING_MARK
+
+        mock_resolve.return_value = {"data": {"sections": []}}
+        upload = SimpleUploadedFile(
+            "floram.docx",
+            body_docx_bytes(
+                [
+                    "Introduction",
+                    "Opening.",
+                    "Material and Methods",
+                    "Study area",
+                    "The park is in Pará.",
+                    "Final considerations",
+                    "Done.",
+                    "Correspondence to",
+                    "Belém, PA",
+                    "Data availability",
+                    "All data are included within the article.",
+                    "References",
+                    "Smith 2020",
+                ],
+                heading_styles={
+                    "Introduction": "PargrafodaLista",
+                    "Material and Methods": "PargrafodaLista",
+                    "Study area": "PargrafodaLista",
+                    "Final considerations": "PargrafodaLista",
+                    "Data availability": "PargrafodaLista",
+                },
+            ),
+            content_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "wordprocessingml.document"
+            ),
+        )
+        document = Document(title="floram.docx")
+        document.file.save("floram.docx", upload, save=True)
+        self.manuscript.source_document = document
+        self.manuscript.body_source_text = "stale"
+        self.manuscript.save()
+        mark_body(self.manuscript, user=self.user)
+        text = mock_resolve.call_args.args[0]
+        self.assertIn(f"{NESTED_HEADING_MARK}Study area", text)
+        self.assertIn("Final considerations", text)
+        self.assertIn("Data availability", text)
+        self.assertNotIn("Correspondence to", text)
+        self.assertNotIn("Belém, PA", text)
 
     @patch("manuscript.services.marking.resolve_references_result")
     def test_mark_references_uses_batch_resolve(self, mock_resolve):

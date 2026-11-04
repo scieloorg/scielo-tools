@@ -8,13 +8,26 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
-from body.utils import body_from_docx_upload, extract_body_section, split_body_sections
+from body.utils import (
+    NESTED_HEADING_MARK,
+    body_from_docx_upload,
+    extract_body_section,
+    section_from_plain_text,
+    split_body_sections,
+)
 
 
-def make_docx_bytes(paragraphs, tables=None):
+def make_docx_bytes(paragraphs, tables=None, heading_styles=None):
+    heading_styles = heading_styles or {}
     parts = []
     for paragraph in paragraphs:
-        parts.append(f"<w:p><w:r><w:t>{escape(paragraph)}</w:t></w:r></w:p>")
+        style_name = heading_styles.get(paragraph)
+        style_xml = (
+            f'<w:pPr><w:pStyle w:val="{escape(style_name)}"/></w:pPr>'
+            if style_name
+            else ""
+        )
+        parts.append(f"<w:p>{style_xml}<w:r><w:t>{escape(paragraph)}</w:t></w:r></w:p>")
     for table in tables or []:
         rows_xml = []
         for row in table:
@@ -189,6 +202,60 @@ def test_api_docx_rejects_empty_file():
         format="multipart",
     )
     assert response.status_code == 400
+
+
+def test_extract_body_section_keeps_final_considerations_and_skips_editorial():
+    text = (
+        "Introduction\nStart.\nDiscussion\nTalk.\nFinal considerations\nDone.\n"
+        "Submission status\nReceived: 28 Aug. 2025\nAccepted: 16 Dec. 2025\n"
+        "Associate editor: Bruno Araujo\nCorrespondence to\nBelém, PA\n"
+        "e-mail: author@example.com\nAuthors' contributions\nAna: writing.\n"
+        "Data availability\nAll data are included within the article.\n"
+        "References\nSmith 2020"
+    )
+    body = extract_body_section(text)
+    assert "Final considerations" in body
+    assert "Done." in body
+    assert "Data availability" in body
+    assert "within the article" in body
+    assert "Correspondence to" not in body
+    assert "Authors' contributions" not in body
+    assert "Associate editor" not in body
+    assert "Submission status" not in body
+
+
+def test_body_from_docx_marks_unnumbered_heading_style_as_subsection():
+    uploaded = SimpleUploadedFile(
+        "article.docx",
+        make_docx_bytes(
+            [
+                "Introduction",
+                "Opening.",
+                "Material and Methods",
+                "Study area",
+                "The park is in Pará.",
+                "Results",
+                "Forty species.",
+            ],
+            heading_styles={
+                "Introduction": "PargrafodaLista",
+                "Material and Methods": "PargrafodaLista",
+                "Study area": "PargrafodaLista",
+                "Results": "PargrafodaLista",
+            },
+        ),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ),
+    )
+    body_text, _tables, _figures = body_from_docx_upload(uploaded)
+    assert f"{NESTED_HEADING_MARK}Study area" in body_text
+    marked = section_from_plain_text(
+        "Material and Methods",
+        split_body_sections(body_text)[1]["text"],
+    )
+    assert marked["sections"][0]["title"] == "Study area"
+    assert marked["sections"][0]["content"][0]["text"] == "The park is in Pará."
 
 
 def test_split_body_sections_by_heading():

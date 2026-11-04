@@ -166,6 +166,8 @@ def test_sec_type_from_title_tail_sections():
     assert sec_type_from_title("Acknowledgments") == "acknowledgments"
     assert sec_type_from_title("Supplementary Material") == "supplementary-material"
     assert sec_type_from_title("Data Availability") == "data-availability"
+    assert sec_type_from_title("Final considerations") == "conclusions"
+    assert sec_type_from_title("5. FINAL CONSIDERATIONS") == "conclusions"
 
 
 def test_apply_body_rules_enriches_tail_sections():

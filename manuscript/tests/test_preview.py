@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 from django.utils.translation import override
+from lxml import html as lhtml
 
 from body.data_utils import get_body_xml
 from body.images import attach_figure_hrefs
@@ -318,8 +319,63 @@ class PreviewTests(TestCase):
         self.assertContains(response, figure.image.file.url)
         self.assertContains(response, "Preview figure.")
         self.assertContains(response, 'class="thumbImg"')
-        self.assertContains(response, 'data-target="#ModalFigf1"')
-        self.assertContains(response, 'id="ModalFigf1"')
+        content = response.content.decode()
+        self.assertIn('data-bs-target="#ModalFigf1"', content)
+        self.assertIn("[data-bs-toggle='modal']", content)
+        self.assertIn("[data-bs-dismiss='modal']", content)
+        document = lhtml.fromstring(content)
+        modal = document.get_element_by_id("ModalFigf1")
+        modal_srcs = [img.get("src") for img in modal.findall(".//img")]
+        self.assertIn(figure.image.file.url, modal_srcs)
+        self.assertIsNotNone(modal.find(".//button[@data-bs-dismiss='modal']"))
+
+    def test_preview_part_article_shows_uploaded_figure_image(self):
+        user = User.objects.create_superuser(
+            username="articlepreviewfig",
+            email="articlepreviewfig@example.com",
+            password="secret",
+        )
+        marked = {
+            "sections": [
+                {
+                    "title": "Results",
+                    "content": [
+                        {
+                            "type": "fig",
+                            "id": "f1",
+                            "label": "Figure 1",
+                            "caption": "Article preview figure.",
+                        }
+                    ],
+                    "sections": [],
+                }
+            ]
+        }
+        attach_figure_hrefs(marked, {"1": "fig-1.jpg"})
+        manuscript = self._assembled_manuscript(user)
+        manuscript.body_marked_xml = get_body_xml(marked)
+        manuscript.save(update_fields=["body_marked_xml"])
+        figure = attach_manuscript_figure(
+            manuscript,
+            number=1,
+            href="fig-1.jpg",
+            original_name="chart.tif",
+        )
+        assemble_manuscript_xml(manuscript)
+        self.client.force_login(user)
+        response = self.client.get(
+            reverse("manuscript_preview_part", args=[manuscript.pk, "article"])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, figure.image.file.url)
+        self.assertContains(response, "Article preview figure.")
+        self.assertContains(response, 'class="thumbImg"')
+        content = response.content.decode()
+        self.assertIn('data-bs-target="#ModalFigf1"', content)
+        document = lhtml.fromstring(content)
+        modal = document.get_element_by_id("ModalFigf1")
+        modal_srcs = [img.get("src") for img in modal.findall(".//img")]
+        self.assertIn(figure.image.file.url, modal_srcs)
 
     def test_render_article_preview_shows_figure_image(self):
         user = User.objects.create_superuser(

@@ -111,6 +111,57 @@ function updateKeywordsLabel(keywordsWrap) {
     label.textContent = countedLabelText("keywords", "Keywords", keywordItemCount(list));
 }
 
+function historyYear(item) {
+    return String((item && item.year) || "").trim();
+}
+
+function historyItemsFromMarked(data) {
+    const items = [];
+    const source =
+        Array.isArray(data.history) && data.history.length
+            ? data.history
+            : Array.isArray(data.dates)
+              ? data.dates
+              : [];
+    source.forEach((item) => {
+        if (!item || typeof item !== "object") {
+            return;
+        }
+        const type = String(item.type || item.date_type || "").trim();
+        if (!type) {
+            return;
+        }
+        const existing = items.find((row) => String(row.type || row.date_type || "") === type);
+        if (!existing) {
+            items.push(item);
+            return;
+        }
+        if (!historyYear(existing) && historyYear(item)) {
+            items[items.indexOf(existing)] = item;
+        }
+    });
+    (data.pub_dates || []).forEach((item) => {
+        if (!item || String(item.type || "").trim() !== "pub" || !historyYear(item)) {
+            return;
+        }
+        const row = {
+            type: "pub",
+            day: item.day || "",
+            month: item.month || "",
+            year: item.year || "",
+        };
+        const existing = items.find((entry) => String(entry.type || "") === "pub");
+        if (!existing) {
+            items.push(row);
+            return;
+        }
+        if (!historyYear(existing)) {
+            items[items.indexOf(existing)] = row;
+        }
+    });
+    return items;
+}
+
 function filledHistoryCount(list) {
     let total = 0;
     list.querySelectorAll("[data-history-row]").forEach((row) => {
@@ -187,6 +238,25 @@ function frontMarkedFromForm(root, marked) {
     });
     if (!data.history.length) {
         delete data.history;
+    }
+    const published = (data.history || []).find((item) => item.type === "pub");
+    const otherPubDates = (Array.isArray(data.pub_dates) ? data.pub_dates : []).filter(
+        (item) => !item || item.type !== "pub"
+    );
+    if (published && published.day && published.month && published.year) {
+        otherPubDates.push({
+            type: "pub",
+            day: published.day,
+            month: published.month,
+            year: published.year,
+        });
+        data.pub_dates = otherPubDates;
+    } else if (Array.isArray(data.pub_dates)) {
+        if (otherPubDates.length) {
+            data.pub_dates = otherPubDates;
+        } else {
+            delete data.pub_dates;
+        }
     }
 
     const counts = {
@@ -301,13 +371,13 @@ function renderFrontEditor(container, marked) {
     const historyWrap = historyCollapse.wrap;
     const historyList = document.createElement("div");
     historyList.dataset.historyList = "1";
-    const historyItems =
-        data.history && data.history.length
-            ? data.history
-            : [
-                  { type: "received", day: "", month: "", year: "" },
-                  { type: "accepted", day: "", month: "", year: "" },
-              ];
+    const fromMarked = historyItemsFromMarked(data);
+    const historyItems = fromMarked.length
+        ? fromMarked
+        : [
+              { type: "received", day: "", month: "", year: "" },
+              { type: "accepted", day: "", month: "", year: "" },
+          ];
     historyItems.forEach((item) => {
         historyList.appendChild(createHistoryRow(item));
     });
@@ -383,6 +453,7 @@ function createHistoryRow(item) {
         ["rev-request", manuscriptT("revisionRequested", "Revision requested")],
         ["rev-recd", manuscriptT("revised", "Revised")],
         ["accepted", manuscriptT("accepted", "Accepted")],
+        ["pub", manuscriptT("published", "Published")],
     ];
     const options = types
         .map(([value, label]) => {

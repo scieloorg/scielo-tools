@@ -1,3 +1,4 @@
+import copy
 from pathlib import Path
 
 from django.db import transaction
@@ -9,22 +10,45 @@ from manuscript.models import (
     create_figure_image,
     get_or_create_manuscript_collection,
 )
-from manuscript.services.assembly import refresh_assembled_xml
+from manuscript.services.assembly import (
+    AssemblyError,
+    build_sps_zip,
+    refresh_assembled_xml,
+)
 from manuscript.signals import delete_unused_manuscript_image
 
 
 def sync_manuscript_figure_hrefs(manuscript):
     marked = manuscript.body_marked
-    if not isinstance(marked, dict) or not marked:
+    if isinstance(marked, dict) and marked:
+        marked = copy.deepcopy(marked)
+        image_hrefs = {
+            str(item.number): item.href for item in manuscript.figure_files.all()
+        }
+        attach_figure_hrefs(marked, image_hrefs)
+        manuscript.body_marked = marked
+        manuscript.body_marked_xml = get_body_xml(marked)
+        manuscript.save(update_fields=["body_marked", "body_marked_xml", "updated"])
+        refresh_assembled_xml(manuscript)
+    if not manuscript.pk:
         return
-    image_hrefs = {
-        str(item.number): item.href for item in manuscript.figure_files.all()
-    }
-    attach_figure_hrefs(marked, image_hrefs)
-    manuscript.body_marked = marked
-    manuscript.body_marked_xml = get_body_xml(marked)
-    manuscript.save(update_fields=["body_marked", "body_marked_xml", "updated"])
-    refresh_assembled_xml(manuscript)
+    stored = (
+        type(manuscript)
+        .objects.filter(pk=manuscript.pk)
+        .values_list("sps_package_id", "generated_pdf_id", "assembled_xml")
+        .first()
+    )
+    if stored is None:
+        return
+    package_id, pdf_id, assembled = stored
+    if not package_id and not pdf_id:
+        return
+    if not (assembled or "").strip():
+        return
+    try:
+        build_sps_zip(manuscript, allow_fallback_stem=True)
+    except AssemblyError:
+        return
 
 
 def save_manuscript_image_assets(manuscript, image_assets, collection_name=""):

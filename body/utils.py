@@ -21,6 +21,7 @@ BODY_HEADING_RE = re.compile(
     r"conclus(?:ions?|ão|ões|iones)?|"
     r"considerações?\s+finais|"
     r"consideraciones?\s+finales|"
+    r"final\s+considerations|"
     r"data\s+availability|"
     r"disponibilidade\s+de\s+dados|"
     r"supplementary\s+materials?|"
@@ -44,13 +45,22 @@ BODY_EDITORIAL_SKIP_RE = re.compile(
     r"contribui[cç][aã]o\s+dos\s+autores|"
     r"conflicts?\s+of\s+interest|"
     r"conflitos?\s+de\s+interesses?|"
-    r"ethics|associate\s+editor"
+    r"ethics|associate\s+editor(?:\s*:.*)?|"
+    r"correspondence\s+to|"
+    r"correspond[eê]ncia(?:\s+(?:para|a))?|"
+    r"submission\s+status|"
+    r"status\s+de\s+submiss[aã]o"
     r")\s*:?\s*$",
     re.IGNORECASE,
 )
 
 NESTED_HEADING_RE = re.compile(
     r"^\d+(?:\.\d+)+\.?\s+[A-ZÀ-Ý].{0,120}$|^\d+\.\s+[A-ZÀ-Ý].{0,120}$"
+)
+NESTED_HEADING_MARK = "\u2060"
+HEADING_STYLE_RE = re.compile(
+    r"heading|t[ií]tulo|title|pargrafodalista",
+    re.IGNORECASE,
 )
 CAPTION_RE = re.compile(
     r"^(?P<kind>figure|fig\.|figura|table|tabela|quadro)\s+"
@@ -189,6 +199,7 @@ def sec_type_from_title(title):
         raw.startswith("conclus")
         or "considerações finais" in raw
         or "consideraciones finales" in raw
+        or "final considerations" in raw
     ):
         return "conclusions"
     if re.fullmatch(r"acknowledg(e)?ments?|agradecimentos?", raw):
@@ -252,13 +263,29 @@ def parse_lines_to_blocks(lines):
     return content
 
 
+def nested_heading_title(line):
+    text = str(line or "").strip()
+    if text.startswith(NESTED_HEADING_MARK):
+        text = text[len(NESTED_HEADING_MARK) :].strip()
+        return text or None
+    if NESTED_HEADING_RE.match(text):
+        return text
+    return None
+
+
 def section_from_plain_text(title, text):
     lines = [line.strip() for line in str(text or "").split("\n") if line.strip()]
     heading = str(title or "").strip()
-    if heading and lines and lines[0] == heading:
+    if heading.startswith(NESTED_HEADING_MARK):
+        heading = heading[len(NESTED_HEADING_MARK) :].strip()
+    if (
+        heading
+        and lines
+        and (lines[0] == heading or lines[0] == f"{NESTED_HEADING_MARK}{heading}")
+    ):
         lines = lines[1:]
     nested_at = [
-        index for index, line in enumerate(lines) if NESTED_HEADING_RE.match(line)
+        index for index, line in enumerate(lines) if nested_heading_title(line)
     ]
     if not nested_at:
         return {
@@ -273,7 +300,7 @@ def section_from_plain_text(title, text):
         end = nested_at[index + 1] if index + 1 < len(nested_at) else len(lines)
         nested.append(
             {
-                "title": lines[start],
+                "title": nested_heading_title(lines[start]),
                 "content": parse_lines_to_blocks(lines[start + 1 : end]),
                 "sections": [],
             }
@@ -665,6 +692,8 @@ def infer_data_availability_specific_use(section):
     if (
         "in the article" in folded
         or "in this article" in folded
+        or "within the article" in folded
+        or "within this article" in folded
         or "no próprio artigo" in folded
         or "neste artigo" in folded
     ):
@@ -882,6 +911,22 @@ def body_from_docx_upload(uploaded):
             if kind == "p":
                 text = paragraph_text(node)
                 if text:
+                    style_el = node.find(f"{{{W_NS}}}pPr/{{{W_NS}}}pStyle")
+                    style_val = (
+                        style_el.get(f"{{{W_NS}}}val") if style_el is not None else ""
+                    )
+                    outline = node.find(f"{{{W_NS}}}pPr/{{{W_NS}}}outlineLvl")
+                    heading_style = outline is not None or bool(
+                        style_val and HEADING_STYLE_RE.search(style_val)
+                    )
+                    if (
+                        heading_style
+                        and not BODY_HEADING_RE.match(text)
+                        and not BODY_EDITORIAL_SKIP_RE.match(text)
+                        and not BODY_REFERENCE_STOP_RE.match(text)
+                        and not CAPTION_RE.match(text)
+                    ):
+                        text = f"{NESTED_HEADING_MARK}{text}"
                     paragraphs.append(text)
                     last_paragraph = text
                 continue

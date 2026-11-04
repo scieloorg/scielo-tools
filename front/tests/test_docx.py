@@ -102,6 +102,25 @@ def test_extract_front_section(text, expected):
     assert extract_front_section(text) == expected
 
 
+def test_extract_front_section_keeps_correspondence_and_inline_editor():
+    text = (
+        "Title\nIntroduction\nBody.\nFinal considerations\nDone.\n"
+        "Received: 28 Aug. 2025\nAccepted: 16 Dec. 2025\n"
+        "Associate editor: Bruno Araujo: http://orcid.org/0000-0003-0288-0024\n"
+        "Correspondence to\nBelém, PA\ne-mail: author@example.com\n"
+        "Authors' contributions\nAna: writing.\n"
+        "Data availability\nIncluded within the article.\n"
+        "References\nSmith 2020"
+    )
+    front = extract_front_section(text)
+    assert "Correspondence to" in front
+    assert "Belém, PA" in front
+    assert "author@example.com" in front
+    assert "Associate editor: Bruno Araujo" in front
+    assert "Received: 28 Aug. 2025" in front
+    assert "Included within the article." not in front
+
+
 def test_document_counts_from_captions_equations_and_references():
     text = (
         "Title\nAna Silva\nIntroduction\nBody of the article\n"

@@ -69,6 +69,26 @@ def generate_xml_sps(
     if not xml_lang:
         xml_lang = "en"
 
+    tail = []
+    for child in list(body):
+        tag = etree.QName(child).localname
+        sec_type = (child.get("sec-type") or "").strip()
+        if tag == "ack" or sec_type in {"data-availability", "supplementary-material"}:
+            body.remove(child)
+            tail.append(child)
+    if tail:
+        ref_list = next(
+            (node for node in back if etree.QName(node).localname == "ref-list"),
+            None,
+        )
+        if ref_list is None:
+            for node in tail:
+                back.append(node)
+        else:
+            index = list(back).index(ref_list)
+            for offset, node in enumerate(tail):
+                back.insert(index + offset, node)
+
     article = etree.Element(
         "article",
         attrib={
