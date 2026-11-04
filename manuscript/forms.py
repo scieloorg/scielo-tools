@@ -138,6 +138,10 @@ class MultipleFileField(forms.FileField):
 
 
 class BodyStepForm(StepSourceForm):
+    def __init__(self, *args, reserved_numbers=None, **kwargs):
+        self.reserved_numbers = list(reserved_numbers or [])
+        super().__init__(*args, **kwargs)
+
     images = MultipleFileField(
         label=_("Package images"),
         required=False,
@@ -152,7 +156,7 @@ class BodyStepForm(StepSourceForm):
         widget=forms.ClearableFileInput(
             attrs={"class": "form-control", "accept": ".zip"}
         ),
-        help_text=_("Optional zip with fig-N.tif/jpg files."),
+        help_text=_("Optional zip with .tif, .jpg or .png images."),
     )
 
     def clean_images_zip(self):
@@ -174,7 +178,12 @@ class BodyStepForm(StepSourceForm):
             cleaned["image_assets"] = {}
             return cleaned
         try:
-            cleaned["image_assets"] = collect_image_assets(images, images_zip)
+            cleaned["image_assets"] = collect_image_assets(
+                images,
+                images_zip,
+                allow_any_filename=True,
+                reserved_numbers=self.reserved_numbers,
+            )
         except BodyImageError as exc:
             raise ValidationError(str(exc)) from exc
         return cleaned

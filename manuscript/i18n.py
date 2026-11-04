@@ -20,6 +20,7 @@ MANUSCRIPT_JS_I18N = {
     "revisionRequested": _("Revision requested"),
     "revised": _("Revised"),
     "accepted": _("Accepted"),
+    "published": _("Published"),
     "day": _("Day"),
     "month": _("Month"),
     "year": _("Year"),

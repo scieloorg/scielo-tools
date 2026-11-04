@@ -54,8 +54,11 @@ from manuscript.services.intake import (
 )
 from manuscript.services.marking import (
     MarkingError,
+    align_publication_history,
+    append_source_references,
     build_manuscript_ref_list_xml,
     mark_single_reference,
+    merge_front_history_from_source,
     save_body_marked,
     save_front_marked,
     save_references_from_payload,
@@ -337,6 +340,7 @@ def step_front(request, pk):
                     manuscript.save(update_fields=update_fields)
                     source_ready = True
             if action == "save_source" and source_ready:
+                merge_front_history_from_source(manuscript, user=request.user)
                 messages.success(request, _("Front source saved."))
                 return redirect("manuscript_step_front", pk=pk)
             if action == "mark" and source_ready:
@@ -373,6 +377,11 @@ def step_front(request, pk):
             except WorkflowError as exc:
                 messages.error(request, str(exc))
 
+    stored = manuscript.front_marked
+    marked = stored if isinstance(stored, dict) else {}
+    aligned = align_publication_history(marked, manuscript.front_marked_xml or "")
+    if aligned != marked:
+        save_front_marked(manuscript, aligned, user=request.user)
     context = _wizard_context(request, manuscript, "front", form)
     context["marked_json"] = json.dumps(manuscript.front_marked or {})
     tag_counts = {}
@@ -400,6 +409,7 @@ def step_body(request, pk):
         request.POST or None,
         request.FILES or None,
         initial={"source_text": manuscript.body_source_text},
+        reserved_numbers=list(manuscript.figure_files.values_list("number", flat=True)),
     )
     if request.method == "POST":
         action = request.POST.get("action", "")
@@ -522,6 +532,7 @@ def step_back(request, pk):
                     manuscript.save(update_fields=["references_source_text", "updated"])
                     source_ready = True
             if action == "save_source" and source_ready:
+                append_source_references(manuscript, user=request.user)
                 messages.success(request, _("References source saved."))
                 return redirect("manuscript_step_back", pk=pk)
             if action == "mark" and source_ready:

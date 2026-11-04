@@ -12,9 +12,8 @@ from docx import Document as DocxDocument
 from docx.enum.style import WD_STYLE_TYPE
 from docx.shared import Pt
 from lxml import etree
-from packtools.sps.formats.pdf.pipeline import docx as packtools_docx
-from packtools.sps.formats.pdf.renderer.docx import table as packtools_table
-from packtools.sps.formats.pdf.utils import file_utils as packtools_file_utils
+from packtools.sps.formats.pdf.convert import convert_docx_to_pdf
+from packtools.sps.formats.pdf.pipeline import pipeline_docx_by_language
 from packtools.sps.utils import xml_utils as packtools_xml_utils
 from wagtail.documents.models import Document
 
@@ -172,16 +171,15 @@ def _figure_extension(href):
 def package_xml_with_sps_names(xml_text, acronym="", fallback_stem=""):
     stem = sps_package_stem(xml_text, acronym=acronym, fallback_stem=fallback_stem)
     root = etree.fromstring(xml_text.encode("utf-8"))
-    href_map = {}
+    renames = []
     graphics = root.xpath(".//*[local-name()='fig']/*[local-name()='graphic']")
     for index, graphic in enumerate(graphics, start=1):
         old = _graphic_href(graphic)
         new_name = f"{stem}-gf{index:02d}{_figure_extension(old)}"
-        if old:
-            href_map[old] = new_name
         graphic.set(XLINK_HREF, new_name)
+        renames.append((old, new_name, index))
     packed = etree.tostring(root, encoding="unicode")
-    return stem, packed, href_map
+    return stem, packed, renames
 
 
 def _figure_for_href(figures, old_href, index):
@@ -194,9 +192,8 @@ def _figure_for_href(figures, old_href, index):
     figure = by_href.get(old_href) or by_href.get(base) or by_base.get(base)
     if figure is not None:
         return figure
-    match = re.search(r"(\d+)", base)
-    if match:
-        figure = by_number.get(int(match.group(1)))
+    for number in reversed([int(item) for item in re.findall(r"(\d+)", base)]):
+        figure = by_number.get(number)
         if figure is not None:
             return figure
     return by_number.get(index)
@@ -277,18 +274,54 @@ def refresh_assembled_xml(manuscript, allow_partial=False):
 def generate_packtools_pdf(xml_text, xml_name, figures):
     tmp = tempfile.mkdtemp(prefix="sps-pdf-")
     try:
-        xml_path = os.path.join(tmp, xml_name)
-        with open(xml_path, "w", encoding="utf-8") as fh:
-            fh.write(xml_text)
+        figures = list(figures)
+        asset_hrefs = []
+        stripped_xml = re.sub(r"<!DOCTYPE[^>]+>", "", xml_text, count=1)
+        try:
+            asset_root = etree.fromstring(stripped_xml.encode("utf-8"))
+        except etree.XMLSyntaxError:
+            asset_root = None
+        if asset_root is not None:
+            graphics = asset_root.xpath(
+                ".//*[local-name()='graphic' or local-name()='inline-graphic']"
+            )
+            for index, graphic in enumerate(graphics, start=1):
+                href = _graphic_href(graphic)
+                if (
+                    not href
+                    or href.startswith(("http://", "https://"))
+                    or os.path.isabs(href)
+                ):
+                    continue
+                figure = _figure_for_href(figures, href, index)
+                if figure is not None:
+                    asset_hrefs.append((href, figure))
         for figure in figures:
-            if not figure.href or not figure.image_id or not figure.image.file:
+            if figure.href:
+                asset_hrefs.append((figure.href, figure))
+        written_assets = set()
+        for href, figure in asset_hrefs:
+            if not figure.image_id or not figure.image or not figure.image.file:
                 continue
-            dest = os.path.join(tmp, figure.href)
+            relative = href.replace("\\", "/").split("?")[0].split("#")[0].lstrip("/")
+            if not relative or relative.startswith("..") or "/../" in f"/{relative}":
+                continue
+            dest = os.path.normpath(os.path.join(tmp, relative))
+            root_dir = os.path.normpath(tmp)
+            if os.path.commonpath([dest, root_dir]) != root_dir:
+                continue
+            asset_key = (dest, figure.pk)
+            if asset_key in written_assets:
+                continue
+            written_assets.add(asset_key)
             parent = os.path.dirname(dest)
             if parent:
                 os.makedirs(parent, exist_ok=True)
             with figure.image.file.open("rb") as src, open(dest, "wb") as dst:
                 dst.write(src.read())
+        xml_path = os.path.join(tmp, xml_name)
+        with open(xml_path, "w", encoding="utf-8") as fh:
+            fh.write(xml_text)
         layout = (getattr(settings, "PACKTOOLS_PDF_LAYOUT", "") or "").strip()
         if layout and os.path.isfile(layout):
             base_layout = layout
@@ -348,42 +381,22 @@ def generate_packtools_pdf(xml_text, xml_name, figures):
                 if tg is None:
                     tg = etree.SubElement(am, "title-group")
                 etree.SubElement(tg, "article-title").text = ""
-        original_num_cols = packtools_table._determine_num_cols
-        original_merge = packtools_table._merge_horizontally
-
-        def determine_num_cols(headers, rows, header_spans, row_spans):
-            widths = []
-            for group in (header_spans, row_spans, headers, rows):
-                if group:
-                    widths.append(max(len(row) for row in group))
-            return max(widths) if widths else 0
-
-        def merge_horizontally(row, start_col, span, num_cols, is_header=False):
-            if start_col < 0 or start_col >= len(row.cells):
-                return None
-            return original_merge(row, start_col, span, num_cols, is_header=is_header)
-
-        packtools_table._determine_num_cols = determine_num_cols
-        packtools_table._merge_horizontally = merge_horizontally
-        try:
-            document = packtools_docx.pipeline_docx(
-                xml_tree,
-                {
-                    "base_layout": base_layout,
-                    "assets_dir": tmp,
-                },
+        _lang, document = next(
+            iter(
+                pipeline_docx_by_language(
+                    xml_tree,
+                    {
+                        "base_layout": base_layout,
+                        "assets_dir": tmp,
+                    },
+                )
             )
-        finally:
-            packtools_table._determine_num_cols = original_num_cols
-            packtools_table._merge_horizontally = original_merge
+        )
         stem, _ext = os.path.splitext(xml_name)
         docx_path = os.path.join(tmp, f"{stem}.docx")
         document.save(docx_path)
-        binary = (getattr(settings, "LIBREOFFICE_BINARY", "") or "").strip()
-        if binary:
-            pdf_path = packtools_file_utils.convert_docx_to_pdf(docx_path, binary)
-        else:
-            pdf_path = packtools_file_utils.convert_docx_to_pdf(docx_path)
+        binary = (getattr(settings, "LIBREOFFICE_BINARY", "") or "").strip() or None
+        pdf_path = convert_docx_to_pdf(docx_path, binary)
         with open(pdf_path, "rb") as fh:
             return fh.read()
     except AssemblyError:
@@ -412,30 +425,45 @@ def _save_or_replace_manuscript_document(
     return doc
 
 
-def build_sps_zip(manuscript, include_pdf=False, allow_fallback_stem=False):
+def build_sps_zip(
+    manuscript, include_pdf=False, allow_fallback_stem=False, pdf_bytes=None
+):
     if not (manuscript.assembled_xml or "").strip():
         assemble_manuscript_xml(manuscript, allow_partial=allow_fallback_stem)
     fallback_stem = (
         f"manuscript-{manuscript.pk or 'draft'}" if allow_fallback_stem else ""
     )
-    pdf_bytes = None
+    if manuscript.pk:
+        figures = list(
+            manuscript.figure_files.model.objects.filter(manuscript_id=manuscript.pk)
+            .select_related("image")
+            .order_by("number", "pk")
+        )
+    else:
+        figures = list(
+            manuscript.figure_files.select_related("image").order_by("number")
+        )
     if include_pdf:
         pdf_bytes = generate_packtools_pdf(
             manuscript.assembled_xml,
             "article.xml",
-            list(manuscript.figure_files.all()),
+            figures,
         )
-    elif (
-        manuscript.generated_pdf_id
-        and manuscript.generated_pdf
-        and manuscript.generated_pdf.file
-    ):
-        try:
-            with manuscript.generated_pdf.file.open("rb") as pdf_fh:
-                pdf_bytes = pdf_fh.read()
-        except OSError:
-            pdf_bytes = None
-    stem, packed_xml, href_map = package_xml_with_sps_names(
+    elif pdf_bytes is None and manuscript.pk:
+        stored = (
+            type(manuscript)
+            .objects.filter(pk=manuscript.pk)
+            .select_related("generated_pdf")
+            .first()
+        )
+        pdf_doc = stored.generated_pdf if stored is not None else None
+        if pdf_doc is not None and pdf_doc.file:
+            try:
+                with pdf_doc.file.open("rb") as pdf_fh:
+                    pdf_bytes = pdf_fh.read()
+            except OSError:
+                pdf_bytes = None
+    stem, packed_xml, renames = package_xml_with_sps_names(
         manuscript.assembled_xml,
         acronym=_acronym_from_manuscript(manuscript),
         fallback_stem=fallback_stem,
@@ -444,29 +472,49 @@ def build_sps_zip(manuscript, include_pdf=False, allow_fallback_stem=False):
         _save_or_replace_manuscript_document(
             manuscript, "generated_pdf", f"{stem}.pdf", pdf_bytes
         )
-    figures = list(manuscript.figure_files.select_related("image").order_by("number"))
+    used = set()
+    slots = []
+    for old_href, new_name, index in renames:
+        available = [figure for figure in figures if figure.pk not in used]
+        figure = _figure_for_href(available, old_href, index)
+        if figure is not None:
+            used.add(figure.pk)
+        slots.append([new_name, figure])
+    for slot in slots:
+        if slot[1] is not None:
+            continue
+        remaining = [figure for figure in figures if figure.pk not in used]
+        if not remaining:
+            break
+        slot[1] = remaining[0]
+        used.add(remaining[0].pk)
+    entries = [(name, figure) for name, figure in slots if figure is not None]
+    for figure in figures:
+        if figure.pk in used:
+            continue
+        entries.append(
+            (
+                f"{stem}-gf{figure.number:02d}{_figure_extension(figure.href)}",
+                figure,
+            )
+        )
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr(f"{stem}.xml", packed_xml.encode("utf-8"))
-        written = set()
-        for index, (old_href, new_name) in enumerate(href_map.items(), start=1):
-            figure = _figure_for_href(figures, old_href, index)
-            if figure is None or figure.pk in written:
-                continue
-            if not figure.image_id or not figure.image.file:
+        written_names = set()
+        for name, figure in entries:
+            if (
+                name in written_names
+                or not figure.image_id
+                or not figure.image
+                or not figure.image.file
+            ):
                 continue
             with figure.image.file.open("rb") as fh:
-                archive.writestr(new_name, fh.read())
-            written.add(figure.pk)
-        for figure in figures:
-            if figure.pk in written:
-                continue
-            if not figure.image_id or not figure.image.file:
-                continue
-            name = f"{stem}-gf{figure.number:02d}{_figure_extension(figure.href)}"
-            with figure.image.file.open("rb") as fh:
-                archive.writestr(name, fh.read())
-        if pdf_bytes is not None:
+                payload = fh.read()
+            archive.writestr(name, payload)
+            written_names.add(name)
+        if pdf_bytes:
             archive.writestr(f"{stem}.pdf", pdf_bytes)
     buffer.seek(0)
     zip_name = f"{stem}.zip"
@@ -487,12 +535,16 @@ def generate_manuscript_pdf_document(manuscript):
     pdf_bytes = generate_packtools_pdf(
         manuscript.assembled_xml,
         "article.xml",
-        list(manuscript.figure_files.all()),
+        list(manuscript.figure_files.select_related("image").all()),
     )
     doc = _save_or_replace_manuscript_document(
         manuscript, "generated_pdf", f"{stem}.pdf", pdf_bytes
     )
-    build_sps_zip(manuscript, include_pdf=False, allow_fallback_stem=True)
+    build_sps_zip(
+        manuscript,
+        allow_fallback_stem=True,
+        pdf_bytes=pdf_bytes,
+    )
     return doc
 
 

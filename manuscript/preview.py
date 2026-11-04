@@ -215,6 +215,7 @@ def render_front_preview(marked_xml):
             "rev-request": gettext("Revision requested"),
             "rev-recd": gettext("Revised"),
             "accepted": gettext("Accepted"),
+            "pub": gettext("Published"),
         }
         items = []
         for date in history.findall("date"):
@@ -457,7 +458,8 @@ def apply_figure_urls(html_content, figure_urls, xml_text=None):
                 modal_link.set("href", url)
         thumbs = document.xpath(
             f'//*[@id="{fig_id}"]//*[contains(@class, "thumbOff")] | '
-            f'//a[@data-target="#ModalFig{fig_id}"]//*[contains(@class, "thumbOff")]'
+            f'//a[@data-target="#ModalFig{fig_id}"]//*[contains(@class, "thumbOff")] | '
+            f'//a[@data-bs-target="#ModalFig{fig_id}"]//*[contains(@class, "thumbOff")]'
         )
         for thumb in thumbs:
             classes = [

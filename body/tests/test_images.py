@@ -166,6 +166,41 @@ def test_attach_figure_hrefs_sets_fig_and_fig_group():
     attach_figure_hrefs(marked, {"1": "fig-1.jpg", "2": "fig-2.jpg"})
     assert marked["sections"][0]["content"][0]["href"] == "fig-1.jpg"
     assert marked["sections"][0]["content"][1]["figs"][0]["href"] == "fig-2.jpg"
+    assert len(marked["sections"][0]["content"]) == 2
+
+
+def test_attach_figure_hrefs_inserts_figure_missing_from_marked_body():
+    marked = {
+        "sections": [
+            {
+                "title": "Results",
+                "content": [{"type": "p", "text": "Shown in Figure 2."}],
+                "sections": [],
+            }
+        ]
+    }
+    attach_figure_hrefs(marked, {"2": "fig-2.jpg"})
+    content = marked["sections"][0]["content"]
+    assert content[0]["type"] == "p"
+    assert content[1]["type"] == "fig"
+    assert content[1]["id"] == "f2"
+    assert content[1]["href"] == "fig-2.jpg"
+
+
+def test_attach_figure_hrefs_appends_figure_without_mention():
+    marked = {
+        "sections": [
+            {
+                "title": "Results",
+                "content": [{"type": "p", "text": "No float here."}],
+                "sections": [],
+            }
+        ]
+    }
+    attach_figure_hrefs(marked, {"1": "fig-1.jpg"})
+    fig = marked["sections"][0]["content"][-1]
+    assert fig["type"] == "fig"
+    assert fig["href"] == "fig-1.jpg"
 
 
 def test_get_body_xml_emits_graphic_href_from_attached_images():
