@@ -130,16 +130,31 @@
                     return true;
                 }
 
+                function modalTarget(node) {
+                    var trigger = node.closest(
+                        "[data-bs-toggle='modal'], [data-toggle='modal']"
+                    );
+                    if (!trigger) {
+                        return "";
+                    }
+                    return (
+                        trigger.getAttribute("data-bs-target") ||
+                        trigger.getAttribute("data-target") ||
+                        ""
+                    );
+                }
+
                 document.addEventListener("click", function (event) {
-                    var trigger = event.target.closest("[data-toggle='modal'][data-target]");
-                    if (trigger) {
-                        var target = trigger.getAttribute("data-target");
+                    var target = modalTarget(event.target);
+                    if (target) {
                         if (openModalBySelector(target)) {
                             event.preventDefault();
                         }
                         return;
                     }
-                    var dismiss = event.target.closest("[data-dismiss='modal'], .modal .close");
+                    var dismiss = event.target.closest(
+                        "[data-bs-dismiss='modal'], [data-dismiss='modal'], .modal .btn-close, .modal .close"
+                    );
                     if (dismiss) {
                         event.preventDefault();
                         closeAllModals();

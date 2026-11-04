@@ -486,6 +486,8 @@ def append_sec(parent, section, counters, first_level):
                 elif (
                     "in the article" in folded
                     or "in this article" in folded
+                    or "within the article" in folded
+                    or "within this article" in folded
                     or "no próprio artigo" in folded
                     or "neste artigo" in folded
                 ):

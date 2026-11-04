@@ -31,21 +31,44 @@ function updateParagraphsLabel(paragraphsWrap) {
 
 function bodyMarkedFromEditor(root, marked) {
     const data = JSON.parse(JSON.stringify(marked || {}));
-    data.sections = [];
-    root.querySelectorAll("[data-section-row]").forEach((row) => {
-        const section = {
-            title: row.querySelector('[data-field="title"]')?.value || "",
-            content: [],
-            sections: [],
-        };
-        row.querySelectorAll("[data-paragraph-block]").forEach((block) => {
-            section.content.push({
-                type: "p",
-                text: block.textContent.trim(),
-            });
+    const sections = Array.isArray(data.sections) ? data.sections : [];
+    const rows = Array.from(root.querySelectorAll("[data-section-row]"));
+    rows.forEach((row, index) => {
+        const source =
+            sections[index] && typeof sections[index] === "object"
+                ? sections[index]
+                : { title: "", content: [], sections: [] };
+        source.title = row.querySelector('[data-field="title"]')?.value || "";
+        const edited = Array.from(row.querySelectorAll("[data-paragraph-block]")).map(
+            (block) => block.textContent.trim()
+        );
+        const content = Array.isArray(source.content) ? source.content : [];
+        let paragraphIndex = 0;
+        const next = [];
+        content.forEach((block) => {
+            if (!block || typeof block !== "object") {
+                return;
+            }
+            if (block.type === "p") {
+                if (paragraphIndex < edited.length) {
+                    next.push({ ...block, text: edited[paragraphIndex] });
+                    paragraphIndex += 1;
+                }
+                return;
+            }
+            next.push(block);
         });
-        data.sections.push(section);
+        while (paragraphIndex < edited.length) {
+            next.push({ type: "p", text: edited[paragraphIndex] });
+            paragraphIndex += 1;
+        }
+        source.content = next;
+        if (!Array.isArray(source.sections)) {
+            source.sections = [];
+        }
+        sections[index] = source;
     });
+    data.sections = sections;
     return data;
 }
 

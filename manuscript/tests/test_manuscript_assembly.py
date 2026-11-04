@@ -1,11 +1,15 @@
+import io
 import os
 import tempfile
 import zipfile
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
+from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
 from docx import Document as DocxDocument
+from PIL import Image
+from wagtail.documents.models import Document
 
 from body.data_utils import get_body_xml
 from front.data_utils import get_front_xml
@@ -14,9 +18,11 @@ from manuscript.services.assembly import (
     AssemblyError,
     assemble_manuscript_xml,
     build_sps_zip,
+    generate_manuscript_pdf_document,
     generate_packtools_pdf,
     refresh_assembled_xml,
 )
+from manuscript.services.figures import save_manuscript_image_assets
 from manuscript.services.marking import (
     save_body_marked,
     save_front_marked,
@@ -27,6 +33,66 @@ from manuscript.tests.helpers import attach_manuscript_figure
 User = get_user_model()
 
 SPS_STEM = "0124-4567-scie-10-03-365"
+
+
+def _article_xml_with_graphic(href):
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<article article-type="research-article" xml:lang="en"
+    xmlns:xlink="http://www.w3.org/1999/xlink">
+  <front>
+    <journal-meta>
+      <journal-title-group>
+        <journal-title>Test Journal</journal-title>
+      </journal-title-group>
+    </journal-meta>
+    <article-meta>
+      <article-id pub-id-type="doi">10.1590/test</article-id>
+      <article-categories>
+        <subj-group subj-group-type="heading">
+          <subject>Article</subject>
+        </subj-group>
+      </article-categories>
+      <title-group>
+        <article-title>Figure article</article-title>
+      </title-group>
+    </article-meta>
+  </front>
+  <body>
+    <sec>
+      <title>Results</title>
+      <fig id="f1">
+        <label>Figure 1</label>
+        <caption><title>Sample chart.</title></caption>
+        <graphic xlink:href="{href}"/>
+      </fig>
+    </sec>
+  </body>
+</article>
+"""
+
+
+def _pdf_docx_media(xml, figures):
+    captured = {}
+
+    def fake_convert(docx_path, *args, **kwargs):
+        with zipfile.ZipFile(docx_path) as archive:
+            captured["media"] = [
+                archive.read(name)
+                for name in archive.namelist()
+                if name.startswith("word/media/")
+            ]
+        pdf_path = docx_path[:-5] + ".pdf"
+        with open(pdf_path, "wb") as fh:
+            fh.write(b"%PDF-with-image")
+        return pdf_path
+
+    with patch(
+        "manuscript.services.assembly.convert_docx_to_pdf",
+        side_effect=fake_convert,
+    ):
+        generate_packtools_pdf(xml, "article.xml", figures)
+    return captured["media"]
+
 
 FRONT_MARKED = {
     "journal": {
@@ -296,6 +362,152 @@ class ManuscriptAssemblyTests(TestCase):
                 self.assertEqual(archive.read(f"{SPS_STEM}.pdf"), b"%PDF-fake")
                 self.assertFalse(any(name.endswith(".docx") for name in names))
 
+    def test_build_sps_zip_includes_pdf_saved_on_another_instance(self):
+        figure = attach_manuscript_figure(
+            self.manuscript,
+            number=1,
+            href="fig-1.jpg",
+            original_name="chart.tif",
+        )
+        with figure.image.file.open("rb") as fh:
+            image_bytes = fh.read()
+        pdf = Document(title="outside.pdf")
+        pdf.file.save("outside.pdf", ContentFile(b"%PDF-outside"), save=True)
+        Manuscript.objects.filter(pk=self.manuscript.pk).update(generated_pdf=pdf)
+        self.assertIsNone(self.manuscript.generated_pdf_id)
+        document = build_sps_zip(self.manuscript)
+        with document.file.open("rb") as fh:
+            with zipfile.ZipFile(fh) as archive:
+                names = set(archive.namelist())
+                image_name = f"{SPS_STEM}-gf01.jpg"
+                pdf_name = f"{SPS_STEM}.pdf"
+                self.assertIn(image_name, names)
+                self.assertIn(pdf_name, names)
+                self.assertEqual(archive.read(image_name), image_bytes)
+                self.assertEqual(archive.read(pdf_name), b"%PDF-outside")
+
+    def test_build_sps_zip_tiff_href_file_matches_xml_and_pdf(self):
+        figure = attach_manuscript_figure(
+            self.manuscript,
+            number=1,
+            href="fig-1.jpg",
+            original_name="2179-8087-floram-33-e20250030-gf1.tif",
+        )
+        with figure.image.file.open("rb") as fh:
+            image_bytes = fh.read()
+        self.manuscript.assembled_xml = (
+            "<article><front><journal-meta>"
+            '<journal-id journal-id-type="publisher-id">scie</journal-id>'
+            '<issn pub-type="epub">0124-4567</issn>'
+            "</journal-meta><article-meta>"
+            "<volume>10</volume><issue>3</issue><fpage>365</fpage>"
+            "</article-meta></front><body><fig><graphic "
+            'xmlns:xlink="http://www.w3.org/1999/xlink" '
+            'xlink:href="2179-8087-floram-33-e20250030-gf1.tif"/>'
+            "</fig></body></article>"
+        )
+        self.manuscript.save(update_fields=["assembled_xml"])
+        with patch(
+            "manuscript.services.assembly.generate_packtools_pdf",
+            return_value=b"%PDF-tiff",
+        ):
+            document = build_sps_zip(self.manuscript, include_pdf=True)
+        image_name = f"{SPS_STEM}-gf01.tif"
+        with document.file.open("rb") as fh:
+            with zipfile.ZipFile(fh) as archive:
+                names = set(archive.namelist())
+                self.assertIn(image_name, names)
+                self.assertIn(f"{SPS_STEM}.pdf", names)
+                self.assertEqual(archive.read(image_name), image_bytes)
+                self.assertEqual(archive.read(f"{SPS_STEM}.pdf"), b"%PDF-tiff")
+                packed = archive.read(f"{SPS_STEM}.xml").decode("utf-8")
+                self.assertIn(f'href="{image_name}"', packed)
+
+    def test_generate_manuscript_pdf_document_puts_pdf_and_figure_in_package(self):
+        figure = attach_manuscript_figure(
+            self.manuscript,
+            number=1,
+            href="fig-1.jpg",
+            original_name="chart.tif",
+        )
+        with figure.image.file.open("rb") as fh:
+            image_bytes = fh.read()
+        self.manuscript.body_marked_xml = get_body_xml(
+            {
+                "sections": [
+                    {
+                        "title": "Intro",
+                        "content": [
+                            {"type": "fig", "id": "f1", "href": "fig-1.jpg"},
+                        ],
+                        "sections": [],
+                    }
+                ]
+            }
+        )
+        self.manuscript.assembled_xml = ""
+        self.manuscript.save(update_fields=["body_marked_xml", "assembled_xml"])
+        with patch(
+            "manuscript.services.assembly.generate_packtools_pdf",
+            return_value=b"%PDF-package",
+        ):
+            generate_manuscript_pdf_document(self.manuscript)
+        self.manuscript.refresh_from_db()
+        image_name = f"{SPS_STEM}-gf01.jpg"
+        with self.manuscript.sps_package.file.open("rb") as fh:
+            with zipfile.ZipFile(fh) as archive:
+                names = set(archive.namelist())
+                self.assertIn(image_name, names)
+                self.assertIn(f"{SPS_STEM}.pdf", names)
+                self.assertEqual(archive.read(image_name), image_bytes)
+                self.assertEqual(archive.read(f"{SPS_STEM}.pdf"), b"%PDF-package")
+                packed = archive.read(f"{SPS_STEM}.xml").decode("utf-8")
+                self.assertIn(f'href="{image_name}"', packed)
+
+    def test_saving_figure_adds_image_and_keeps_pdf_in_package(self):
+        self.manuscript.body_marked = {
+            "sections": [
+                {
+                    "title": "Intro",
+                    "content": [{"type": "p", "text": "See Figure 1."}],
+                    "sections": [],
+                }
+            ]
+        }
+        self.manuscript.assembled_xml = ""
+        self.manuscript.save(update_fields=["body_marked", "assembled_xml"])
+        with patch(
+            "manuscript.services.assembly.generate_packtools_pdf",
+            return_value=b"%PDF-before",
+        ):
+            build_sps_zip(self.manuscript, include_pdf=True)
+        buffer = io.BytesIO()
+        Image.new("RGB", (2, 2), (9, 8, 7)).save(buffer, format="JPEG")
+        save_manuscript_image_assets(
+            self.manuscript,
+            {
+                "1": {
+                    "href": "fig-1.jpg",
+                    "bytes": buffer.getvalue(),
+                    "original_name": "chart.png",
+                }
+            },
+        )
+        self.manuscript.refresh_from_db()
+        figure = self.manuscript.figure_files.select_related("image").get()
+        with figure.image.file.open("rb") as fh:
+            image_bytes = fh.read()
+        image_name = f"{SPS_STEM}-gf01.jpg"
+        with self.manuscript.sps_package.file.open("rb") as fh:
+            with zipfile.ZipFile(fh) as archive:
+                names = set(archive.namelist())
+                self.assertIn(image_name, names)
+                self.assertIn(f"{SPS_STEM}.pdf", names)
+                self.assertEqual(archive.read(image_name), image_bytes)
+                self.assertEqual(archive.read(f"{SPS_STEM}.pdf"), b"%PDF-before")
+                packed = archive.read(f"{SPS_STEM}.xml").decode("utf-8")
+                self.assertIn(f'href="{image_name}"', packed)
+
     def test_build_sps_zip_replaces_previous_file_on_disk(self):
         first = build_sps_zip(self.manuscript)
         previous_name = first.file.name
@@ -343,18 +555,18 @@ class ManuscriptAssemblyTests(TestCase):
             captured["layout"] = data["base_layout"]
             layout_doc = DocxDocument(data["base_layout"])
             captured["styles"] = [style.name for style in layout_doc.styles]
-            return document
+            return [(None, document)]
 
         with (
             patch(
                 "manuscript.services.assembly.packtools_xml_utils.get_xml_tree"
             ) as mock_tree,
             patch(
-                "manuscript.services.assembly.packtools_docx.pipeline_docx",
+                "manuscript.services.assembly.pipeline_docx_by_language",
                 side_effect=capture_pipeline,
             ),
             patch(
-                "manuscript.services.assembly.packtools_file_utils.convert_docx_to_pdf",
+                "manuscript.services.assembly.convert_docx_to_pdf",
                 side_effect=fake_convert,
             ),
         ):
@@ -368,6 +580,36 @@ class ManuscriptAssemblyTests(TestCase):
         document.save.assert_called_once()
         self.assertTrue(captured["layout"].endswith("_scielo-layout.docx"))
         self.assertIn("SCL Journal Title Char", captured["styles"])
+
+    def test_generate_packtools_pdf_embeds_uploaded_figure(self):
+        figure = attach_manuscript_figure(
+            self.manuscript,
+            number=1,
+            href="fig-1.jpg",
+            original_name="chart.tif",
+        )
+        with figure.image.file.open("rb") as fh:
+            image_bytes = fh.read()
+        media = _pdf_docx_media(
+            _article_xml_with_graphic("fig-1.jpg"),
+            [figure],
+        )
+        self.assertIn(image_bytes, media)
+
+    def test_generate_packtools_pdf_embeds_figure_when_xml_href_is_tiff_name(self):
+        figure = attach_manuscript_figure(
+            self.manuscript,
+            number=1,
+            href="fig-1.jpg",
+            original_name="2179-8087-floram-33-e20250030-gf1.tif",
+        )
+        with figure.image.file.open("rb") as fh:
+            image_bytes = fh.read()
+        media = _pdf_docx_media(
+            _article_xml_with_graphic("2179-8087-floram-33-e20250030-gf1.tif"),
+            [figure],
+        )
+        self.assertIn(image_bytes, media)
 
     def test_generate_packtools_pdf_uses_configured_layout(self):
         layout_path = os.path.join(tempfile.gettempdir(), "custom-pdf-layout.docx")
@@ -384,17 +626,17 @@ class ManuscriptAssemblyTests(TestCase):
 
         def capture_pipeline(xml_tree, data):
             captured["layout"] = data["base_layout"]
-            return document
+            return [(None, document)]
 
         with (
             override_settings(PACKTOOLS_PDF_LAYOUT=layout_path),
             patch("manuscript.services.assembly.packtools_xml_utils.get_xml_tree"),
             patch(
-                "manuscript.services.assembly.packtools_docx.pipeline_docx",
+                "manuscript.services.assembly.pipeline_docx_by_language",
                 side_effect=capture_pipeline,
             ),
             patch(
-                "manuscript.services.assembly.packtools_file_utils.convert_docx_to_pdf",
+                "manuscript.services.assembly.convert_docx_to_pdf",
                 side_effect=fake_convert,
             ),
         ):
@@ -546,7 +788,7 @@ class ManuscriptAssemblyTests(TestCase):
             return pdf_path
 
         with patch(
-            "manuscript.services.assembly.packtools_file_utils.convert_docx_to_pdf",
+            "manuscript.services.assembly.convert_docx_to_pdf",
             side_effect=fake_convert,
         ):
             pdf_bytes = generate_packtools_pdf(xml, "wide-table.xml", [])
@@ -562,7 +804,7 @@ class ManuscriptAssemblyTests(TestCase):
             return pdf_path
 
         with patch(
-            "manuscript.services.assembly.packtools_file_utils.convert_docx_to_pdf",
+            "manuscript.services.assembly.convert_docx_to_pdf",
             side_effect=fake_convert,
         ):
             pdf_bytes = generate_packtools_pdf(xml, "minimal.xml", [])

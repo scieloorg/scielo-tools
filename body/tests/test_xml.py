@@ -254,6 +254,31 @@ def test_get_body_xml_infers_data_availability_specific_use():
     assert sec.get("specific-use") == "data-available-upon-request"
 
 
+def test_get_body_xml_infers_data_in_article_from_within_the_article():
+    xml = get_body_xml(
+        {
+            "sections": [
+                {
+                    "title": "Data availability",
+                    "sec_type": "data-availability",
+                    "content": [
+                        {
+                            "type": "p",
+                            "text": (
+                                "All data that support the findings of this study "
+                                "are included within the article."
+                            ),
+                        }
+                    ],
+                    "sections": [],
+                }
+            ]
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    assert root.find("sec").get("specific-use") == "data-in-article"
+
+
 def test_get_body_xml_defaults_data_availability_to_uninformed():
     xml = get_body_xml(
         {

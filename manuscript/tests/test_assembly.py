@@ -57,7 +57,9 @@ class GenerateXmlSpsTests(TestCase):
         self.assertIn("Body paragraph.", xml)
         self.assertIn('specific-use="sps-1.10"', xml)
 
-    def test_generate_xml_sps_uses_keyword_language_when_configured_lang_is_translation(self):
+    def test_generate_xml_sps_uses_keyword_language_when_configured_lang_is_translation(
+        self,
+    ):
         front = get_front_xml(
             {
                 "titles": [
@@ -77,9 +79,7 @@ class GenerateXmlSpsTests(TestCase):
                 ],
             }
         )
-        xml = generate_xml_sps(
-            front, MINIMAL_BODY, MINIMAL_BACK, language="pt"
-        )
+        xml = generate_xml_sps(front, MINIMAL_BODY, MINIMAL_BACK, language="pt")
         root = etree.fromstring(xml.encode())
         self.assertEqual(
             root.get("{http://www.w3.org/XML/1998/namespace}lang"),
@@ -99,11 +99,52 @@ class GenerateXmlSpsTests(TestCase):
                 ],
             }
         )
-        xml = generate_xml_sps(
-            front, MINIMAL_BODY, MINIMAL_BACK, language="pt"
-        )
+        xml = generate_xml_sps(front, MINIMAL_BODY, MINIMAL_BACK, language="pt")
         root = etree.fromstring(xml.encode())
         self.assertEqual(
             root.get("{http://www.w3.org/XML/1998/namespace}lang"),
             "pt",
         )
+
+    def test_generate_xml_sps_moves_ack_and_data_availability_to_back(self):
+        body = get_body_xml(
+            {
+                "sections": [
+                    {
+                        "title": "Final considerations",
+                        "sec_type": "conclusions",
+                        "content": [{"type": "p", "text": "Done."}],
+                        "sections": [],
+                    },
+                    {
+                        "title": "Acknowledgements",
+                        "sec_type": "acknowledgments",
+                        "content": [{"type": "p", "text": "Thanks."}],
+                        "sections": [],
+                    },
+                    {
+                        "title": "Data availability",
+                        "sec_type": "data-availability",
+                        "specific_use": "data-in-article",
+                        "content": [
+                            {
+                                "type": "p",
+                                "text": "All data are included within the article.",
+                            }
+                        ],
+                        "sections": [],
+                    },
+                ]
+            }
+        )
+        xml = generate_xml_sps(MINIMAL_FRONT, body, MINIMAL_BACK)
+        root = etree.fromstring(xml.encode())
+        body_el = root.find("body")
+        back_el = root.find("back")
+        assert body_el.find("ack") is None
+        assert body_el.find("sec[@sec-type='data-availability']") is None
+        assert body_el.find("sec[@sec-type='conclusions']") is not None
+        children = [child.tag for child in back_el]
+        assert children[:3] == ["ack", "sec", "ref-list"]
+        assert back_el.find("sec").get("sec-type") == "data-availability"
+        assert back_el.find("sec").get("specific-use") == "data-in-article"

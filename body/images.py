@@ -6,7 +6,12 @@ import zipfile
 from PIL import Image
 
 from body.exceptions import BodyImageError
-from body.utils import float_number, iter_content_lists
+from body.utils import (
+    FIG_MENTION_RE,
+    float_number,
+    insert_float_after_mention,
+    iter_content_lists,
+)
 
 FIG_FILE_RE = re.compile(r"^fig-(\d+)\.(tif|tiff|jpg|jpeg)$", re.IGNORECASE)
 ANY_IMAGE_EXT_RE = re.compile(r"^.+?\.(tif|tiff|jpg|jpeg|png)$", re.IGNORECASE)
@@ -186,8 +191,16 @@ def collect_image_hrefs(images=None, images_zip=None):
 
 def attach_figure_hrefs(marked, hrefs):
     data = marked if isinstance(marked, dict) else {}
-    mapping = hrefs or {}
-    for section in data.get("sections") or []:
+    mapping = {
+        str(number): href
+        for number, href in (hrefs or {}).items()
+        if str(href or "").strip()
+    }
+    if not mapping:
+        return data
+    sections = data.get("sections") or []
+    seen = set()
+    for section in sections:
         for content in iter_content_lists(section):
             for block in content:
                 if not isinstance(block, dict):
@@ -205,4 +218,21 @@ def attach_figure_hrefs(marked, hrefs):
                     number = float_number(fig)
                     if number in mapping:
                         fig["href"] = mapping[number]
+                        seen.add(number)
+    missing = [number for number in mapping if number not in seen]
+    if missing and sections:
+        missing.sort(key=lambda number: int(number) if number.isdigit() else 0)
+        for number in missing:
+            insert_float_after_mention(
+                sections,
+                {
+                    "type": "fig",
+                    "id": f"f{number}",
+                    "label": f"Figure {number}",
+                    "caption": "",
+                    "href": mapping[number],
+                },
+                FIG_MENTION_RE,
+                number,
+            )
     return data
