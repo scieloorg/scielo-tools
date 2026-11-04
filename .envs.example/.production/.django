@@ -2,7 +2,7 @@
 # ------------------------------------------------------------------------------
 USE_DOCKER=True
 IPYTHONDIR=/app/.ipython
-SCMS_WEBAPP_VERSION=v0.0.4
+SCMS_WEBAPP_VERSION=v0.0.6
 # Redis
 # ------------------------------------------------------------------------------
 REDIS_URL=redis://redis:6379/0
