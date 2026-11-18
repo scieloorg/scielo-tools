@@ -17,6 +17,7 @@ from wagtail.admin.auth import require_admin_access
 
 from body.exceptions import BodyImageError
 from body.images import collect_image_assets
+from body.utils import expand_encoded_formulas
 from manuscript.forms import (
     BackStepForm,
     BodyStepForm,
@@ -211,7 +212,7 @@ def bulk_upload(request):
         if created_items:
             messages.success(
                 request,
-                _("%(count)d manuscript(s) uploaded for marking.")
+                _("%(count)d documento(s) enviado(s) para marcação.")
                 % {"count": len(created_items)},
             )
             return redirect(list_url)
@@ -221,12 +222,12 @@ def bulk_upload(request):
         request,
         "wagtailadmin/manuscript/bulk_upload.html",
         {
-            "header_title": _("Bulk upload manuscripts"),
+            "header_title": _("Envio em lote de documentos"),
             "header_icon": "manuscript",
             "list_url": list_url,
             "breadcrumbs_items": [
                 {"url": reverse("wagtailadmin_home"), "label": _("Home")},
-                {"url": list_url, "label": _("Manuscripts")},
+                {"url": list_url, "label": _("Documentos")},
                 {"url": "", "label": _("Bulk upload")},
             ],
         },
@@ -295,7 +296,7 @@ def _wizard_context(request, manuscript, step, form=None):
             {"url": reverse("wagtailadmin_home"), "label": _("Home")},
             {
                 "url": reverse("wagtailsnippets_manuscript_manuscript:list"),
-                "label": _("Manuscripts"),
+                "label": _("Documentos"),
             },
             {"url": "", "label": manuscript.title},
         ],
@@ -498,7 +499,9 @@ def step_body(request, pk):
             return redirect("manuscript_step_front", pk=pk)
 
     context = _wizard_context(request, manuscript, "body", form)
-    context["marked_json"] = json.dumps(manuscript.body_marked or {})
+    context["marked_json"] = json.dumps(
+        expand_encoded_formulas(json.loads(json.dumps(manuscript.body_marked or {})))
+    )
     return render(request, "wagtailadmin/manuscript/step_body.html", context)
 
 

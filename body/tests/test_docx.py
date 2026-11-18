@@ -1,17 +1,22 @@
 import io
 import json
 import zipfile
+from pathlib import Path
 from xml.sax.saxutils import escape
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from lxml import etree
 from rest_framework.test import APIClient
 
+from body.data_utils import get_body_xml
 from body.utils import (
     NESTED_HEADING_MARK,
+    apply_body_rules,
     body_from_docx_upload,
     extract_body_section,
+    iter_content_lists,
     section_from_plain_text,
     split_body_sections,
 )
@@ -204,6 +209,69 @@ def test_api_docx_rejects_empty_file():
     assert response.status_code == 400
 
 
+def test_extract_body_section_without_heading_starts_after_keywords():
+    text = (
+        "Title\nAna Silva\n"
+        "Abstract: Short abstract.\n"
+        "Keywords: palms; forest.\n"
+        "Palavras-chave: palmeiras; floresta.\n"
+        "The high species diversity of the Amazon is known.\n"
+        "Plots were installed in the field.\n"
+        "Ab'Saber, A. N. (2003). Os dominios. Atelie.\n"
+        "Alvares, C. A. (2013a). Modeling temperature. Theoretical.\n"
+        "Anderson, J. M. (1993). Tropical soil biology. CAB.\n"
+        "Received: 05/08/2025\n"
+    )
+    body = extract_body_section(text)
+    assert body == (
+        "The high species diversity of the Amazon is known.\n"
+        "Plots were installed in the field."
+    )
+
+
+def test_extract_body_section_stops_at_unheaded_references():
+    text = (
+        "Introduction\nBody of the article.\n"
+        "Ab'Saber, A. N. (2003). Os dominios. Atelie.\n"
+        "Alvares, C. A. (2013a). Modeling temperature. Theoretical.\n"
+        "Anderson, J. M. (1993). Tropical soil biology. CAB.\n"
+    )
+    assert extract_body_section(text) == "Introduction\nBody of the article."
+
+
+def test_extract_body_section_stops_at_unheaded_numbered_references():
+    text = (
+        "Title\nAbstract: A.\nKeywords: k.\nThe study sampled 24 plots.\n"
+        "1. Smith J. Safety of the elderly. 2020.\n"
+        "2. Orem DE. Self-care. 2006.\n"
+        "3. Teixeira F. Indicadores. 2019.\n"
+    )
+    assert extract_body_section(text) == "The study sampled 24 plots."
+
+
+def test_extract_body_section_drops_unlabeled_editorial_tail():
+    text = (
+        "Title\n"
+        "Abstract: A.\n"
+        "Keywords: palms.\n"
+        "The study sampled plots.\n"
+        "The authors would like to express their gratitude for the field.\n"
+        "Alexander Vibrans\n"
+        "Ana Silva: study design; data analysis; manuscript revision.\n"
+        "The authors declare no conflict of interest.\n"
+        "This study did not involve human beings.\n"
+        "The datasets generated during the study are available.\n"
+        "Ab'Saber, A. N. (2003). Title. Publisher.\n"
+        "Alvares, C. A. (2013). Title. Publisher.\n"
+        "Anderson, J. M. (1993). Title. Publisher.\n"
+    )
+    assert extract_body_section(text) == (
+        "The study sampled plots.\n"
+        "The authors would like to express their gratitude for the field.\n"
+        "The datasets generated during the study are available."
+    )
+
+
 def test_extract_body_section_keeps_final_considerations_and_skips_editorial():
     text = (
         "Introduction\nStart.\nDiscussion\nTalk.\nFinal considerations\nDone.\n"
@@ -294,7 +362,74 @@ def test_body_from_docx_upload_returns_tables():
     assert tables[0]["headers"] == ["Family", "Species"]
     assert tables[0]["rows"] == [["Arecaceae", "Mauritia flexuosa"]]
     assert tables[0]["number"] == "1"
+    assert tables[0]["label"] == "Table 1"
+    assert tables[0]["caption"] == "Species recorded."
     assert figures == []
+
+
+def test_body_from_docx_upload_reads_spanish_tabla_caption():
+    uploaded = SimpleUploadedFile(
+        "article.docx",
+        make_docx_bytes(
+            [
+                "Título",
+                "Introducción",
+                "El portal presenta una usabilidad óptima (ver tabla 1).",
+                "Tabla 1. Confianza en shopDisney.es, dimensión Diseño y Navegación",
+            ],
+            tables=[[["Indicadores", "Sí", "No"], ["Protocolo seguro", "https", ""]]],
+        ),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ),
+    )
+    text, tables, figures = body_from_docx_upload(uploaded)
+    assert "Tabla 1. Confianza en shopDisney.es" in text
+    assert tables[0]["number"] == "1"
+    assert tables[0]["label"] == "Tabla 1"
+    assert (
+        tables[0]["caption"]
+        == "Confianza en shopDisney.es, dimensión Diseño y Navegación"
+    )
+    assert tables[0]["headers"] == ["Indicadores", "Sí", "No"]
+    assert tables[0]["rows"] == [["Protocolo seguro", "https", ""]]
+    assert figures == []
+
+
+def test_section_from_plain_text_marks_spanish_table_and_fuente():
+    marked = section_from_plain_text(
+        "Introducción",
+        "\n".join(
+            [
+                "El portal presenta una usabilidad óptima (ver tabla 1).",
+                "Tabla 1. Confianza en shopDisney.es, dimensión Diseño y Navegación",
+                "Fuente: elaboración propia.",
+            ]
+        ),
+    )
+    wraps = [block for block in marked["content"] if block.get("type") == "table-wrap"]
+    assert len(wraps) == 1
+    assert wraps[0]["label"] == "Tabla 1"
+    assert wraps[0]["id"] == "t1"
+    assert (
+        wraps[0]["caption"]
+        == "Confianza en shopDisney.es, dimensión Diseño y Navegación"
+    )
+    assert wraps[0]["attrib"] == "elaboración propia."
+    texts = [
+        block.get("text") for block in marked["content"] if block.get("type") == "p"
+    ]
+    assert not any(str(text).startswith("Tabla") for text in texts)
+    assert not any(str(text).startswith("Fuente") for text in texts)
+
+
+def test_section_from_plain_text_keeps_table_tabela_and_quadro_labels():
+    table = section_from_plain_text("Introduction", "Table 3. Species recorded.")
+    tabela = section_from_plain_text("Introdução", "Tabela 2. Espécies registradas.")
+    quadro = section_from_plain_text("Introdução", "Quadro 4. Indicadores.")
+    assert table["content"][0]["label"] == "Table 3"
+    assert tabela["content"][0]["label"] == "Tabela 2"
+    assert quadro["content"][0]["label"] == "Quadro 4"
 
 
 def test_body_from_docx_upload_harvests_figure_captions_after_references():
@@ -429,3 +564,93 @@ def test_api_docx_attaches_fig_href_from_images_zip(monkeypatch):
     )
     assert response.status_code == 200
     assert 'xlink:href="fig-1.jpg"' in response.json()["data"]
+
+
+def marked_body_from_docx(path):
+    uploaded = SimpleUploadedFile(
+        "article.docx",
+        Path(path).read_bytes(),
+        content_type=(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ),
+    )
+    text, tables, _figures = body_from_docx_upload(uploaded)
+    sections = [
+        section_from_plain_text(part["title"], part["text"])
+        for part in split_body_sections(text)
+    ]
+    return apply_body_rules({"sections": sections}, text, tables=tables)
+
+
+def test_article_3_docx_marks_display_and_inline_formulas():
+    marked = marked_body_from_docx("fixtures/!bulk/formula/article_3.docx")
+    blocks = []
+    for section in marked["sections"]:
+        for content in iter_content_lists(section):
+            blocks.extend(content)
+    displayed = [block for block in blocks if block.get("type") == "disp-formula"]
+    assert [(block.get("id"), block.get("label")) for block in displayed] == [
+        ("e1", "(1)"),
+        ("e2", "(2)"),
+        ("e3", "(3)"),
+    ]
+    inlines = []
+    for block in blocks:
+        if block.get("type") != "p":
+            continue
+        inlines.extend(block.get("formulas") or [])
+    assert [item["id"] for item in inlines] == ["e4", "e5", "e6"]
+    mentions = []
+    for block in blocks:
+        if block.get("type") != "p":
+            continue
+        for xref in block.get("xrefs") or []:
+            if xref.get("ref_type") == "disp-formula":
+                mentions.append((xref["rid"], xref["text"]))
+    assert mentions == [
+        ("e1", "Equation (1)"),
+        ("e2", "Equation (2)"),
+        ("e3", "Equation (3)"),
+        ("e3", "Equation (3)"),
+    ]
+    xml = get_body_xml(marked)
+    root = etree.fromstring(xml.encode("utf-8"))
+    mml = "http://www.w3.org/1998/Math/MathML"
+    formulas = root.findall(".//disp-formula")
+    assert [item.get("id") for item in formulas] == ["e1", "e2", "e3"]
+    assert formulas[0].find(f".//{{{mml}}}mfrac") is not None
+    assert formulas[0].find(f".//{{{mml}}}msqrt") is not None
+    assert formulas[0].find(f"{{{mml}}}math").get("id") == "m1"
+    names = [item.text for item in formulas[0].findall(f".//{{{mml}}}mi")]
+    assert "a" in names and "c" in names and "ac" not in names
+    assert formulas[1].find(f".//{{{mml}}}msup") is not None
+    assert formulas[1].find(f".//{{{mml}}}mfrac") is not None
+    assert formulas[2].find(f".//{{{mml}}}mo").text == "⋃"
+    inline_nodes = root.findall(".//inline-formula")
+    assert [item.get("id") for item in inline_nodes] == ["e4", "e5", "e6"]
+    assert "B" in "".join(inline_nodes[0].itertext())
+    assert "\u2063" not in xml
+    xrefs = root.findall(".//xref[@ref-type='disp-formula']")
+    assert [item.get("rid") for item in xrefs] == ["e1", "e2", "e3", "e3"]
+    assert xrefs[0].text == "Equation (1)"
+
+
+def test_article_1_docx_marks_labeled_formulas_and_portuguese_mentions():
+    marked = marked_body_from_docx("fixtures/!bulk/formula/article_1.docx")
+    xml = get_body_xml(marked)
+    root = etree.fromstring(xml.encode("utf-8"))
+    mml = "http://www.w3.org/1998/Math/MathML"
+    formulas = root.findall(".//disp-formula")
+    assert [(item.get("id"), item.findtext("label")) for item in formulas] == [
+        ("e1", "(1)"),
+        ("e2", "(2)"),
+    ]
+    assert formulas[0].find(f".//{{{mml}}}msub") is not None
+    base = formulas[0].find(f".//{{{mml}}}mi")
+    assert base.text == "ADM"
+    assert base.get("mathvariant") == "normal"
+    mentions = [
+        (item.get("rid"), item.text)
+        for item in root.findall(".//xref[@ref-type='disp-formula']")
+    ]
+    assert mentions == [("e1", "equação (1)"), ("e2", "equação (2)")]

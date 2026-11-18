@@ -194,8 +194,8 @@ class Manuscript(ClusterableModel):
         return self.title
 
     class Meta:
-        verbose_name = _("Manuscript")
-        verbose_name_plural = _("Manuscripts")
+        verbose_name = _("Documento")
+        verbose_name_plural = _("Documentos")
         ordering = ["-updated"]
 
 
@@ -228,8 +228,8 @@ class ManuscriptFigureFile(Orderable):
         return self.href
 
     class Meta:
-        verbose_name = _("Manuscript figure file")
-        verbose_name_plural = _("Manuscript figure files")
+        verbose_name = _("Arquivo de figura do documento")
+        verbose_name_plural = _("Arquivos de figura do documento")
         ordering = ["number"]
         constraints = [
             models.UniqueConstraint(
@@ -300,8 +300,8 @@ class ManuscriptReference(Orderable):
     ]
 
     class Meta:
-        verbose_name = _("Manuscript reference")
-        verbose_name_plural = _("Manuscript references")
+        verbose_name = _("Referência do documento")
+        verbose_name_plural = _("Referências do documento")
 
 
 class ManuscriptMarkingPart(models.TextChoices):
@@ -327,7 +327,7 @@ class ManuscriptMarkingRun(models.Model):
         Manuscript,
         on_delete=models.CASCADE,
         related_name="marking_runs",
-        verbose_name=_("Manuscript"),
+        verbose_name=_("Documento"),
     )
     part = models.CharField(
         _("Part"),
@@ -347,8 +347,8 @@ class ManuscriptMarkingRun(models.Model):
     endpoints = models.CharField(_("Endpoints"), max_length=16, blank=True)
 
     class Meta:
-        verbose_name = _("Manuscript marking run")
-        verbose_name_plural = _("Manuscript marking runs")
+        verbose_name = _("Execução de marcação do documento")
+        verbose_name_plural = _("Execuções de marcação do documento")
         constraints = [
             models.UniqueConstraint(
                 fields=["manuscript", "part"],
@@ -362,7 +362,7 @@ class ManuscriptPublication(models.Model):
         Manuscript,
         on_delete=models.CASCADE,
         related_name="publications",
-        verbose_name=_("Manuscript"),
+        verbose_name=_("Documento"),
     )
     external_id = models.CharField(_("External ID"), max_length=255, blank=True)
     preview_url = models.URLField(_("Preview URL"), blank=True)
@@ -370,5 +370,5 @@ class ManuscriptPublication(models.Model):
     status = models.CharField(_("Status"), max_length=32, default="pending")
 
     class Meta:
-        verbose_name = _("Manuscript publication")
-        verbose_name_plural = _("Manuscript publications")
+        verbose_name = _("Publicação do documento")
+        verbose_name_plural = _("Publicações do documento")

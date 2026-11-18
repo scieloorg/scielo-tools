@@ -291,7 +291,14 @@ class ManuscriptAssemblyTests(TestCase):
                 self.assertEqual(archive.read(f"{SPS_STEM}-gf01.jpg"), jpeg_one)
 
     def test_build_sps_zip_keeps_existing_assembled_xml(self):
+        doctype = (
+            '<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal '
+            'Publishing DTD v1.1 20151215//EN" '
+            '"https://jats.nlm.nih.gov/publishing/1.1/JATS-journalpublishing1.dtd">'
+        )
         self.manuscript.assembled_xml = (
+            "<?xml version='1.0' encoding='UTF-8'?>\n"
+            f"{doctype}\n"
             "<article>"
             "<front><journal-meta>"
             '<journal-id journal-id-type="publisher-id">scie</journal-id>'
@@ -315,6 +322,11 @@ class ManuscriptAssemblyTests(TestCase):
                 packed = archive.read(xml_names[0]).decode("utf-8")
                 self.assertIn("Manually edited XML", packed)
                 self.assertNotIn("Assembly title", packed)
+                self.assertTrue(
+                    packed.startswith("<?xml version='1.0' encoding='UTF-8'?>")
+                )
+                self.assertIn(' "JATS-journalpublishing1.dtd">', packed)
+                self.assertNotIn("https://jats.nlm.nih.gov/", packed)
 
     def test_build_sps_zip_omits_pdf_by_default(self):
         with patch("manuscript.services.assembly.generate_packtools_pdf") as mock_pdf:
@@ -578,8 +590,11 @@ class ManuscriptAssemblyTests(TestCase):
         self.assertEqual(pdf_bytes, b"%PDF-from-mock")
         mock_tree.assert_called_once()
         document.save.assert_called_once()
-        self.assertTrue(captured["layout"].endswith("_scielo-layout.docx"))
+        self.assertTrue(
+            captured["layout"].endswith(os.path.join("fixtures", "layout.docx"))
+        )
         self.assertIn("SCL Journal Title Char", captured["styles"])
+        self.assertIn("SCL Figure Caption", captured["styles"])
 
     def test_generate_packtools_pdf_embeds_uploaded_figure(self):
         figure = attach_manuscript_figure(
@@ -716,6 +731,10 @@ class ManuscriptAssemblyTests(TestCase):
                 self.assertIn("0124-4567-scie-41-01-e0123.xml", archive.namelist())
                 packed = archive.read("0124-4567-scie-41-01-e0123.xml").decode("utf-8")
                 self.assertIn("0124-4567-scie-41-01-e0123-gf01.png", packed)
+                self.assertTrue(
+                    packed.startswith("<?xml version='1.0' encoding='UTF-8'?>")
+                )
+                self.assertIn("JATS-journalpublishing1.dtd", packed)
 
     def test_build_sps_zip_uses_doi_suffix_for_ahead_of_print(self):
         self.manuscript.assembled_xml = (

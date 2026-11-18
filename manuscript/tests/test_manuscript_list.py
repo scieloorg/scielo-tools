@@ -446,7 +446,7 @@ class ManuscriptCreateIntakeTests(TestCase):
         revoked = mock_revoke.call_args.args[0]
         self.assertIn("task-back-1", revoked)
         self.assertIn(
-            "re-marked",
+            "remarcado",
             " ".join(str(message) for message in get_messages(second.wsgi_request)),
         )
 

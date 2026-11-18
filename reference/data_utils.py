@@ -603,8 +603,13 @@ def build_ref_list(results):
 
     for index, item in enumerate(results, start=1):
         ref = etree.SubElement(root, "ref", attrib={"id": f"B{index}"})
+        mixed_text = item.get("mixed_citation") or ""
+        label_match = re.match(r"^(\d{1,3})[.)]\s*(.*)$", mixed_text.strip())
+        if label_match:
+            etree.SubElement(ref, "label").text = label_match.group(1)
+            mixed_text = label_match.group(2).strip()
         mixed = etree.SubElement(ref, "mixed-citation")
-        mixed.text = item.get("mixed_citation") or ""
+        mixed.text = mixed_text
 
         marked_xml = item.get("data") or ""
         if not marked_xml:
@@ -632,6 +637,9 @@ def resolve_reference_result(
     try:
         reference = Reference.objects.get(checksum=checksum)
     except Reference.DoesNotExist:
+        reference = None
+
+    if reference is None or not reference.element_citation.exists():
         if marked_data is _UNSET:
             marked_data = None
             for choice in mark_reference(mixed_citation):
@@ -648,18 +656,20 @@ def resolve_reference_result(
                 marked_data,
             )
             return None
-        try:
-            reference, created = Reference.objects.get_or_create(
-                checksum=checksum,
-                defaults={
-                    "mixed_citation": mixed_citation,
-                    "status": ReferenceStatus.CREATING,
-                    "creator": user,
-                },
-            )
-        except IntegrityError:
-            reference = Reference.objects.get(checksum=checksum)
-            created = False
+        created = False
+        if reference is None:
+            try:
+                reference, created = Reference.objects.get_or_create(
+                    checksum=checksum,
+                    defaults={
+                        "mixed_citation": mixed_citation,
+                        "status": ReferenceStatus.CREATING,
+                        "creator": user,
+                    },
+                )
+            except IntegrityError:
+                reference = Reference.objects.get(checksum=checksum)
+                created = False
         if created or not reference.element_citation.exists():
             ElementCitation.objects.create(
                 reference=reference,
@@ -674,7 +684,9 @@ def resolve_reference_result(
             reference.save()
 
     element = reference.element_citation.first()
-    marked = element.marked if element else {}
+    if element is None:
+        return None
+    marked = element.marked
     if isinstance(marked, dict):
         enriched = enrich_marked_from_citation(marked, reference.mixed_citation)
         stored_xml = element.marked_xml or ""

@@ -12,7 +12,7 @@ from body.exceptions import (
     BodyLlamaUnavailableError,
 )
 from body.images import attach_figure_hrefs
-from body.utils import body_from_docx_upload
+from body.utils import body_from_docx_upload, expand_encoded_formulas
 from front.data_utils import apply_text_fields, get_front_xml, resolve_front_result
 from front.exceptions import (
     FrontDocxError,
@@ -386,6 +386,7 @@ def save_body_marked(manuscript, marked, user=None):
     }
     if image_hrefs:
         attach_figure_hrefs(marked, image_hrefs)
+    marked = expand_encoded_formulas(marked)
     manuscript.body_marked = marked
     manuscript.body_marked_xml = get_body_xml(marked)
     if user is not None:

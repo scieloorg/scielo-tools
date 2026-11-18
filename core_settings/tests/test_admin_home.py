@@ -26,7 +26,7 @@ class AdminHomeTests(TestCase):
         self.assertContains(response, '"label": "Buscar"')
         self.assertContains(
             response,
-            'placeholder="Pesquisar por manuscritos, documentos(docx), imagens"',
+            'placeholder="Pesquisar por documentos, docx, imagens"',
         )
         self.assertContains(
             response,
@@ -54,7 +54,7 @@ class AdminHomeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "icon-doc-empty")
         self.assertContains(response, "icon-manuscript")
-        self.assertContains(response, "0 Manuscripts")
+        self.assertContains(response, "0 Documentos")
         self.assertContains(
             response, reverse("wagtailsnippets_manuscript_manuscript:list")
         )
@@ -72,8 +72,8 @@ class AdminHomeTests(TestCase):
         Manuscript.objects.create(title="Second")
         response = self.client.get(reverse("wagtailadmin_home"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "2 Manuscripts")
-        self.assertNotContains(response, "0 Manuscripts")
+        self.assertContains(response, "2 Documentos")
+        self.assertNotContains(response, "0 Documentos")
 
     def test_home_hides_pages_snippets_and_references_menu_items(self):
         user = User.objects.create_superuser(
@@ -149,10 +149,24 @@ class AdminHomeTests(TestCase):
             "sps_package_validation",
             "images",
             "documents",
+            "journeys",
         ]
         positions = [main_names.index(name) for name in expected]
         self.assertEqual(positions, sorted(positions))
         self.assertEqual(main_names[0], "search-home")
+        self.assertEqual(main_names[-1], "journeys")
+        manuscript = next(
+            item
+            for item in payload["modules"][2]["_args"][0]
+            if item["_args"][0]["name"] == "manuscript"
+        )
+        self.assertEqual(manuscript["_args"][0]["label"], "Documentos")
+        journeys = next(
+            item
+            for item in payload["modules"][2]["_args"][0]
+            if item["_args"][0]["name"] == "journeys"
+        )
+        self.assertEqual(journeys["_args"][0]["label"], "Exemplos de marcação")
 
     @override_settings(WEBAPP_VERSION="v0.0.3")
     def test_home_account_summary_shows_webapp_version_link(self):

@@ -1,0 +1,28 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n %}
+
+{% block main_content %}
+    <div class="nice-padding scielo-ds">
+        <section class="card">
+            <div class="card-header">
+                <h2>{{ journey.menu_label }} — {{ journey.title }}</h2>
+            </div>
+            <div class="card-body">
+                <p>{{ journey.summary }}</p>
+                <p>
+                    <a href="{{ journey.zip_url }}">{{ journey.zip_name }}</a>
+                    — {% trans "Pacote com todos os arquivos" %}
+                </p>
+                <h3>{% trans "Documentos deste exemplo" %}</h3>
+                <ul>
+                    {% for item in journey.files %}
+                        <li>
+                            <a href="{{ item.url }}">{{ item.name }}</a>
+                            — {{ item.label }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </section>
+    </div>
+{% endblock %}

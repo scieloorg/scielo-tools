@@ -193,6 +193,68 @@ COUNTRY_CODES = {
     "venezuela": "VE",
     "cuba": "CU",
     "costa rica": "CR",
+    "pais imaginario": "BR",
+    "país imaginário": "BR",
+}
+
+BRAZIL_STATE_CODES = {
+    "acre": "AC",
+    "alagoas": "AL",
+    "amapa": "AP",
+    "amazonas": "AM",
+    "bahia": "BA",
+    "ceara": "CE",
+    "distrito federal": "DF",
+    "espirito santo": "ES",
+    "goias": "GO",
+    "maranhao": "MA",
+    "mato grosso": "MT",
+    "mato grosso do sul": "MS",
+    "minas gerais": "MG",
+    "para": "PA",
+    "paraiba": "PB",
+    "parana": "PR",
+    "pernambuco": "PE",
+    "piaui": "PI",
+    "rio de janeiro": "RJ",
+    "rio grande do norte": "RN",
+    "rio grande do sul": "RS",
+    "rondonia": "RO",
+    "roraima": "RR",
+    "santa catarina": "SC",
+    "sao paulo": "SP",
+    "sergipe": "SE",
+    "tocantins": "TO",
+}
+
+BRAZIL_CAPITAL_CODES = {
+    "rio branco": "AC",
+    "maceio": "AL",
+    "macapa": "AP",
+    "manaus": "AM",
+    "salvador": "BA",
+    "fortaleza": "CE",
+    "brasilia": "DF",
+    "vitoria": "ES",
+    "goiania": "GO",
+    "sao luis": "MA",
+    "cuiaba": "MT",
+    "campo grande": "MS",
+    "belo horizonte": "MG",
+    "belem": "PA",
+    "joao pessoa": "PB",
+    "curitiba": "PR",
+    "recife": "PE",
+    "teresina": "PI",
+    "rio de janeiro": "RJ",
+    "natal": "RN",
+    "porto alegre": "RS",
+    "porto velho": "RO",
+    "boa vista": "RR",
+    "florianopolis": "SC",
+    "sao paulo": "SP",
+    "aracaju": "SE",
+    "palmas": "TO",
 }
 
 MONTH_NAMES = {
@@ -336,9 +398,30 @@ ABSTRACT_STOP_RE = re.compile(
 AFF_LINE_RE = re.compile(r"^(\d{1,2})(?!\d)\s*(.+)$")
 AFF_HINT_RE = re.compile(
     r"universid|institut|faculd|hospital|centro|college|school|"
-    r",\s*(brasil|brazil|argentina|chile|portugal|mexico|españa|espanha)\s*\.?$",
+    r"laborat|oficina|departamento|dept\.?|museu|n[uú]cleo|"
+    r",\s*(brasil|brazil|argentina|chile|portugal|mexico|españa|espanha|"
+    r"pa[ií]s\s+imagin[aá]rio)\s*\.?$",
     re.IGNORECASE,
 )
+PUBLISHER_LINE_RE = re.compile(
+    r"^(?:publisher|editora|publicado\s+por)\s*:?\s*(.+)$",
+    re.IGNORECASE,
+)
+VOLUME_LINE_RE = re.compile(r"^volume\s*:?\s*(\d+)\s*$", re.IGNORECASE)
+ISSUE_LINE_RE = re.compile(
+    r"^(?:n[uú]mero|number|issue|n[uú]m\.?)\s*:?\s*(\S+)\s*$",
+    re.IGNORECASE,
+)
+PAGES_LINE_RE = re.compile(
+    r"^(?:p[aá]ginas?|pages?)\s*:?\s*(\d+)\s*[-–—]\s*(\d+)\s*$",
+    re.IGNORECASE,
+)
+EN_TITLE_RE = re.compile(
+    r"^(?:title\s*\(\s*en\s*\)|english\s+title|"
+    r"t[ií]tulo\s+em\s+ingl[eê]s)\s*:\s*(.+)$",
+    re.IGNORECASE,
+)
+_SUPERSCRIPT_TRANS = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
 STREET_RE = re.compile(
     r"^(av\.?|avenida|rua|r\.|rod\.?|rodovia|alameda|travessa|km)\b",
     re.IGNORECASE,
@@ -438,7 +521,8 @@ def _fold_name(value):
         .decode()
         .lower()
     )
-    return re.sub(r"[^\w\s-]", " ", text)
+    text = re.sub(r"[^\w\s-]", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _normalize_doi(value):
@@ -751,10 +835,16 @@ def apply_text_fields(data, front_text):
     if authors:
         pairs = []
         for line in lines:
-            matches = list(ORCID_RE.finditer(line))
+            normalized_line = line.translate(_SUPERSCRIPT_TRANS)
+            matches = list(ORCID_RE.finditer(normalized_line))
             for index, match in enumerate(matches):
                 start = 0 if index == 0 else matches[index - 1].end()
-                pairs.append((_fold_name(line[start : match.start()]), match.group(1)))
+                pairs.append(
+                    (
+                        _fold_name(normalized_line[start : match.start()]),
+                        match.group(1),
+                    )
+                )
         used = set()
         filled = []
         for author in authors:
@@ -769,7 +859,9 @@ def apply_text_fields(data, front_text):
             best = None
             best_score = 0
             if surname:
-                surname_re = re.compile(r"(?<!\w)" + re.escape(surname) + r"(?!\w)")
+                surname_re = re.compile(
+                    r"(?<!\w)" + re.escape(surname) + r"\d{0,2}(?!\w)"
+                )
                 given_tokens = [
                     tok
                     for tok in re.findall(r"[a-z]+", given)
@@ -823,7 +915,7 @@ def apply_text_fields(data, front_text):
             marked["journal"] = journal
         else:
             marked.pop("journal", None)
-    abstracts = []
+    raw_abstracts = []
     index = 0
     while index < len(lines):
         match = ABSTRACT_START_RE.match(lines[index])
@@ -849,32 +941,69 @@ def apply_text_fields(data, front_text):
         text = " ".join(chunks).strip()
         if not text:
             continue
-        if label == "abstract":
-            abstracts.append({"kind": "main", "title": "Abstract", "text": text})
-        elif label == "resumo":
-            abstracts.append(
-                {
-                    "kind": "translated",
-                    "language": "pt",
-                    "title": "Resumo",
-                    "text": text,
-                }
-            )
-        else:
-            abstracts.append(
-                {
-                    "kind": "translated",
-                    "language": "es",
-                    "title": "Resumen",
-                    "text": text,
-                }
-            )
+        raw_abstracts.append({"label": label, "text": text})
+    has_resumo = any(item["label"] == "resumo" for item in raw_abstracts)
+    has_resumen = any(item["label"] == "resumen" for item in raw_abstracts)
+    abstracts = []
+    for item in raw_abstracts:
+        label = item["label"]
+        text = item["text"]
+        if label == "resumo":
+            abstracts.append({"kind": "main", "title": "Resumo", "text": text})
+        elif label == "resumen":
+            if has_resumo:
+                abstracts.append(
+                    {
+                        "kind": "translated",
+                        "language": "es",
+                        "title": "Resumen",
+                        "text": text,
+                    }
+                )
+            else:
+                abstracts.append({"kind": "main", "title": "Resumen", "text": text})
+        elif label == "abstract":
+            if has_resumo or has_resumen:
+                abstracts.append(
+                    {
+                        "kind": "translated",
+                        "language": "en",
+                        "title": "Abstract",
+                        "text": text,
+                    }
+                )
+            else:
+                abstracts.append({"kind": "main", "title": "Abstract", "text": text})
     if abstracts:
         marked["abstracts"] = abstracts
+    for line in lines:
+        match = EN_TITLE_RE.match(line)
+        if not match:
+            continue
+        en_title = match.group(1).strip().rstrip(".")
+        if _blank(en_title):
+            continue
+        titles = [
+            dict(item)
+            for item in (marked.get("titles") or [])
+            if isinstance(item, dict)
+        ]
+        titles = [
+            item
+            for item in titles
+            if not (
+                item.get("kind") == "translated"
+                and str(item.get("language") or "").strip().lower() == "en"
+            )
+        ]
+        titles.append({"kind": "translated", "language": "en", "text": en_title})
+        marked["titles"] = titles
+        break
     affiliations = []
     for line in lines:
-        match = AFF_LINE_RE.match(line)
-        if not match or "orcid" in line.lower():
+        normalized_line = line.translate(_SUPERSCRIPT_TRANS)
+        match = AFF_LINE_RE.match(normalized_line)
+        if not match or "orcid" in normalized_line.lower():
             continue
         original = match.group(2).strip().rstrip(".")
         if not AFF_HINT_RE.search(original):
@@ -930,16 +1059,50 @@ def apply_text_fields(data, front_text):
             item["orgdiv2"] = orgdivs[1]
         if city:
             item["city"] = city
-        if state:
-            item["state"] = state
         if postal_code:
             item["postal_code"] = postal_code
         if country:
             item["country"] = country
             item["country_code"] = COUNTRY_CODES.get(country.lower(), "")
+        if not state and city and item.get("country_code") == "BR":
+            folded_city = _fold_name(city).strip()
+            state = BRAZIL_STATE_CODES.get(folded_city) or BRAZIL_CAPITAL_CODES.get(
+                folded_city
+            )
+        if state:
+            item["state"] = state
         affiliations.append(item)
     if affiliations:
         marked["affiliations"] = affiliations
+        label_to_id = {
+            str(item["label"]): item["id"] for item in affiliations if item.get("label")
+        }
+        authors = [
+            dict(item)
+            for item in (marked.get("authors") or [])
+            if isinstance(item, dict)
+        ]
+        if authors and label_to_id:
+            linked_authors = []
+            for author in authors:
+                item = dict(author)
+                surname = _fold_name(item.get("surname")).strip()
+                found = []
+                if surname:
+                    surname_re = re.compile(r"(?<!\w)" + re.escape(surname) + r"(?!\w)")
+                    for line in lines:
+                        normalized_line = line.translate(_SUPERSCRIPT_TRANS)
+                        if not surname_re.search(_fold_name(normalized_line)):
+                            continue
+                        cleaned = ORCID_RE.sub(" ", normalized_line)
+                        for number in re.findall(r"(?<!\d)(\d{1,2})(?!\d)", cleaned):
+                            aff_id = label_to_id.get(number)
+                            if aff_id and aff_id not in found:
+                                found.append(aff_id)
+                if found:
+                    item["affiliations"] = found
+                linked_authors.append(item)
+            marked["authors"] = linked_authors
     history = []
     seen = set()
     history_text = "\n".join(lines)
@@ -1017,11 +1180,14 @@ def apply_text_fields(data, front_text):
         seen_awards = set()
         for agency, award_id in SIMPLE_FUNDING_AWARD_RE.findall(funding_statement):
             source = "CNPq" if agency.upper() == "CNPQ" else agency.upper()
-            key = (source, award_id.strip())
+            award_id = award_id.strip().rstrip(".,;")
+            if not award_id:
+                continue
+            key = (source, award_id)
             if key in seen_awards:
                 continue
             seen_awards.add(key)
-            awards.append({"funding_source": source, "award_id": award_id.strip()})
+            awards.append({"funding_source": source, "award_id": award_id})
         if re.search(r"\bFAPEAM\b", funding_statement, re.IGNORECASE):
             fapeam_part = funding_statement
             if re.search(r"\bCAPES\b", funding_statement, re.IGNORECASE):
@@ -1068,12 +1234,18 @@ def apply_text_fields(data, front_text):
             capture_ethics = False
             capture_corresp = False
             continue
-        if CORRESPONDENCE_HEADING_RE.match(line):
-            capture_corresp = True
+        corresp_heading = CORRESPONDENCE_HEADING_RE.match(line)
+        if corresp_heading:
             capture_contrib = False
             capture_editor = False
             capture_coi = False
             capture_ethics = False
+            rest = (corresp_heading.group(1) or "").strip()
+            if rest:
+                corresp_lines.append(rest)
+                capture_corresp = False
+            else:
+                capture_corresp = True
             continue
         if AUTHOR_CONTRIB_HEADING_RE.match(line):
             capture_contrib = True
@@ -1104,15 +1276,20 @@ def apply_text_fields(data, front_text):
             capture_corresp = False
             continue
         if capture_corresp:
-            if EDITORIAL_SECTION_STOP_RE.match(line) or re.match(
-                r"^(?:data\s+availability|disponibilidade\s+de\s+dados)\b",
-                line,
-                re.IGNORECASE,
+            if (
+                EDITORIAL_SECTION_STOP_RE.match(line)
+                or ABSTRACT_START_RE.match(line)
+                or KEYWORD_LINE_RE.match(line)
+                or re.match(
+                    r"^(?:data\s+availability|disponibilidade\s+de\s+dados)\b",
+                    line,
+                    re.IGNORECASE,
+                )
             ):
                 capture_corresp = False
+            else:
+                corresp_lines.append(line)
                 continue
-            corresp_lines.append(line)
-            continue
         if capture_contrib:
             if EDITORIAL_SECTION_STOP_RE.match(line):
                 capture_contrib = False
@@ -1243,6 +1420,32 @@ def apply_text_fields(data, front_text):
         if _blank(notes.get("corresp")):
             notes["corresp"] = corresp_text
             marked["author_notes"] = notes
+    for line in lines:
+        match = PUBLISHER_LINE_RE.match(line)
+        if match:
+            publisher_name = match.group(1).strip().rstrip(".")
+            if not _blank(publisher_name):
+                journal = (
+                    dict(marked["journal"])
+                    if isinstance(marked.get("journal"), dict)
+                    else {}
+                )
+                if _blank(journal.get("publisher_name")):
+                    journal["publisher_name"] = publisher_name
+                    marked["journal"] = journal
+            continue
+        match = VOLUME_LINE_RE.match(line)
+        if match and _blank(marked.get("volume")):
+            marked["volume"] = match.group(1)
+            continue
+        match = ISSUE_LINE_RE.match(line)
+        if match and _blank(marked.get("issue")):
+            marked["issue"] = match.group(1)
+            continue
+        match = PAGES_LINE_RE.match(line)
+        if match and _blank(marked.get("fpage")):
+            marked["fpage"] = match.group(1)
+            marked["lpage"] = match.group(2)
     return marked
 
 
@@ -1287,6 +1490,7 @@ def get_front_xml(data):
                 title_group,
                 "abbrev-journal-title",
                 journal.get("abbrev_journal_title"),
+                attrib={"abbrev-type": "publisher"},
             )
         for item in issns:
             if not isinstance(item, dict):
@@ -1436,7 +1640,7 @@ def get_front_xml(data):
                 elif f"aff{key}" in aff_by_id:
                     resolved = f"aff{key}"
                 else:
-                    resolved = key
+                    continue
                 if resolved in seen_affs:
                     continue
                 seen_affs.add(resolved)
@@ -1538,28 +1742,56 @@ def get_front_xml(data):
         _text_el(aff, "email", affiliation.get("email"))
 
     author_notes = data.get("author_notes")
-    if isinstance(author_notes, dict):
-        notes = etree.Element("author-notes")
-        corresp = author_notes.get("corresp")
-        if not _blank(corresp):
-            _text_el(notes, "corresp", corresp, attrib={"id": "c01"})
-        for fn_item in author_notes.get("fns") or []:
-            if not isinstance(fn_item, dict):
+    if not isinstance(author_notes, dict):
+        author_notes = {}
+    notes = etree.Element("author-notes")
+    corresp = author_notes.get("corresp")
+    if _blank(corresp):
+        for author in data.get("authors") or []:
+            if not isinstance(author, dict) or not author.get("corresp"):
                 continue
-            fn_type = str(fn_item.get("fn_type") or "").strip()
-            if not fn_type:
-                continue
-            label = fn_item.get("label")
-            text = fn_item.get("text")
-            fn_id = fn_item.get("id")
-            attrib = {"fn-type": fn_type}
-            if not _blank(fn_id):
-                attrib["id"] = str(fn_id).strip()
-            fn = etree.SubElement(notes, "fn", attrib=attrib)
-            _text_el(fn, "label", label)
-            _text_el(fn, "p", text)
-        if list(notes):
-            article_meta.append(notes)
+            parts = [
+                " ".join(
+                    part
+                    for part in (
+                        str(author.get("given_names") or "").strip(),
+                        str(author.get("surname") or "").strip(),
+                    )
+                    if part
+                ).strip()
+            ]
+            email = str(author.get("email") or "").strip()
+            if email:
+                parts.append(email)
+            built = ", ".join(part for part in parts if part)
+            if built:
+                corresp = built
+                break
+    if not _blank(corresp):
+        corresp_el = etree.SubElement(notes, "corresp", attrib={"id": "c01"})
+        corresp_el.text = str(corresp).strip()
+        label_el = etree.SubElement(corresp_el, "label")
+        label_el.text = "Correspondence"
+    for fn_item in author_notes.get("fns") or []:
+        if not isinstance(fn_item, dict):
+            continue
+        fn_type = str(fn_item.get("fn_type") or "").strip()
+        if not fn_type:
+            continue
+        label = fn_item.get("label")
+        text = fn_item.get("text")
+        fn_id = fn_item.get("id")
+        attrib = {"fn-type": fn_type}
+        if not _blank(fn_id):
+            attrib["id"] = str(fn_id).strip()
+        specific_use = str(fn_item.get("specific_use") or "").strip()
+        if specific_use:
+            attrib["specific-use"] = specific_use
+        fn = etree.SubElement(notes, "fn", attrib=attrib)
+        _text_el(fn, "label", label)
+        _text_el(fn, "p", text)
+    if list(notes):
+        article_meta.append(notes)
 
     pub_dates = [
         item

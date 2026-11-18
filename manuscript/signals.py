@@ -1,3 +1,4 @@
+import hashlib
 import posixpath
 import re
 
@@ -6,20 +7,59 @@ from django.dispatch import receiver
 from wagtail.documents.models import Document
 from wagtail.images import get_image_model
 
+from body.models import Body
+from body.utils import body_checksum, normalize_body_text
+from front.models import Front
+from front.utils import normalize_front_text
 from manuscript.models import (
     Manuscript,
     ManuscriptFigureFile,
     ManuscriptMarkingRun,
     ManuscriptMarkingRunStatus,
+    ManuscriptReference,
 )
 from manuscript.services.marking_jobs import (
     ACTIVE_STATUSES,
     advance_marking_queue,
     revoke_task_ids,
 )
+from reference.models import ElementCitation, Reference
+from reference.utils.references import parse_reference_list, stz_norm
 from xml_manager.models import SPSPackageValidation
 
 _UNIQUE_BEFORE_EXT = re.compile(r"_[A-Za-z0-9]{7}(?=\.)")
+
+
+def _normalized_sha256(text, normalize):
+    normalized = normalize(text or "")
+    if not normalized:
+        return ""
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def _front_cache_checksum(text):
+    return _normalized_sha256(text, normalize_front_text)
+
+
+def _body_cache_checksum(text):
+    normalized = normalize_body_text(text or "")
+    if not normalized:
+        return ""
+    return body_checksum(normalized)
+
+
+def _checksum_still_used(checksum, texts, checksum_for):
+    for text in texts:
+        if checksum_for(text) == checksum:
+            return True
+    return False
+
+
+def _add_citation_checksums(checksums, citations):
+    for citation in citations:
+        checksum = _normalized_sha256(citation, stz_norm)
+        if checksum:
+            checksums.add(checksum)
 
 
 def _delete_file_and_unreferenced_family(file_field):
@@ -85,6 +125,13 @@ def delete_document_storage(sender, instance, **kwargs):
 def revoke_deleted_marking_run(sender, instance, **kwargs):
     if instance.task_id and instance.status in ACTIVE_STATUSES:
         revoke_task_ids([instance.task_id])
+
+
+@receiver(pre_delete, sender=Manuscript)
+def remember_manuscript_reference_citations(sender, instance, **kwargs):
+    instance._reference_citations = list(
+        instance.references.values_list("mixed_citation", flat=True)
+    )
 
 
 @receiver(post_delete, sender=Manuscript)
@@ -155,6 +202,54 @@ def delete_manuscript_related(sender, instance, **kwargs):
         and not Manuscript.objects.filter(validation_id=instance.validation_id).exists()
     ):
         SPSPackageValidation.objects.filter(pk=instance.validation_id).delete()
+
+    front_checksum = _front_cache_checksum(instance.front_source_text)
+    if front_checksum and not _checksum_still_used(
+        front_checksum,
+        Manuscript.objects.values_list("front_source_text", flat=True),
+        _front_cache_checksum,
+    ):
+        Front.objects.filter(checksum=front_checksum).delete()
+
+    body_sum = _body_cache_checksum(instance.body_source_text)
+    if body_sum and not _checksum_still_used(
+        body_sum,
+        Manuscript.objects.values_list("body_source_text", flat=True),
+        _body_cache_checksum,
+    ):
+        Body.objects.filter(checksum=body_sum).delete()
+
+    deleted_reference_checksums = set()
+    _add_citation_checksums(
+        deleted_reference_checksums,
+        getattr(instance, "_reference_citations", []) or [],
+    )
+    _add_citation_checksums(
+        deleted_reference_checksums,
+        parse_reference_list(instance.references_source_text or ""),
+    )
+    if deleted_reference_checksums:
+        used_reference_checksums = set()
+        for source_text in Manuscript.objects.values_list(
+            "references_source_text", flat=True
+        ):
+            _add_citation_checksums(
+                used_reference_checksums,
+                parse_reference_list(source_text or ""),
+            )
+        _add_citation_checksums(
+            used_reference_checksums,
+            ManuscriptReference.objects.values_list("mixed_citation", flat=True),
+        )
+        unused_reference_checksums = (
+            deleted_reference_checksums - used_reference_checksums
+        )
+        if unused_reference_checksums:
+            reference_ids = Reference.objects.filter(
+                checksum__in=unused_reference_checksums
+            ).values_list("pk", flat=True)
+            ElementCitation.objects.filter(reference_id__in=reference_ids).delete()
+            Reference.objects.filter(checksum__in=unused_reference_checksums).delete()
 
     if ManuscriptMarkingRun.objects.filter(
         status=ManuscriptMarkingRunStatus.PENDING,

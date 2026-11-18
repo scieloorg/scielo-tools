@@ -1,8 +1,24 @@
 from django.urls import path
 
-from manuscript import views
+from manuscript import journeys, views
 
 urlpatterns = [
+    path("journeys/", journeys.journey_index, name="manuscript_journeys"),
+    path(
+        "journeys/<slug:slug>/",
+        journeys.journey_detail,
+        name="manuscript_journey_detail",
+    ),
+    path(
+        "journeys/<slug:slug>/zip/",
+        journeys.journey_zip,
+        name="manuscript_journey_zip",
+    ),
+    path(
+        "journeys/sample/<path:name>",
+        journeys.journey_sample,
+        name="manuscript_journey_sample",
+    ),
     path("bulk-upload/", views.bulk_upload, name="manuscript_bulk_upload"),
     path("<int:pk>/front/", views.step_front, name="manuscript_step_front"),
     path("<int:pk>/body/", views.step_body, name="manuscript_step_body"),

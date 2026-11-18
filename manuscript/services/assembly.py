@@ -8,17 +8,15 @@ import zipfile
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.utils.translation import gettext_lazy as _
-from docx import Document as DocxDocument
-from docx.enum.style import WD_STYLE_TYPE
-from docx.shared import Pt
 from lxml import etree
 from packtools.sps.formats.pdf.convert import convert_docx_to_pdf
 from packtools.sps.formats.pdf.pipeline import pipeline_docx_by_language
 from packtools.sps.utils import xml_utils as packtools_xml_utils
 from wagtail.documents.models import Document
 
+from body.data_utils import promote_encoded_formulas
 from manuscript.services.marking import build_manuscript_ref_list_xml
-from xml_manager.assembly import generate_xml_sps
+from xml_manager.assembly import JATS_DOCTYPE, generate_xml_sps
 
 
 class AssemblyError(Exception):
@@ -178,7 +176,12 @@ def package_xml_with_sps_names(xml_text, acronym="", fallback_stem=""):
         new_name = f"{stem}-gf{index:02d}{_figure_extension(old)}"
         graphic.set(XLINK_HREF, new_name)
         renames.append((old, new_name, index))
-    packed = etree.tostring(root, encoding="unicode")
+    packed = etree.tostring(
+        root,
+        xml_declaration=True,
+        encoding="UTF-8",
+        doctype=JATS_DOCTYPE,
+    ).decode("utf-8")
     return stem, packed, renames
 
 
@@ -199,33 +202,10 @@ def _figure_for_href(figures, old_href, index):
     return by_number.get(index)
 
 
-_PACKTOOLS_PDF_PARAGRAPH_STYLES = (
-    "SCL Abstract Title",
-    "SCL Affiliation",
-    "SCL Article Category",
-    "SCL Article Title",
-    "SCL Author",
-    "SCL Footer",
-    "SCL Header Paragraph",
-    "SCL Paragraph",
-    "SCL Paragraph Abstract",
-    "SCL Paragraph Cite As",
-    "SCL Paragraph Keywords",
-    "SCL Paragraph Reference",
-    "SCL Section Title",
-    "SCL Subsection Title",
-    "SCL Table Heading",
-)
-_PACKTOOLS_PDF_CHARACTER_STYLES = (
-    "SCL Affiliation Char",
-    "SCL Author Char",
-    "SCL Header Paragraph Char",
-    "SCL Journal Title Char",
-    "SCL Paragraph Cite As Char",
-    "SCL Paragraph Cite As Footer Char",
-    "SCL Paragraph Cite As Journal Title Char",
-    "SCL Paragraph Keywords Char",
-    "SCL Paragraph Keywords Header Char",
+_DEFAULT_PDF_LAYOUT = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "fixtures",
+    "layout.docx",
 )
 
 
@@ -282,6 +262,8 @@ def generate_packtools_pdf(xml_text, xml_name, figures):
         except etree.XMLSyntaxError:
             asset_root = None
         if asset_root is not None:
+            promote_encoded_formulas(asset_root)
+            xml_text = etree.tostring(asset_root, encoding="unicode")
             graphics = asset_root.xpath(
                 ".//*[local-name()='graphic' or local-name()='inline-graphic']"
             )
@@ -326,17 +308,7 @@ def generate_packtools_pdf(xml_text, xml_name, figures):
         if layout and os.path.isfile(layout):
             base_layout = layout
         else:
-            base_layout = os.path.join(tmp, "_scielo-layout.docx")
-            layout_doc = DocxDocument()
-            for name in _PACKTOOLS_PDF_PARAGRAPH_STYLES:
-                if name not in layout_doc.styles:
-                    style = layout_doc.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
-                    if name == "SCL Paragraph":
-                        style.font.size = Pt(10)
-            for name in _PACKTOOLS_PDF_CHARACTER_STYLES:
-                if name not in layout_doc.styles:
-                    layout_doc.styles.add_style(name, WD_STYLE_TYPE.CHARACTER)
-            layout_doc.save(base_layout)
+            base_layout = _DEFAULT_PDF_LAYOUT
         xml_tree = packtools_xml_utils.get_xml_tree(xml_path)
         if isinstance(xml_tree, etree._Element | etree._ElementTree):
             root_el = (

@@ -765,10 +765,12 @@ def test_apply_text_fields_fills_issn_abstracts_and_affiliations():
     )
     marked = apply_text_fields({}, text)
     assert marked["journal"]["issns"] == [{"pub_type": "epub", "value": "1676-0611"}]
-    assert marked["abstracts"][0]["kind"] == "main"
+    assert marked["abstracts"][0]["kind"] == "translated"
+    assert marked["abstracts"][0]["language"] == "en"
     assert marked["abstracts"][0]["text"].startswith("First sentence")
     assert "Second sentence stays" in marked["abstracts"][0]["text"]
-    assert marked["abstracts"][1]["language"] == "pt"
+    assert marked["abstracts"][1]["kind"] == "main"
+    assert marked["abstracts"][1]["title"] == "Resumo"
     assert "Segunda frase permanece" in marked["abstracts"][1]["text"]
     affs = marked["affiliations"]
     assert [item["id"] for item in affs] == ["aff1", "aff2", "aff3", "aff4"]
@@ -1225,6 +1227,34 @@ def test_apply_text_fields_reads_inline_editor_and_correspondence():
     assert marked["author_notes"]["fns"][0]["text"].startswith("Bruno Araujo")
 
 
+def test_apply_text_fields_reads_correspondence_on_same_line():
+    text = (
+        "Title\n"
+        "Correspondência para: Lina Varejão, Rua do Forno 40. "
+        "lina.varejao@barroalto.example\n"
+        "Resumo: Texto do resumo.\n"
+    )
+    marked = apply_text_fields({}, text)
+    assert "Lina Varejão" in marked["author_notes"]["corresp"]
+    assert "lina.varejao@barroalto.example" in marked["author_notes"]["corresp"]
+
+
+def test_apply_text_fields_reads_volume_issue_and_pages():
+    text = (
+        "Title\n"
+        "Publisher: Instituto de Cerâmica de Barroalto\n"
+        "Volume: 12\n"
+        "Número: 1\n"
+        "Páginas: 10-28\n"
+    )
+    marked = apply_text_fields({}, text)
+    assert marked["journal"]["publisher_name"] == "Instituto de Cerâmica de Barroalto"
+    assert marked["volume"] == "12"
+    assert marked["issue"] == "1"
+    assert marked["fpage"] == "10"
+    assert marked["lpage"] == "28"
+
+
 def test_get_front_xml_renders_structured_author_notes():
     xml = get_front_xml(
         {
@@ -1250,6 +1280,8 @@ def test_get_front_xml_renders_structured_author_notes():
     notes = root.find(".//author-notes")
     corresp = notes.find("corresp")
     assert corresp.get("id") == "c01"
+    assert corresp.find("label").text == "Correspondence"
+    assert "ana@example.com" in (corresp.text or "")
     edited = notes.find('fn[@fn-type="edited-by"]')
     assert edited.find("label").text == "Associate Editor"
     assert edited.find("p").text == "Alexander Vibrans"
@@ -1278,7 +1310,169 @@ def test_get_front_xml_omits_fn_without_fn_type():
     assert [fn.get("fn-type") for fn in notes.findall("fn")] == ["coi-statement"]
 
 
+def test_apply_text_fields_marks_brazil_state_from_city():
+    text = (
+        "1 Universidade de São Paulo, Faculdade de Economia, São Paulo, Brasil.\n"
+        "2 Instituto de Pesquisa Econômica Aplicada, Brasília, Brasil."
+    )
+    marked = apply_text_fields({}, text)
+    affs = marked["affiliations"]
+    assert affs[0]["city"] == "São Paulo"
+    assert affs[0]["state"] == "SP"
+    assert affs[0]["orgdiv1"] == "Faculdade de Economia"
+    assert affs[1]["city"] == "Brasília"
+    assert affs[1]["state"] == "DF"
+
+
+def test_apply_text_fields_strips_period_from_award_id():
+    text = (
+        "Funding\n"
+        "This study was supported by CNPq 123456/2024-0 and FAPESP 2024/12345-6."
+    )
+    marked = apply_text_fields({}, text)
+    awards = marked["funding"]["awards"]
+    assert {"funding_source": "FAPESP", "award_id": "2024/12345-6"} in awards
+    assert {"funding_source": "CNPq", "award_id": "123456/2024-0"} in awards
+
+
+def test_apply_text_fields_links_numbered_author_to_affiliation():
+    text = (
+        "Ana Souza 1, https://orcid.org/0000-0002-1825-0097\n"
+        "Bruno Lima 2, https://orcid.org/0000-0001-5109-3700\n"
+        "1 Universidade de São Paulo, Faculdade de Economia, São Paulo, Brasil.\n"
+        "2 Instituto de Pesquisa Econômica Aplicada, Brasília, Brasil.\n"
+        "Author contributions\n"
+        "Ana Souza: Conceptualization; Writing – original draft\n"
+        "Bruno Lima: Formal analysis; Writing – review & editing\n"
+    )
+    marked = apply_text_fields(
+        {
+            "authors": [
+                {"given_names": "Ana", "surname": "Souza"},
+                {"given_names": "Bruno", "surname": "Lima"},
+            ]
+        },
+        text,
+    )
+    assert marked["authors"][0]["affiliations"] == ["aff1"]
+    assert marked["authors"][1]["affiliations"] == ["aff2"]
+    assert marked["authors"][0]["roles"] == [
+        "Conceptualization",
+        "Writing – original draft",
+    ]
+
+
+def test_sample_front_xml_covers_validation_dates_roles_and_funding():
+    text = (
+        "Revista de Economia Pública\n"
+        "ISSN 1234-5678\n"
+        "Redistribution, tax sharing and inter-regional spillovers\n"
+        "Ana Souza 1, https://orcid.org/0000-0002-1825-0097\n"
+        "Bruno Lima 2, https://orcid.org/0000-0001-5109-3700\n"
+        "1 Universidade de São Paulo, Faculdade de Economia, São Paulo, Brasil.\n"
+        "2 Instituto de Pesquisa Econômica Aplicada, Brasília, Brasil.\n"
+        "Received: 12 January 2024.\n"
+        "Accepted: 3 June 2024.\n"
+        "Published: 15 July 2024.\n"
+        "Associate editor: Carla Mendes\n"
+        "Funding\n"
+        "This study was supported by CNPq 123456/2024-0 and FAPESP 2024/12345-6.\n"
+        "Author contributions\n"
+        "Ana Souza: Conceptualization; Writing – original draft\n"
+        "Bruno Lima: Formal analysis; Writing – review & editing\n"
+    )
+    marked = apply_text_fields(
+        {
+            "authors": [
+                {"given_names": "Ana", "surname": "Souza"},
+                {"given_names": "Bruno", "surname": "Lima"},
+            ]
+        },
+        text,
+    )
+    xml = get_front_xml(marked)
+    root = etree.fromstring(xml.encode("utf-8"))
+    pub = root.find(".//pub-date[@date-type='pub']")
+    assert pub.get("publication-format") == "electronic"
+    assert [child.tag for child in pub] == ["day", "month", "year"]
+    assert pub.find("year").text == "2024"
+    collection = root.find(".//pub-date[@date-type='collection']")
+    assert collection.get("publication-format") == "electronic"
+    assert collection.find("year").text == "2024"
+    assert root.find(".//history/date[@date-type='received']") is not None
+    assert root.find(".//history/date[@date-type='accepted']") is not None
+    contribs = root.findall(".//contrib")
+    rids = [contrib.find("xref[@ref-type='aff']").get("rid") for contrib in contribs]
+    assert rids == ["aff1", "aff2"]
+    assert all(contrib.find("role") is not None for contrib in contribs)
+    states = [state.text for state in root.findall(".//aff/addr-line/state")]
+    assert states == ["SP", "DF"]
+    edited = root.find(".//author-notes/fn[@fn-type='edited-by']")
+    assert edited.find("p").text == "Carla Mendes"
+    award_ids = [node.text for node in root.findall(".//award-id")]
+    assert "2024/12345-6" in award_ids
+    assert "123456/2024-0" in award_ids
+
+
+def test_get_front_xml_drops_unknown_affiliation_and_uses_default():
+    xml = get_front_xml(
+        {
+            "titles": [{"kind": "main", "text": "Title"}],
+            "authors": [
+                {"given_names": "Ana", "surname": "Souza", "affiliations": ["zzz"]}
+            ],
+            "affiliations": [{"id": "aff1", "label": "1", "orgname": "USP"}],
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    xref = root.find(".//contrib/xref[@ref-type='aff']")
+    assert xref.get("rid") == "aff1"
+
+
 def test_parse_marked_rejects_invalid_json():
     assert parse_marked("{") is None
     assert parse_marked("") is None
     assert parse_marked(None) is None
+
+
+def test_apply_text_fields_orcid_en_title_state_and_editor():
+    text = (
+        "Revista X\n"
+        "ISSN 9999-0001\n"
+        "Title (en): English title here\n"
+        "Ana Souza1 https://orcid.org/0000-0001-9999-0013, "
+        "Bruno Lima2 https://orcid.org/0000-0001-9999-0021\n"
+        "1 Universidade de Sao Paulo, Departamento de Economia, "
+        "Grupo de Estudos, Sao Paulo, SP, Brasil.\n"
+        "2 Instituto de Pesquisa, Departamento de Dados, "
+        "Grupo Beta, Brasilia, DF, Brasil.\n"
+        "Associate editor: Rita Fornalha\n"
+        "Conflicts of interest\n"
+        "No conflict.\n"
+    )
+    marked = apply_text_fields(
+        {
+            "authors": [
+                {"surname": "Souza", "given_names": "Ana"},
+                {"surname": "Lima", "given_names": "Bruno"},
+            ],
+            "titles": [{"kind": "main", "text": "Titulo PT"}],
+        },
+        text,
+    )
+    assert marked["authors"][0]["orcid"] == "0000-0001-9999-0013"
+    assert marked["authors"][1]["orcid"] == "0000-0001-9999-0021"
+    assert any(
+        item.get("kind") == "translated" and item.get("language") == "en"
+        for item in marked["titles"]
+    )
+    assert marked["affiliations"][0]["state"] == "SP"
+    assert marked["affiliations"][0]["orgdiv1"] == "Departamento de Economia"
+    assert any(
+        fn.get("fn_type") == "edited-by"
+        for fn in marked["author_notes"]["fns"]
+    )
+    root = etree.fromstring(get_front_xml(marked).encode("utf-8"))
+    assert len(root.xpath(".//contrib-id[@contrib-id-type='orcid']")) == 2
+    assert root.xpath(".//trans-title-group[@xml:lang='en']/trans-title")
+    assert [node.text for node in root.xpath(".//state")] == ["SP", "DF"]

@@ -2,9 +2,11 @@ import csv
 import json
 
 from packtools.sps.models.article_license import ArticleLicense
+from packtools.sps.models.front_articlemeta_issue import ArticleMetaIssue
 from packtools.sps.pid_provider.models.journal_meta import JournalID, Publisher, Title
 from packtools.sps.pid_provider.xml_sps_lib import XMLWithPre
 from packtools.sps.validation.xml_validator import get_validation_results
+from packtools.sps.validation.xml_validator_rules import get_default_rules
 
 FIELDNAMES = [
     "group",
@@ -31,11 +33,40 @@ def _extract_journal_data(xmltree):
             if code:
                 license_code = code
                 break
+        abbrev = Title(xmltree).abbreviated_journal_title
+        if not abbrev:
+            abbrev = xmltree.findtext(".//abbrev-journal-title")
+        publishers = list(Publisher(xmltree).publishers_names or [])
+        if not publishers:
+            for name in xmltree.xpath(".//publisher-name/text()"):
+                text = str(name or "").strip()
+                if text:
+                    publishers.append(text)
+        meta_issue = ArticleMetaIssue(xmltree)
+        issues = [
+            {
+                "volume": meta_issue.volume,
+                "number": meta_issue.number,
+                "supplement": meta_issue.suppl,
+            }
+        ]
+        xml_lang = "{http://www.w3.org/XML/1998/namespace}lang"
+        lang = xmltree.get(xml_lang) or "pt"
+        subjects = [
+            node.text.strip()
+            for node in xmltree.xpath(
+                './/subj-group[@subj-group-type="heading"]/subject'
+            )
+            if node.text and node.text.strip()
+        ]
+        toc_sections = {lang: subjects} if subjects else {}
         return {
-            "abbrev_journal_title": Title(xmltree).abbreviated_journal_title,
-            "publisher_name_list": Publisher(xmltree).publishers_names,
+            "abbrev_journal_title": abbrev,
+            "publisher_name_list": publishers,
             "nlm_journal_title": JournalID(xmltree).nlm_ta,
             "license_code": license_code,
+            "issues": issues,
+            "toc_sections": toc_sections,
         }
     except Exception:
         return {}
@@ -46,14 +77,26 @@ def validate_zip(zip_path: str) -> tuple[list, list]:
     exceptions = []
     for xml_with_pre in XMLWithPre.create(path=zip_path):
         xmltree = xml_with_pre.xmltree
-        rules = {"journal_data": _extract_journal_data(xmltree)}
+        rules = get_default_rules()
+        rules["journal_data"] = _extract_journal_data(xmltree)
+        inline_rules = dict(rules.get("inline_formula_rules") or {})
+        inline_rules["absent_error_level"] = None
+        rules["inline_formula_rules"] = inline_rules
+        disp_rules = dict(rules.get("disp_formula_rules") or {})
+        if "absent_error_level" in disp_rules:
+            disp_rules["absent_error_level"] = None
+        rules["disp_formula_rules"] = disp_rules
+        app_rules = dict(rules.get("app_group_rules") or {})
+        app_rules["app_existence_error_level"] = None
+        rules["app_group_rules"] = app_rules
         for result in get_validation_results(xmltree, rules):
             if not result:
                 continue
             if result.get("response") == "exception":
                 exceptions.append(result)
                 continue
-            if result.get("response") == "OK":
+            response = result.get("response")
+            if response is None or str(response).upper() in ("", "OK", "NONE"):
                 continue
             group = result.get("group", "")
             item = result.get("item") or ""

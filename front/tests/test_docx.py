@@ -102,6 +102,82 @@ def test_extract_front_section(text, expected):
     assert extract_front_section(text) == expected
 
 
+def test_extract_front_section_without_body_heading_stops_at_keywords():
+    text = (
+        "Title\nAna Silva\n"
+        "Abstract: Short abstract.\n"
+        "Keywords: palms; forest.\n"
+        "Resumo: Resumo curto.\n"
+        "Palavras-chave: palmeiras; floresta.\n"
+        "The high species diversity of the Amazon is known.\n"
+        "Plots were installed in the field.\n"
+        "Ab'Saber, A. N. (2003). Os dominios. Atelie.\n"
+        "Alvares, C. A. (2013a). Modeling temperature. Theoretical.\n"
+        "Anderson, J. M. (1993). Tropical soil biology. CAB.\n"
+        "Received: 05/08/2025\n"
+        "Figure 1. Map of the area.\n"
+    )
+    front = extract_front_section(text)
+    assert "Palavras-chave: palmeiras; floresta." in front
+    assert "Received: 05/08/2025" in front
+    assert "The high species diversity" not in front
+    assert "Ab'Saber" not in front
+    assert "Figure 1." not in front
+
+
+def test_extract_front_section_label_only_keywords_include_next_line():
+    text = (
+        "Title\n"
+        "Abstract\n"
+        "Short abstract.\n"
+        "Keywords\n"
+        "palms; forest\n"
+        "The study area is large.\n"
+    )
+    front = extract_front_section(text)
+    assert front == "Title\nAbstract\nShort abstract.\nKeywords\npalms; forest"
+
+
+def test_extract_front_section_prefers_introduction_over_keywords():
+    text = "Title\nAbstract: A.\nKeywords: k.\nIntroduction\nBody of the article."
+    assert extract_front_section(text) == "Title\nAbstract: A.\nKeywords: k."
+
+
+def test_extract_front_section_limits_text_without_any_boundary():
+    text = "word " * 5000
+    assert len(extract_front_section(text)) == 12000
+
+
+def test_extract_front_section_moves_unlabeled_editorial_tail():
+    text = (
+        "Title\n"
+        "Abstract: A.\n"
+        "Keywords: palms.\n"
+        "The study sampled plots.\n"
+        "The authors would like to express their gratitude for the field.\n"
+        "Alexander Vibrans\n"
+        "Ana Silva: study design; data analysis; manuscript revision.\n"
+        "The authors declare no conflict of interest.\n"
+        "This study did not involve human beings.\n"
+        "The datasets generated during the study are available.\n"
+        "Ab'Saber, A. N. (2003). Title. Publisher.\n"
+        "Alvares, C. A. (2013). Title. Publisher.\n"
+        "Anderson, J. M. (1993). Title. Publisher.\n"
+        "Received: 05/08/2025\n"
+    )
+    front = extract_front_section(text)
+    assert "Keywords: palms." in front
+    assert "Alexander Vibrans" in front
+    assert "Ana Silva: study design" in front
+    assert "no conflict of interest" in front
+    assert "did not involve human beings" in front
+    assert "would like to express" in front
+    assert "Received: 05/08/2025" in front
+    assert "The study sampled plots." not in front
+    assert "datasets generated" not in front
+    assert "Ab'Saber" not in front
+
+
 def test_extract_front_section_keeps_correspondence_and_inline_editor():
     text = (
         "Title\nIntroduction\nBody.\nFinal considerations\nDone.\n"
@@ -143,6 +219,21 @@ def test_document_counts_from_captions_equations_and_references():
         "equation_count": "3",
         "ref_count": "4",
     }
+
+
+def test_document_counts_unsectioned_apa_references():
+    text = (
+        "Title\nAbstract: A.\nKeywords: k.\n"
+        "Body paragraph one.\nBody paragraph two.\n"
+        "Ab'Saber, A. N. (2003). Title. Publisher.\n"
+        "Alvares, C. A. (2013). Title. Publisher.\n"
+        "Anderson, J. M. (1993). Title. Publisher.\n"
+        "Received: 05/08/2025\n"
+        "Figure 1. Map of the area.\n"
+    )
+    counts = document_counts(text)
+    assert counts["ref_count"] == "3"
+    assert counts["fig_count"] == "1"
 
 
 def test_document_counts_numbered_refs_stop_at_table():

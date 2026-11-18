@@ -283,8 +283,8 @@ msgid "Admin settings"
 msgstr "Configuración de administración"
 
 #: core_settings/templates/wagtailadmin/home.html:14
-msgid "Pesquisar por manuscritos, documentos(docx), imagens"
-msgstr ""
+msgid "Pesquisar por documentos, docx, imagens"
+msgstr "Pesquisar por documentos, docx, imagens"
 
 #: core_settings/templates/wagtailadmin/home.html:46
 #, fuzzy
@@ -764,14 +764,17 @@ msgid "Manuscript"
 msgstr ""
 
 #: manuscript/models.py:168 manuscript/views.py:92
-#: manuscript/wagtail_hooks.py:139
 msgid "Manuscripts"
 msgstr ""
 
+#: manuscript/wagtail_hooks.py
+msgid "Documentos"
+msgstr "Documentos"
+
 msgid "%(total)s Manuscript <span class=\"w-sr-only\">created in %(site_name)s</span>"
 msgid_plural "%(total)s Manuscripts <span class=\"w-sr-only\">created in %(site_name)s</span>"
-msgstr[0] "%(total)s manuscrito <span class=\"w-sr-only\">creado en %(site_name)s</span>"
-msgstr[1] "%(total)s manuscritos <span class=\"w-sr-only\">creados en %(site_name)s</span>"
+msgstr[0] "%(total)s documento <span class=\"w-sr-only\">creado en %(site_name)s</span>"
+msgstr[1] "%(total)s documentos <span class=\"w-sr-only\">creados en %(site_name)s</span>"
 
 #: manuscript/models.py:195
 #, fuzzy
@@ -1208,7 +1211,7 @@ msgstr ""
 #: manuscript/wagtail_hooks.py
 #, python-format
 msgid "Manuscript “%(title)s” re-marked."
-msgstr "Manuscrito “%(title)s” remarcado."
+msgstr "Documento “%(title)s” remarcado."
 
 #: manuscript/wagtail_hooks.py:187
 msgid "Continue marking"

@@ -6,8 +6,7 @@ XML_NS = "http://www.w3.org/XML/1998/namespace"
 XML_LANG = f"{{{XML_NS}}}lang"
 JATS_DOCTYPE = (
     '<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal Publishing DTD '
-    'v1.1 20151215//EN" '
-    '"https://jats.nlm.nih.gov/publishing/1.1/JATS-journalpublishing1.dtd">'
+    'v1.1 20151215//EN" "JATS-journalpublishing1.dtd">'
 )
 
 

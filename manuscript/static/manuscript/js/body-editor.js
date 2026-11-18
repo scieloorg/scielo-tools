@@ -77,6 +77,35 @@ function applyRichCommand(block, command) {
     block.focus();
 }
 
+function mathMarkup(mathml) {
+    return String(mathml || "")
+        .replace(/\sxmlns:mml="[^"]*"/g, "")
+        .replace(/<\/mml:/g, "</")
+        .replace(/<mml:/g, "<");
+}
+
+function createFormulaBlock(block) {
+    const wrap = document.createElement("div");
+    wrap.className = "manuscript-formula";
+    if (block.label) {
+        const label = document.createElement("span");
+        label.className = "manuscript-formula-label";
+        label.textContent = block.label;
+        wrap.appendChild(label);
+    }
+    const math = mathMarkup(block.mathml || "");
+    if (math) {
+        const holder = document.createElement("div");
+        holder.innerHTML = math;
+        wrap.appendChild(holder);
+    } else if (block.text) {
+        const plain = document.createElement("div");
+        plain.textContent = block.text;
+        wrap.appendChild(plain);
+    }
+    return wrap;
+}
+
 function createParagraphBlock(text) {
     const block = document.createElement("div");
     block.className = "manuscript-rich-block";
@@ -122,11 +151,18 @@ function createSectionRow(section) {
     const paragraphsList = document.createElement("div");
     paragraphsList.dataset.paragraphsList = "1";
     const blocks = section.content || [{ type: "p", text: "" }];
-    blocks
-        .filter((block) => block.type === "p")
-        .forEach((block) => {
+    blocks.forEach((block) => {
+        if (!block || typeof block !== "object") {
+            return;
+        }
+        if (block.type === "disp-formula") {
+            paragraphsList.appendChild(createFormulaBlock(block));
+            return;
+        }
+        if (block.type === "p") {
             paragraphsList.appendChild(createParagraphBlock(block.text || ""));
-        });
+        }
+    });
     if (!paragraphsList.querySelector("[data-paragraph-block]")) {
         paragraphsList.appendChild(createParagraphBlock(""));
     }
