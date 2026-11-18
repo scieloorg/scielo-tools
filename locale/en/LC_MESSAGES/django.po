@@ -278,8 +278,8 @@ msgid "Admin settings"
 msgstr "Admin settings"
 
 #: core_settings/templates/wagtailadmin/home.html:14
-msgid "Pesquisar por manuscritos, documentos(docx), imagens"
-msgstr ""
+msgid "Pesquisar por documentos, docx, imagens"
+msgstr "Pesquisar por documentos, docx, imagens"
 
 #: core_settings/templates/wagtailadmin/home.html:46
 #, fuzzy
@@ -707,9 +707,12 @@ msgid "Manuscript"
 msgstr "Manuscript"
 
 #: manuscript/models.py:168 manuscript/views.py:92
-#: manuscript/wagtail_hooks.py:139
 msgid "Manuscripts"
 msgstr "Manuscripts"
+
+#: manuscript/wagtail_hooks.py
+msgid "Documentos"
+msgstr "Documentos"
 
 msgid "%(total)s Manuscript <span class=\"w-sr-only\">created in %(site_name)s</span>"
 msgid_plural "%(total)s Manuscripts <span class=\"w-sr-only\">created in %(site_name)s</span>"

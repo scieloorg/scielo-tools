@@ -7,6 +7,11 @@ import zipfile
 from lxml import etree
 
 from body.exceptions import BodyDocxError
+from front.utils import (
+    back_matter_lines,
+    front_matter_end_index,
+    reference_run_start_index,
+)
 
 BODY_HEADING_RE = re.compile(
     r"^(?:\d+[.\)]\s*)?(?:"
@@ -63,17 +68,22 @@ HEADING_STYLE_RE = re.compile(
     re.IGNORECASE,
 )
 CAPTION_RE = re.compile(
-    r"^(?P<kind>figure|fig\.|figura|table|tabela|quadro)\s+"
+    r"^(?P<kind>figure|fig\.|figura|table|tabela|tabla|quadro)\s+"
     r"(?P<num>\d+)\s*(?:[.:\u2013\u2014\-–—])?\s*(?P<rest>.*)$",
     re.IGNORECASE,
 )
-SOURCE_RE = re.compile(r"^(?:fonte|source)\s*:\s*(.+)$", re.IGNORECASE)
+SOURCE_RE = re.compile(r"^(?:fonte|fuente|source)\s*:\s*(.+)$", re.IGNORECASE)
 FIG_MENTION_RE = re.compile(
     r"\b((?:figures?|figs?\.?|figuras?)\s+(?![sS]\d)(\d+))",
     re.IGNORECASE,
 )
 TABLE_MENTION_RE = re.compile(
-    r"\b((?:tables?|tabelas?|quadros?)\s+(\d+))",
+    r"\b((?:tables?|tabelas?|tablas?|quadros?)\s+(\d+))",
+    re.IGNORECASE,
+)
+EQUATION_MENTION_RE = re.compile(
+    r"\b((?:equations?|equa[cç][oõ]es|equa[cç][aã]o|ecuaciones|ecuaci[oó]n)"
+    r"\s*\(\s*(\d+)\s*\))",
     re.IGNORECASE,
 )
 PAREN_RE = re.compile(r"\(([^()]{3,220})\)")
@@ -86,9 +96,22 @@ NARRATIVE_CITE_RE = re.compile(
 YEAR_RE = re.compile(r"\b(?:1[7-9]|20)\d{2}[a-z]?\b")
 CITE_LEAD_RE = re.compile(r"^(?:e\.g\.|eg\.|i\.e\.|cf\.)[,:]?\s*", re.IGNORECASE)
 NUM_CITE_RE = re.compile(r"(?<=\.)(\d{1,3}(?:\s*[-–]\s*\d{1,3})+)(?!\d)")
+BRACKET_CITE_RE = re.compile(r"\[(\d{1,3})\]")
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-DOCX_NSMAP = {"w": W_NS}
+M_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
+MML_NS = "http://www.w3.org/1998/Math/MathML"
+DOCX_NSMAP = {"w": W_NS, "m": M_NS}
+FORMULA_MARK = "\u2063"
+DISPLAY_LABEL_RE = re.compile(r"^\(\s*(\d+)\s*\)\.?$")
+FORMULA_LINE_RE = re.compile(
+    "^\u2063([dx])\u2063(e\\d+)\u2063([^\u2063]*)\u2063(.*)$",
+    re.DOTALL,
+)
+INLINE_FORMULA_RE = re.compile(
+    "\u2063i\u2063(e\\d+)\u2063(.*?)\u2063",
+    re.DOTALL,
+)
 
 
 def normalize_body_text(value):
@@ -96,7 +119,7 @@ def normalize_body_text(value):
 
 
 def body_checksum(normalized):
-    return hashlib.sha256(f"body-v8\n{normalized}".encode()).hexdigest()
+    return hashlib.sha256(f"body-v12\n{normalized}".encode()).hexdigest()
 
 
 def extract_body_section(text):
@@ -110,17 +133,26 @@ def extract_body_section(text):
             break
     found_heading = start is not None
     if start is None:
-        start = 0
+        matter_end = front_matter_end_index(lines)
+        start = matter_end + 1 if matter_end is not None else 0
     end = len(lines)
-    scan_from = start + 1 if found_heading else 0
+    scan_from = start + 1 if found_heading else start
     for index in range(scan_from, len(lines)):
         if BODY_REFERENCE_STOP_RE.match(lines[index].strip()):
             end = index
             break
+    else:
+        ref_start = reference_run_start_index(lines, scan_from)
+        if ref_start is not None:
+            end = ref_start
+    move_idx, _copy_idx = back_matter_lines(lines, end if end < len(lines) else None)
+    skipped = set(move_idx)
     selected = lines[start:end]
     kept = []
     skip = False
-    for line in selected:
+    for offset, line in enumerate(selected):
+        if start + offset in skipped:
+            continue
         stripped = line.strip()
         if BODY_EDITORIAL_SKIP_RE.match(stripped):
             skip = True
@@ -220,6 +252,18 @@ def sec_type_from_title(title):
 def parse_lines_to_blocks(lines):
     content = []
     for line in lines:
+        formula = FORMULA_LINE_RE.match(line)
+        if formula:
+            kind, fid, label, payload = formula.groups()
+            block = {"type": "disp-formula", "id": fid}
+            if label:
+                block["label"] = label
+            if kind == "d" and payload:
+                block["mathml"] = payload
+            elif payload:
+                block["text"] = payload
+            content.append(block)
+            continue
         source = SOURCE_RE.match(line)
         if (
             source
@@ -235,9 +279,14 @@ def parse_lines_to_blocks(lines):
             num = caption.group("num")
             rest = caption.group("rest").strip()
             if kind.startswith("tab") or kind == "quadro":
-                label = f"Table {num}" if kind.startswith("tab") else f"Quadro {num}"
                 if kind.startswith("tabela"):
                     label = f"Tabela {num}"
+                elif kind.startswith("tabla"):
+                    label = f"Tabla {num}"
+                elif kind == "quadro":
+                    label = f"Quadro {num}"
+                else:
+                    label = f"Table {num}"
                 content.append(
                     {
                         "type": "table-wrap",
@@ -259,8 +308,74 @@ def parse_lines_to_blocks(lines):
                     }
                 )
             continue
-        content.append({"type": "p", "text": line})
+        formulas = []
+        parts = []
+        cursor = 0
+        for match in INLINE_FORMULA_RE.finditer(line):
+            fid, payload = match.group(1), match.group(2)
+            item = {"id": fid}
+            if payload.startswith("<"):
+                item["mathml"] = payload
+            elif payload:
+                item["text"] = payload
+            formulas.append(item)
+            parts.append(line[cursor : match.start()])
+            parts.append(f"{FORMULA_MARK}{fid}{FORMULA_MARK}")
+            cursor = match.end()
+        parts.append(line[cursor:])
+        block = {"type": "p", "text": "".join(parts)}
+        if formulas:
+            block["formulas"] = formulas
+        content.append(block)
     return content
+
+
+def expand_encoded_formulas(marked):
+    if not isinstance(marked, dict):
+        return marked
+    for section in marked.get("sections") or []:
+        for content in iter_content_lists(section):
+            index = 0
+            while index < len(content):
+                block = content[index]
+                if not isinstance(block, dict) or block.get("type") != "p":
+                    index += 1
+                    continue
+                text = str(block.get("text") or "")
+                stripped = text.strip()
+                if FORMULA_MARK not in text or not (
+                    FORMULA_LINE_RE.match(stripped) or INLINE_FORMULA_RE.search(text)
+                ):
+                    index += 1
+                    continue
+                source = stripped if FORMULA_LINE_RE.match(stripped) else text
+                parsed = parse_lines_to_blocks([source])
+                if (
+                    len(parsed) == 1
+                    and parsed[0].get("type") == "p"
+                    and not parsed[0].get("formulas")
+                ):
+                    index += 1
+                    continue
+                replacement = []
+                for item in parsed:
+                    if item.get("type") == "p":
+                        merged = dict(block)
+                        merged["text"] = item.get("text") or ""
+                        formulas = [
+                            entry
+                            for entry in (merged.get("formulas") or [])
+                            if isinstance(entry, dict)
+                        ]
+                        formulas.extend(item.get("formulas") or [])
+                        if formulas:
+                            merged["formulas"] = formulas
+                        replacement.append(merged)
+                    else:
+                        replacement.append(item)
+                content[index : index + 1] = replacement
+                index += len(replacement)
+    return marked
 
 
 def nested_heading_title(line):
@@ -425,6 +540,18 @@ def annotate_paragraph(text, cite_ids):
                 },
             )
         )
+    for match in EQUATION_MENTION_RE.finditer(original):
+        events.append(
+            (
+                match.start(),
+                match.end(),
+                {
+                    "ref_type": "disp-formula",
+                    "rid": f"e{int(match.group(2))}",
+                    "text": match.group(1),
+                },
+            )
+        )
     for match in NARRATIVE_CITE_RE.finditer(original):
         label = f"{match.group(1)} ({match.group(2)})"
         events.append(
@@ -516,6 +643,19 @@ def annotate_paragraph(text, cite_ids):
                 },
             )
         )
+    for match in BRACKET_CITE_RE.finditer(original):
+        num = match.group(1)
+        events.append(
+            (
+                match.start(),
+                match.end(),
+                {
+                    "ref_type": "bibr",
+                    "rid": f"B{int(num)}",
+                    "text": match.group(0),
+                },
+            )
+        )
     events.sort(key=lambda item: (item[0], item[1]))
     filtered = []
     last_end = 0
@@ -556,11 +696,14 @@ def captions_from_text(source_text):
         num = caption.group("num")
         rest = caption.group("rest").strip()
         if kind_raw.startswith("tab") or kind_raw == "quadro":
-            label = f"Table {num}"
             if kind_raw.startswith("tabela"):
                 label = f"Tabela {num}"
+            elif kind_raw.startswith("tabla"):
+                label = f"Tabla {num}"
             elif kind_raw == "quadro":
                 label = f"Quadro {num}"
+            else:
+                label = f"Table {num}"
             tables[num] = {
                 "type": "table-wrap",
                 "id": f"t{num}",
@@ -796,17 +939,101 @@ def apply_body_rules(marked, source_text, tables=None):
             have_figs.add(num)
         else:
             fill_float_caption(sections, "fig", num, block)
+    caption_at = {}
+    wraps = {}
+    for section in sections:
+        for content in iter_content_lists(section):
+            for index, item in enumerate(content):
+                if not isinstance(item, dict):
+                    continue
+                if item.get("type") == "table-wrap":
+                    num = float_number(item)
+                    if num and num not in wraps:
+                        wraps[num] = item
+                    continue
+                if item.get("type") != "p":
+                    continue
+                caption = CAPTION_RE.match(str(item.get("text") or "").strip())
+                if not caption:
+                    continue
+                kind = caption.group("kind").lower()
+                if not (kind.startswith("tab") or kind == "quadro"):
+                    continue
+                num = caption.group("num")
+                if num not in caption_at:
+                    caption_at[num] = (content, index)
+    for section in sections:
+        for content in iter_content_lists(section):
+            rebuilt = []
+            index = 0
+            while index < len(content):
+                item = content[index]
+                caption = None
+                if isinstance(item, dict) and item.get("type") == "p":
+                    caption = CAPTION_RE.match(str(item.get("text") or "").strip())
+                kind = caption.group("kind").lower() if caption else ""
+                num = caption.group("num") if caption else ""
+                slot = caption_at.get(num)
+                if (
+                    caption
+                    and (kind.startswith("tab") or kind == "quadro")
+                    and slot
+                    and slot[0] is content
+                    and slot[1] == index
+                ):
+                    incoming = table_caps.get(num) or {}
+                    current = wraps.get(num) or {}
+                    if kind.startswith("tabela"):
+                        label = f"Tabela {num}"
+                    elif kind.startswith("tabla"):
+                        label = f"Tabla {num}"
+                    elif kind == "quadro":
+                        label = f"Quadro {num}"
+                    else:
+                        label = f"Table {num}"
+                    merged = {
+                        "type": "table-wrap",
+                        "id": current.get("id") or incoming.get("id") or f"t{num}",
+                        "label": incoming.get("label") or current.get("label") or label,
+                        "caption": incoming.get("caption")
+                        or current.get("caption")
+                        or caption.group("rest").strip(),
+                    }
+                    for key in ("attrib", "headers", "rows", "footnotes"):
+                        value = current.get(key) or incoming.get(key)
+                        if value:
+                            merged[key] = value
+                    index += 1
+                    if index < len(content):
+                        nxt = content[index]
+                        source = None
+                        if isinstance(nxt, dict) and nxt.get("type") == "p":
+                            source = SOURCE_RE.match(str(nxt.get("text") or "").strip())
+                        if source:
+                            if not str(merged.get("attrib") or "").strip():
+                                merged["attrib"] = source.group(1).strip()
+                            index += 1
+                    rebuilt.append(merged)
+                    have_tables.add(num)
+                    continue
+                if isinstance(item, dict) and item.get("type") == "table-wrap":
+                    parked = float_number(item)
+                    if parked in caption_at:
+                        index += 1
+                        continue
+                rebuilt.append(item)
+                index += 1
+            content[:] = rebuilt
     for num, block in table_caps.items():
-        if num not in have_tables:
-            insert_float_after_mention(sections, block, TABLE_MENTION_RE, num)
-            have_tables.add(num)
+        if num in caption_at or num in wraps or num in have_tables:
+            continue
+        insert_float_after_mention(sections, block, TABLE_MENTION_RE, num)
+        have_tables.add(num)
     remaining = list(tables or [])
     for section in sections:
         for content in iter_content_lists(section):
             for block in content:
                 if not isinstance(block, dict) or block.get("type") != "table-wrap":
-                    continue
-                if block.get("rows") or block.get("headers"):
                     continue
                 label = str(block.get("label") or block.get("id") or "")
                 num = ""
@@ -818,16 +1045,18 @@ def apply_body_rules(marked, source_text, tables=None):
                     if str(item.get("number") or "") == num:
                         match = item
                         break
-                if match is None and remaining:
+                filled = bool(block.get("rows") or block.get("headers"))
+                if match is None and remaining and not filled:
                     match = remaining[0]
                 if match is None:
                     continue
-                block["headers"] = match.get("headers") or []
-                block["rows"] = match.get("rows") or []
-                if not str(block.get("caption") or "").strip():
-                    caption = str(match.get("caption") or "").strip()
-                    if caption:
-                        block["caption"] = caption
+                if not filled:
+                    block["headers"] = match.get("headers") or []
+                    block["rows"] = match.get("rows") or []
+                    if not str(block.get("caption") or "").strip():
+                        caption = str(match.get("caption") or "").strip()
+                        if caption:
+                            block["caption"] = caption
                 remaining.remove(match)
     if remaining and sections:
         lists = list(iter_content_lists(sections[-1]))
@@ -845,7 +1074,313 @@ def apply_body_rules(marked, source_text, tables=None):
                 }
             )
     enrich_tail_sections(sections)
-    return data
+    return expand_encoded_formulas(data)
+
+
+def formula_slot(paragraph):
+    pieces = []
+    stack = [iter(list(paragraph))]
+    while stack:
+        try:
+            child = next(stack[-1])
+        except StopIteration:
+            stack.pop()
+            continue
+        if not isinstance(child.tag, str):
+            continue
+        local = child.tag.split("}")[-1]
+        if local == "r":
+            bits = []
+            for item in child:
+                if not isinstance(item.tag, str):
+                    continue
+                name = item.tag.split("}")[-1]
+                if name == "t":
+                    bits.append(item.text or "")
+                elif name in {"tab", "br", "cr"}:
+                    bits.append(" ")
+            if bits:
+                pieces.append(("text", "".join(bits)))
+        elif local == "oMath":
+            pieces.append(("math", child))
+        elif local in {
+            "oMathPara",
+            "hyperlink",
+            "ins",
+            "smartTag",
+            "customXml",
+            "sdtContent",
+        }:
+            stack.append(iter(list(child)))
+        elif local == "sdt":
+            content = child.find(f"{{{W_NS}}}sdtContent")
+            if content is not None:
+                stack.append(iter(list(content)))
+    maths = [value for kind, value in pieces if kind == "math"]
+    plain = "".join(value for kind, value in pieces if kind == "text")
+    match = DISPLAY_LABEL_RE.match(plain.strip())
+    return {
+        "pieces": pieces,
+        "maths": maths,
+        "plain": plain,
+        "number": str(int(match.group(1))) if match else None,
+        "display": bool(maths) and (not plain.strip() or match is not None),
+    }
+
+
+def alloc_formula_id(used, number):
+    if number:
+        fid = f"e{number}"
+        used.add(fid)
+        return fid
+    n = 1
+    while f"e{n}" in used:
+        n += 1
+    fid = f"e{n}"
+    used.add(fid)
+    return fid
+
+
+def omml_to_mathml(omath, math_id):
+    def tag(name):
+        return f"{{{MML_NS}}}{name}"
+
+    def om(name):
+        return f"{{{M_NS}}}{name}"
+
+    def node(name, text=None, variant=None):
+        element = etree.Element(tag(name))
+        if text is not None:
+            element.text = text
+        if variant:
+            element.set("mathvariant", variant)
+        return element
+
+    def tokens(text, variant):
+        found = []
+        index = 0
+        raw = text or ""
+        while index < len(raw):
+            char = raw[index]
+            if char.isspace():
+                index += 1
+                continue
+            if char.isdigit() or (
+                char == "." and index + 1 < len(raw) and raw[index + 1].isdigit()
+            ):
+                end = index + 1
+                while end < len(raw) and (raw[end].isdigit() or raw[end] == "."):
+                    end += 1
+                found.append(node("mn", raw[index:end]))
+                index = end
+                continue
+            if char.isalpha():
+                if variant == "normal":
+                    end = index + 1
+                    while end < len(raw) and raw[end].isalpha():
+                        end += 1
+                    found.append(node("mi", raw[index:end], variant))
+                    index = end
+                    continue
+                found.append(node("mi", char, variant))
+                index += 1
+                continue
+            found.append(node("mo", char))
+            index += 1
+        return found
+
+    def merge(elements):
+        merged = []
+        mi = tag("mi")
+        for element in elements:
+            previous = merged[-1] if merged else None
+            if (
+                previous is not None
+                and element.tag == mi
+                and previous.tag == mi
+                and len(element) == 0
+                and len(previous) == 0
+                and element.get("mathvariant") == "normal"
+                and previous.get("mathvariant") == "normal"
+                and element.text
+                and previous.text
+            ):
+                previous.text += element.text
+            else:
+                merged.append(element)
+        return merged
+
+    def pack(elements):
+        elements = merge(elements)
+        if not elements:
+            return node("mrow")
+        if len(elements) == 1:
+            return elements[0]
+        row = node("mrow")
+        for element in elements:
+            row.append(element)
+        return row
+
+    def find(parent, name):
+        if parent is None:
+            return None
+        return parent.find(om(name))
+
+    def val(element):
+        if element is None:
+            return ""
+        return element.get(f"{{{M_NS}}}val") or ""
+
+    def kids(parent):
+        if parent is None:
+            return []
+        found = []
+        for child in parent:
+            found.extend(convert(child))
+        return merge(found)
+
+    def convert(element):
+        if not isinstance(element.tag, str):
+            return []
+        local = element.tag.split("}")[-1]
+        if local.endswith("Pr"):
+            return []
+        if local == "r":
+            style = find(find(element, "rPr"), "sty")
+            variant = {"p": "normal", "b": "bold", "bi": "bold-italic"}.get(
+                val(style), ""
+            )
+            text = "".join(item.text or "" for item in element.findall(om("t")))
+            return tokens(text, variant or None)
+        if local == "t":
+            return tokens(element.text or "", None)
+        if local in {"sSub", "sSup", "sSubSup"}:
+            names = {"sSub": "msub", "sSup": "msup", "sSubSup": "msubsup"}
+            built = node(names[local])
+            built.append(pack(kids(find(element, "e"))))
+            if local != "sSup":
+                built.append(pack(kids(find(element, "sub"))))
+            if local != "sSub":
+                built.append(pack(kids(find(element, "sup"))))
+            return [built]
+        if local == "f":
+            frac = node("mfrac")
+            frac.append(pack(kids(find(element, "num"))))
+            frac.append(pack(kids(find(element, "den"))))
+            return [frac]
+        if local == "rad":
+            hide = find(find(element, "radPr"), "degHide")
+            degree = kids(find(element, "deg"))
+            body = kids(find(element, "e"))
+            hidden = hide is not None and val(hide) not in {"0", "false", "off"}
+            if hidden or not degree:
+                sqrt = node("msqrt")
+                sqrt.append(pack(body))
+                return [sqrt]
+            root = node("mroot")
+            root.append(pack(body))
+            root.append(pack(degree))
+            return [root]
+        if local == "nary":
+            operator = val(find(find(element, "naryPr"), "chr")) or "∑"
+            sub = kids(find(element, "sub"))
+            sup = kids(find(element, "sup"))
+            body = kids(find(element, "e"))
+            op = node("mo", operator)
+            if sub and sup:
+                limit = node("munderover")
+                limit.append(op)
+                limit.append(pack(sub))
+                limit.append(pack(sup))
+            elif sub:
+                limit = node("munder")
+                limit.append(op)
+                limit.append(pack(sub))
+            elif sup:
+                limit = node("mover")
+                limit.append(op)
+                limit.append(pack(sup))
+            else:
+                limit = op
+            row = node("mrow")
+            row.append(limit)
+            if body:
+                row.append(pack(body))
+            return [row]
+        if local == "d":
+            begin = find(find(element, "dPr"), "begChr")
+            end = find(find(element, "dPr"), "endChr")
+            beg = "(" if begin is None else val(begin)
+            fin = ")" if end is None else val(end)
+            row = node("mrow")
+            if beg:
+                row.append(node("mo", beg))
+            for item in element.findall(om("e")):
+                for piece in kids(item):
+                    row.append(piece)
+            if fin:
+                row.append(node("mo", fin))
+            return [row]
+        return kids(element)
+
+    math = etree.Element(tag("math"), nsmap={"mml": MML_NS})
+    math.set("id", math_id)
+    for piece in kids(omath):
+        math.append(piece)
+    if len(math) == 0:
+        return ""
+    return etree.tostring(math, encoding="unicode")
+
+
+def formula_payload(fid, maths):
+    if len(maths) == 1:
+        root = maths[0]
+    else:
+        root = etree.Element(f"{{{M_NS}}}oMath")
+        for item in maths:
+            for child in list(item):
+                root.append(child)
+    mathml = omml_to_mathml(root, f"m{fid[1:]}")
+    mathml = mathml.replace("\n", "").replace(FORMULA_MARK, "")
+    if mathml:
+        return "m", mathml
+    linear = "".join(
+        node.text or "" for node in root.xpath(".//m:t", namespaces=DOCX_NSMAP)
+    )
+    linear = re.sub(r"\s+", " ", linear).strip().replace(FORMULA_MARK, "")
+    return "x", linear
+
+
+def docx_paragraph_line(paragraph, used):
+    slot = formula_slot(paragraph)
+    maths = slot["maths"]
+    plain = slot["plain"]
+    if not maths:
+        return plain.strip()
+    if slot["display"]:
+        fid = alloc_formula_id(used, slot["number"])
+        coded, payload = formula_payload(fid, maths)
+        if not payload:
+            return plain.strip()
+        marker = "d" if coded == "m" else "x"
+        label = f"({slot['number']})" if slot["number"] else ""
+        return (
+            f"{FORMULA_MARK}{marker}{FORMULA_MARK}{fid}"
+            f"{FORMULA_MARK}{label}{FORMULA_MARK}{payload}"
+        )
+    parts = []
+    for kind, value in slot["pieces"]:
+        if kind == "text":
+            parts.append(value)
+            continue
+        fid = alloc_formula_id(used, None)
+        _coded, payload = formula_payload(fid, [value])
+        if not payload:
+            continue
+        parts.append(
+            f"{FORMULA_MARK}i{FORMULA_MARK}{fid}{FORMULA_MARK}{payload}{FORMULA_MARK}"
+        )
+    return "".join(parts).strip()
 
 
 def paragraph_text(paragraph):
@@ -904,29 +1439,40 @@ def body_from_docx_upload(uploaded):
         with zipfile.ZipFile(tmp_path) as archive:
             xml_bytes = archive.read("word/document.xml")
         root = etree.fromstring(xml_bytes)
+        blocks = list(iter_docx_blocks(root))
+        used = set()
+        for kind, node in blocks:
+            if kind != "p":
+                continue
+            number = formula_slot(node)["number"]
+            if number:
+                used.add(f"e{number}")
         paragraphs = []
         tables = []
         last_paragraph = ""
-        for kind, node in iter_docx_blocks(root):
+        for kind, node in blocks:
             if kind == "p":
-                text = paragraph_text(node)
+                text = docx_paragraph_line(node, used)
                 if text:
-                    style_el = node.find(f"{{{W_NS}}}pPr/{{{W_NS}}}pStyle")
-                    style_val = (
-                        style_el.get(f"{{{W_NS}}}val") if style_el is not None else ""
-                    )
-                    outline = node.find(f"{{{W_NS}}}pPr/{{{W_NS}}}outlineLvl")
-                    heading_style = outline is not None or bool(
-                        style_val and HEADING_STYLE_RE.search(style_val)
-                    )
-                    if (
-                        heading_style
-                        and not BODY_HEADING_RE.match(text)
-                        and not BODY_EDITORIAL_SKIP_RE.match(text)
-                        and not BODY_REFERENCE_STOP_RE.match(text)
-                        and not CAPTION_RE.match(text)
-                    ):
-                        text = f"{NESTED_HEADING_MARK}{text}"
+                    if not text.startswith(FORMULA_MARK):
+                        style_el = node.find(f"{{{W_NS}}}pPr/{{{W_NS}}}pStyle")
+                        style_val = (
+                            style_el.get(f"{{{W_NS}}}val")
+                            if style_el is not None
+                            else ""
+                        )
+                        outline = node.find(f"{{{W_NS}}}pPr/{{{W_NS}}}outlineLvl")
+                        heading_style = outline is not None or bool(
+                            style_val and HEADING_STYLE_RE.search(style_val)
+                        )
+                        if (
+                            heading_style
+                            and not BODY_HEADING_RE.match(text)
+                            and not BODY_EDITORIAL_SKIP_RE.match(text)
+                            and not BODY_REFERENCE_STOP_RE.match(text)
+                            and not CAPTION_RE.match(text)
+                        ):
+                            text = f"{NESTED_HEADING_MARK}{text}"
                     paragraphs.append(text)
                     last_paragraph = text
                 continue
@@ -941,6 +1487,8 @@ def body_from_docx_upload(uploaded):
             label = f"Table {number}"
             if kind_name.startswith("tabela"):
                 label = f"Tabela {number}"
+            elif kind_name.startswith("tabla"):
+                label = f"Tabla {number}"
             elif kind_name == "quadro":
                 label = f"Quadro {number}"
             headers = rows[0]

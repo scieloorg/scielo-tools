@@ -5,6 +5,7 @@ from django.urls import include, path, reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from wagtail import hooks
+from wagtail.admin.menu import Menu, MenuItem, SubmenuMenuItem
 from wagtail.admin.navigation import get_site_for_user
 from wagtail.admin.site_summary import SummaryItem
 from wagtail.admin.ui.tables import Column
@@ -14,6 +15,7 @@ from wagtail.snippets.views.snippets import CreateView, IndexView, SnippetViewSe
 
 from config.menu import get_menu_order
 from manuscript.forms import ManuscriptAdminForm, ManuscriptCreateForm
+from manuscript.journeys import JOURNEYS
 from manuscript.models import (
     ArticleType,
     Manuscript,
@@ -60,12 +62,12 @@ class ManuscriptCreateView(CreateView):
         if created:
             messages.success(
                 self.request,
-                _("Manuscript “%(title)s” created.") % {"title": manuscript.title},
+                _("Documento “%(title)s” criado.") % {"title": manuscript.title},
             )
         else:
             messages.success(
                 self.request,
-                _("Manuscript “%(title)s” re-marked.") % {"title": manuscript.title},
+                _("Documento “%(title)s” remarcado.") % {"title": manuscript.title},
             )
         return HttpResponseRedirect(
             reverse("manuscript_step_front", args=[manuscript.pk])
@@ -199,7 +201,7 @@ class ManuscriptViewSet(SnippetViewSet):
     add_view_class = ManuscriptCreateView
     icon = "manuscript"
     menu_name = "manuscript"
-    menu_label = _("Manuscripts")
+    menu_label = _("Documentos")
     menu_icon = "manuscript"
     menu_order = get_menu_order("manuscript")
     add_to_admin_menu = True
@@ -262,6 +264,28 @@ def manuscript_admin_js():
     return format_html(
         '<script src="{}" defer></script>',
         static("manuscript/js/wizard.js"),
+    )
+
+
+@hooks.register("register_admin_menu_item")
+def register_journeys_menu_item():
+    menu = Menu(
+        items=[
+            MenuItem(
+                _("Exemplo %(number)s") % {"number": index},
+                reverse("manuscript_journey_detail", args=[journey["slug"]]),
+                name=f"journey-{journey['slug']}",
+                order=index,
+            )
+            for index, journey in enumerate(JOURNEYS, start=1)
+        ]
+    )
+    return SubmenuMenuItem(
+        _("Exemplos de marcação"),
+        menu,
+        name="journeys",
+        icon_name="folder-open-inverse",
+        order=get_menu_order("journeys"),
     )
 
 

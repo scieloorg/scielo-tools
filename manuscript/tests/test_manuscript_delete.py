@@ -12,6 +12,8 @@ from django.urls import reverse
 from wagtail.documents.models import Document
 from wagtail.images import get_image_model
 
+from body.models import Body
+from front.models import Front
 from manuscript.models import (
     Manuscript,
     ManuscriptFigureFile,
@@ -22,6 +24,7 @@ from manuscript.models import (
 )
 from manuscript.services.marking_jobs import enqueue_manuscript_marking
 from manuscript.tests.helpers import attach_manuscript_figure
+from reference.models import ElementCitation, Reference
 from xml_manager.models import SPSPackageValidation, SPSPackageValidationStatus
 
 
@@ -59,12 +62,33 @@ class ManuscriptDeleteCleanupTests(TestCase):
             zip_size_bytes=package.file.size,
             status=SPSPackageValidationStatus.DONE,
         )
+        front_text = "Front source for delete"
+        body_text = "Body source for delete"
+        cited = "Author A. Article."
+        sourced = "Author B. Other. 2021."
+        front = Front.objects.create(source_text=front_text)
+        body = Body.objects.create(source_text=body_text)
+        cited_reference = Reference.objects.create(mixed_citation=cited)
+        sourced_reference = Reference.objects.create(mixed_citation=sourced)
+        cited_element = ElementCitation.objects.create(
+            reference=cited_reference,
+            marked={"reftype": "journal"},
+            marked_xml="<element-citation/>",
+        )
+        sourced_element = ElementCitation.objects.create(
+            reference=sourced_reference,
+            marked={"reftype": "journal"},
+            marked_xml="<element-citation/>",
+        )
         manuscript = Manuscript.objects.create(
             title=title,
             source_document=source,
             sps_package=package,
             validation=validation,
             creator=self.user,
+            front_source_text=front_text,
+            body_source_text=body_text,
+            references_source_text=sourced,
         )
         figure = attach_manuscript_figure(
             manuscript,
@@ -74,7 +98,7 @@ class ManuscriptDeleteCleanupTests(TestCase):
         )
         ManuscriptReference.objects.create(
             manuscript=manuscript,
-            mixed_citation="Author A. Article.",
+            mixed_citation=cited,
             sort_order=0,
         )
         ManuscriptPublication.objects.create(
@@ -96,6 +120,12 @@ class ManuscriptDeleteCleanupTests(TestCase):
             "package_path": package.file.path,
             "csv_path": csv_doc.file.path,
             "exc_path": exc_doc.file.path,
+            "front": front,
+            "body": body,
+            "cited_reference": cited_reference,
+            "sourced_reference": sourced_reference,
+            "cited_element": cited_element,
+            "sourced_element": sourced_element,
         }
 
     def _assert_related_gone(self, payload):
@@ -134,6 +164,24 @@ class ManuscriptDeleteCleanupTests(TestCase):
             payload["exc_path"],
         ):
             self.assertFalse(os.path.exists(path))
+        self.assertFalse(Front.objects.filter(pk=payload["front"].pk).exists())
+        self.assertFalse(Body.objects.filter(pk=payload["body"].pk).exists())
+        self.assertFalse(
+            Reference.objects.filter(
+                pk__in=[
+                    payload["cited_reference"].pk,
+                    payload["sourced_reference"].pk,
+                ]
+            ).exists()
+        )
+        self.assertFalse(
+            ElementCitation.objects.filter(
+                pk__in=[
+                    payload["cited_element"].pk,
+                    payload["sourced_element"].pk,
+                ]
+            ).exists()
+        )
 
     def test_instance_delete_removes_related_records_and_files(self):
         payload = self._create_full_manuscript()
@@ -155,6 +203,90 @@ class ManuscriptDeleteCleanupTests(TestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, 302)
         self._assert_related_gone(payload)
+
+    def _manuscript_with_cache_texts(self, title, front_text, body_text, citation):
+        manuscript = Manuscript.objects.create(
+            title=title,
+            front_source_text=front_text,
+            body_source_text=body_text,
+            references_source_text=citation,
+            creator=self.user,
+        )
+        ManuscriptReference.objects.create(
+            manuscript=manuscript,
+            mixed_citation=citation,
+            sort_order=0,
+        )
+        return manuscript
+
+    def test_shared_marking_cache_is_kept_until_last_manuscript(self):
+        front_text = "Shared front text"
+        body_text = "Shared body text"
+        citation = "Author A. Shared article. 2020."
+        front = Front.objects.create(source_text=front_text)
+        body = Body.objects.create(source_text=body_text)
+        reference = Reference.objects.create(mixed_citation=citation)
+        element = ElementCitation.objects.create(
+            reference=reference,
+            marked={"reftype": "journal"},
+            marked_xml="<element-citation/>",
+        )
+        first = self._manuscript_with_cache_texts(
+            "First shared", front_text, body_text, citation
+        )
+        second = self._manuscript_with_cache_texts(
+            "Second shared", front_text, body_text, citation
+        )
+
+        first.delete()
+
+        self.assertTrue(Front.objects.filter(pk=front.pk).exists())
+        self.assertTrue(Body.objects.filter(pk=body.pk).exists())
+        self.assertTrue(Reference.objects.filter(pk=reference.pk).exists())
+        self.assertTrue(ElementCitation.objects.filter(pk=element.pk).exists())
+        self.assertTrue(Manuscript.objects.filter(pk=second.pk).exists())
+
+        second.delete()
+
+        self.assertFalse(Front.objects.filter(pk=front.pk).exists())
+        self.assertFalse(Body.objects.filter(pk=body.pk).exists())
+        self.assertFalse(Reference.objects.filter(pk=reference.pk).exists())
+        self.assertFalse(ElementCitation.objects.filter(pk=element.pk).exists())
+
+    def test_queryset_delete_removes_shared_marking_cache(self):
+        front_text = "Bulk shared front"
+        body_text = "Bulk shared body"
+        citation = "Author C. Bulk article. 2022."
+        front = Front.objects.create(source_text=front_text)
+        body = Body.objects.create(source_text=body_text)
+        reference = Reference.objects.create(mixed_citation=citation)
+        element = ElementCitation.objects.create(
+            reference=reference,
+            marked={"reftype": "journal"},
+            marked_xml="<element-citation/>",
+        )
+        first = self._manuscript_with_cache_texts(
+            "Bulk first", front_text, body_text, citation
+        )
+        second = self._manuscript_with_cache_texts(
+            "Bulk second", front_text, body_text, citation
+        )
+
+        Manuscript.objects.filter(pk__in=[first.pk, second.pk]).delete()
+
+        self.assertFalse(Front.objects.filter(pk=front.pk).exists())
+        self.assertFalse(Body.objects.filter(pk=body.pk).exists())
+        self.assertFalse(Reference.objects.filter(pk=reference.pk).exists())
+        self.assertFalse(ElementCitation.objects.filter(pk=element.pk).exists())
+
+    def test_unrelated_front_cache_is_kept(self):
+        payload = self._create_full_manuscript()
+        other = Front.objects.create(source_text="Other front text")
+
+        payload["manuscript"].delete()
+
+        self._assert_related_gone(payload)
+        self.assertTrue(Front.objects.filter(pk=other.pk).exists())
 
     def test_shared_source_document_is_kept_until_last_manuscript(self):
         source = _make_document("shared.docx", b"shared")

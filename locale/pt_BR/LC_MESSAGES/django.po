@@ -278,8 +278,8 @@ msgid "Admin settings"
 msgstr "Configurações de administração"
 
 #: core_settings/templates/wagtailadmin/home.html:14
-msgid "Pesquisar por manuscritos, documentos(docx), imagens"
-msgstr ""
+msgid "Pesquisar por documentos, docx, imagens"
+msgstr "Pesquisar por documentos, docx, imagens"
 
 #: core_settings/templates/wagtailadmin/home.html:46
 #, fuzzy
@@ -704,25 +704,28 @@ msgstr "Atualizado por"
 
 #: manuscript/models.py:167 manuscript/models.py:204
 msgid "Manuscript"
-msgstr "Manuscrito"
+msgstr "Documento"
 
 #: manuscript/models.py:168 manuscript/views.py:92
-#: manuscript/wagtail_hooks.py:139
 msgid "Manuscripts"
-msgstr "Manuscritos"
+msgstr "Documentos"
+
+#: manuscript/wagtail_hooks.py
+msgid "Documentos"
+msgstr "Documentos"
 
 msgid "%(total)s Manuscript <span class=\"w-sr-only\">created in %(site_name)s</span>"
 msgid_plural "%(total)s Manuscripts <span class=\"w-sr-only\">created in %(site_name)s</span>"
-msgstr[0] "%(total)s manuscrito <span class=\"w-sr-only\">criado em %(site_name)s</span>"
-msgstr[1] "%(total)s manuscritos <span class=\"w-sr-only\">criados em %(site_name)s</span>"
+msgstr[0] "%(total)s documento <span class=\"w-sr-only\">criado em %(site_name)s</span>"
+msgstr[1] "%(total)s documentos <span class=\"w-sr-only\">criados em %(site_name)s</span>"
 
 #: manuscript/models.py:195
 msgid "Manuscript reference"
-msgstr "Referência do manuscrito"
+msgstr "Referência do documento"
 
 #: manuscript/models.py:196
 msgid "Manuscript references"
-msgstr "Referências do manuscrito"
+msgstr "Referências do documento"
 
 #: manuscript/models.py:206
 msgid "External ID"
@@ -738,11 +741,11 @@ msgstr "Publicado em"
 
 #: manuscript/models.py:212
 msgid "Manuscript publication"
-msgstr "Publicação do manuscrito"
+msgstr "Publicação do documento"
 
 #: manuscript/models.py:213
 msgid "Manuscript publications"
-msgstr "Publicações do manuscrito"
+msgstr "Publicações do documento"
 
 #: manuscript/preview.py:19
 msgid "No front markup yet."
@@ -867,7 +870,7 @@ msgstr "Não é possível marcar como pronto no status atual"
 #: manuscript/templates/wagtailadmin/manuscript/create.html:10
 #: manuscript/templates/wagtailadmin/manuscript/create.html:17
 msgid "Create manuscript"
-msgstr "Criar manuscrito"
+msgstr "Criar documento"
 
 #: manuscript/templates/wagtailadmin/manuscript/step_back.html:23
 msgid "References source"
@@ -1067,7 +1070,7 @@ msgid "Open marking"
 msgstr "Abrir marcação"
 
 msgid "Go to manuscripts list"
-msgstr "Ir para a lista de manuscritos"
+msgstr "Ir para a lista de documentos"
 
 #: manuscript/views.py:118
 msgid "Front source saved."
@@ -1136,12 +1139,12 @@ msgstr "JSON inválido"
 #: manuscript/wagtail_hooks.py:64
 #, python-format
 msgid "Manuscript “%(title)s” created."
-msgstr "Manuscrito “%(title)s” criado."
+msgstr "Documento “%(title)s” criado."
 
 #: manuscript/wagtail_hooks.py
 #, python-format
 msgid "Manuscript “%(title)s” re-marked."
-msgstr "Manuscrito “%(title)s” remarcado."
+msgstr "Documento “%(title)s” remarcado."
 
 #: manuscript/wagtail_hooks.py:187
 msgid "Continue marking"

@@ -61,6 +61,38 @@ def test_extract_references_section(text, expected):
     assert extract_references_section(text) == expected
 
 
+def test_extract_references_section_without_heading():
+    text = (
+        "Title\nAbstract: Short abstract.\nKeywords: palms.\n"
+        "The high species diversity of the Amazon is known.\n"
+        "Ab'Saber, A. N. (2003). Os dominios. Atelie.\n"
+        "Alvares, C. A. (2013a). Modeling temperature. Theoretical.\n"
+        "Anderson, J. M. (1993). Tropical soil biology. CAB.\n"
+        "Received: 05/08/2025\n"
+        "Figure 1. Map of the area.\n"
+    )
+    assert extract_references_section(text) == (
+        "Ab'Saber, A. N. (2003). Os dominios. Atelie.\n"
+        "Alvares, C. A. (2013a). Modeling temperature. Theoretical.\n"
+        "Anderson, J. M. (1993). Tropical soil biology. CAB."
+    )
+
+
+def test_extract_references_section_numbered_without_heading():
+    text = (
+        "Title\nKeywords: k.\nBody text here.\n"
+        "1. Smith J. Safety of the elderly. 2020.\n"
+        "2. Orem DE. Self-care. 2006.\n"
+        "3. Teixeira F. Indicadores. 2019.\n"
+        "Received: 01/01/2024\n"
+    )
+    assert extract_references_section(text) == (
+        "1. Smith J. Safety of the elderly. 2020.\n"
+        "2. Orem DE. Self-care. 2006.\n"
+        "3. Teixeira F. Indicadores. 2019."
+    )
+
+
 @pytest.mark.django_db
 def test_api_docx_marks_references(monkeypatch):
     monkeypatch.setattr(

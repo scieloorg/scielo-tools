@@ -48,7 +48,7 @@ CORRESPONDENCE_HEADING_RE = re.compile(
     r"^(?:\d+[.\)]\s*)?(?:"
     r"correspondence\s+to|"
     r"correspond[eê]ncia(?:\s+(?:para|a))?"
-    r")\s*:?\s*$",
+    r")\s*:?\s*(.*)$",
     re.IGNORECASE,
 )
 ASSOCIATE_EDITOR_INLINE_RE = re.compile(
@@ -132,6 +132,25 @@ NEW_REF_RE = re.compile(
     r"^(?:(?:da|de|do|dos|das|del|van|von)\s+)?[A-ZÀ-Ý]",
 )
 REF_CONTINUATION_RE = re.compile(r"^(?:https?://|www\.|doi:|10\.\d{4,})")
+FRONT_MATTER_LABEL_RE = re.compile(
+    r"^(?:abstract|resumo|resumen|"
+    r"keywords|key\s*words|"
+    r"palavras-chave|palavras\s+chave|"
+    r"palabras-clave|palabras\s+clave|"
+    r"descritores)\b",
+    re.IGNORECASE,
+)
+FRONT_MATTER_LABEL_ONLY_RE = re.compile(
+    r"^(?:abstract|resumo|resumen|"
+    r"keywords|key\s*words|"
+    r"palavras-chave|palavras\s+chave|"
+    r"palabras-clave|palabras\s+clave|"
+    r"descritores)\s*:?\s*$",
+    re.IGNORECASE,
+)
+APA_REFERENCE_YEAR_RE = re.compile(r"\((?:1[6-9]|20)\d{2}[a-z]?\)\s*\.")
+NUMBERED_REFERENCE_LINE_RE = re.compile(r"^\d{1,3}\s*[\.\)]\s+\S")
+REFERENCE_YEAR_TOKEN_RE = re.compile(r"\b(?:1[6-9]|20)\d{2}[a-z]?\b")
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 M_NS = "http://schemas.openxmlformats.org/officeDocument/2006/math"
@@ -142,6 +161,119 @@ FRONT_CHAR_LIMIT = 12000
 
 def normalize_front_text(value):
     return re.sub(r"\s+", " ", str(value or "").strip().lower())
+
+
+def front_matter_end_index(lines):
+    last = None
+    for index, line in enumerate(lines):
+        if FRONT_MATTER_LABEL_RE.match(str(line).strip()):
+            last = index
+    if last is None:
+        return None
+    if FRONT_MATTER_LABEL_ONLY_RE.match(str(lines[last]).strip()):
+        for index in range(last + 1, len(lines)):
+            if str(lines[index]).strip():
+                return index
+    return last
+
+
+def reference_run_start_index(lines, search_from=0):
+    run = 0
+    run_start = None
+    begin = max(0, int(search_from or 0))
+    for index in range(begin, len(lines)):
+        text = str(lines[index]).strip()
+        if not text:
+            continue
+        numbered = bool(
+            NUMBERED_REFERENCE_LINE_RE.match(text)
+            and REFERENCE_YEAR_TOKEN_RE.search(text)
+        )
+        if APA_REFERENCE_YEAR_RE.search(text) or numbered:
+            if run == 0:
+                run_start = index
+            run += 1
+            if run >= 3:
+                return run_start
+            continue
+        run = 0
+        run_start = None
+    return None
+
+
+_CONTRIBUTION_LINE_RE = re.compile(
+    r":\s*.*(?:study design|data analysis|field data|manuscript\s+revision|"
+    r"manuscript\s+writing|initial draft|coleta de dados|an[aá]lise de dados|"
+    r"reda[cç][aã]o do manuscrito)",
+    re.IGNORECASE,
+)
+_CONFLICT_LINE_RE = re.compile(
+    r"conflict of interest|conflito de interesses|no conflict of interest",
+    re.IGNORECASE,
+)
+_ETHICS_LINE_RE = re.compile(
+    r"did not involve human|n[aã]o envolveu seres humanos|"
+    r"comit[eê] de [eé]tica|institutional committee|ethics committee",
+    re.IGNORECASE,
+)
+_ACK_LINE_RE = re.compile(
+    r"would like to (?:express|thank)|agradec(?:emos|imentos?|imento)|"
+    r"financial support for the field|apoio financeiro",
+    re.IGNORECASE,
+)
+_DATA_LINE_RE = re.compile(
+    r"datasets generated|dados gerados|data availability|"
+    r"disponibilidade de dados",
+    re.IGNORECASE,
+)
+_PERSON_NAME_RE = re.compile(
+    r"[A-ZÀ-Ý][\w.'’-]{1,30}(?:\s+[A-ZÀ-Ý][\w.'’-]{1,30}){1,3}"
+)
+
+
+def back_matter_lines(lines, boundary):
+    if boundary is None:
+        return [], []
+    move = []
+    copy = []
+    seen_move = False
+    steps = 0
+    index = int(boundary) - 1
+    while index >= 0 and steps < 40:
+        text = str(lines[index]).strip()
+        if not text:
+            index -= 1
+            continue
+        steps += 1
+        if _DATA_LINE_RE.search(text):
+            kind = "keep"
+        elif _ACK_LINE_RE.search(text):
+            kind = "copy"
+        elif (
+            _CONTRIBUTION_LINE_RE.search(text)
+            or _CONFLICT_LINE_RE.search(text)
+            or _ETHICS_LINE_RE.search(text)
+        ):
+            kind = "move"
+        elif _PERSON_NAME_RE.fullmatch(text):
+            kind = "name"
+        else:
+            kind = "stop"
+        if kind == "move":
+            move.append(index)
+            seen_move = True
+        elif kind == "copy":
+            copy.append(index)
+        elif kind == "name" and seen_move:
+            move.append(index)
+        elif kind == "keep":
+            pass
+        else:
+            break
+        index -= 1
+    move.reverse()
+    copy.reverse()
+    return move, copy
 
 
 def read_docx_document(docx_path):
@@ -194,6 +326,9 @@ def document_counts(text, xml_root=None):
     for index, line in enumerate(lines):
         if REFERENCE_HEADING_RE.match(line):
             start = index + 1
+            break
+    if start is None:
+        start = reference_run_start_index(lines)
     n_refs = 0
     if start is not None:
         block = []
@@ -202,6 +337,8 @@ def document_counts(text, xml_root=None):
                 COUNTS_STOP_RE.match(line)
                 or FIGURE_CAPTION_RE.match(line)
                 or TABLE_CAPTION_RE.match(line)
+                or HISTORY_LINE_RE.match(line)
+                or PUBLICATION_HISTORY_RE.match(line)
             ):
                 break
             block.append(line)
@@ -233,6 +370,7 @@ def extract_front_section(text):
         if BODY_HEADING_RE.match(line.strip()):
             cut = index
             break
+    matter_end = None if cut is not None else front_matter_end_index(lines)
     selected = lines[:cut] if cut is not None else lines
     if cut is not None:
         extras = []
@@ -308,8 +446,20 @@ def extract_front_section(text):
                 extras.append(stripped)
             index += 1
         selected = list(selected) + extras
+    elif matter_end is not None:
+        selected = lines[: matter_end + 1]
+        ref_start = reference_run_start_index(lines, matter_end + 1)
+        move_idx, copy_idx = back_matter_lines(lines, ref_start)
+        for index in sorted(set(move_idx) | set(copy_idx)):
+            selected.append(lines[index])
+        for line in lines[matter_end + 1 :]:
+            stripped = line.strip()
+            if HISTORY_LINE_RE.match(stripped) or PUBLICATION_HISTORY_RE.match(
+                stripped
+            ):
+                selected.append(stripped)
     result = "\n".join(line.strip() for line in selected if line.strip())
-    if cut is None:
+    if cut is None and matter_end is None:
         result = result[:FRONT_CHAR_LIMIT]
     return result
 

@@ -4,7 +4,7 @@
 {% block titletag %}{% trans "Search" %}{% endblock %}
 
 {% block content %}
-    {% trans "Pesquisar por manuscritos, documentos(docx), imagens" as search_placeholder %}
+    {% trans "Pesquisar por documentos, docx, imagens" as search_placeholder %}
     <div class="w-dashboard w-px-6 sm:w-px-[3.75rem] w-mt-16 sm:w-mt-10 lg:w-mt-[3.75rem]">
         <header class="w-flex w-flex-col">
             <h1 class="w-h1 w-mt-0">{% trans "Search" %}</h1>
@@ -38,7 +38,7 @@
         {% if query %}
             {% if show_manuscripts %}
                 <section class="w-mb-12">
-                    <h2 class="w-h2">{% trans "Manuscripts" %} ({{ manuscripts|length }})</h2>
+                    <h2 class="w-h2">{% trans "Documentos" %} ({{ manuscripts|length }})</h2>
                     <table class="listing">
                         <tbody>
                             {% for item in manuscripts %}
@@ -52,7 +52,7 @@
                                 </tr>
                             {% empty %}
                                 <tr>
-                                    <td>{% trans "No manuscripts found." %}</td>
+                                    <td>{% trans "Nenhum documento encontrado." %}</td>
                                 </tr>
                             {% endfor %}
                         </tbody>

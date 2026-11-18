@@ -1,4 +1,5 @@
 import copy
+import html
 import json
 import logging
 import re
@@ -12,6 +13,9 @@ from body.marking import mark_body
 from body.models import Body
 from body.utils import (
     ACK_SECTION_RE,
+    FORMULA_LINE_RE,
+    FORMULA_MARK,
+    INLINE_FORMULA_RE,
     apply_body_rules,
     body_checksum,
     normalize_body_text,
@@ -176,10 +180,30 @@ def append_xref(parent, xref, display=None):
     return el
 
 
+def append_math(parent, block):
+    mathml = str(block.get("mathml") or "").strip()
+    parsed = None
+    if mathml:
+        try:
+            parsed = etree.fromstring(mathml)
+        except etree.XMLSyntaxError:
+            parsed = None
+    if parsed is not None:
+        parent.append(parsed)
+        return
+    text = str(block.get("text") or "").strip()
+    if text:
+        tex = etree.SubElement(parent, "tex-math")
+        tex.text = text
+
+
 def append_paragraph(parent, block):
     p_el = etree.SubElement(parent, "p")
     text = str(block.get("text") or "")
     xrefs = [item for item in (block.get("xrefs") or []) if isinstance(item, dict)]
+    formulas = [
+        item for item in (block.get("formulas") or []) if isinstance(item, dict)
+    ]
     events = []
     for index, xref in enumerate(xrefs):
         needle = str(xref.get("text") or "").strip()
@@ -190,30 +214,49 @@ def append_paragraph(parent, block):
             pos = text.find(needle, start)
             if pos < 0:
                 break
-            events.append((pos, pos + len(needle), index, xref, needle))
+            events.append((pos, pos + len(needle), ("xref", index), xref, needle))
+            start = pos + len(needle)
+    for index, formula in enumerate(formulas):
+        fid = str(formula.get("id") or "").strip()
+        if not fid:
+            continue
+        needle = f"{FORMULA_MARK}{fid}{FORMULA_MARK}"
+        start = 0
+        while True:
+            pos = text.find(needle, start)
+            if pos < 0:
+                break
+            events.append((pos, pos + len(needle), ("formula", index), formula, needle))
             start = pos + len(needle)
     events.sort(key=lambda item: (item[0], item[1], item[2]))
     filtered = []
     last_end = 0
     claimed = set()
-    for pos, end, index, xref, needle in events:
-        if pos < last_end or index in claimed:
+    for pos, end, key, payload, needle in events:
+        if pos < last_end or key in claimed:
             continue
-        filtered.append((pos, end, index, xref, needle))
-        claimed.add(index)
+        filtered.append((pos, end, key, payload, needle))
+        claimed.add(key)
         last_end = end
     if not filtered:
         p_el.text = text
         return
     cursor = 0
     last_el = None
-    for start, end, _index, xref, needle in filtered:
+    for start, end, key, payload, needle in filtered:
         chunk = text[cursor:start]
         if last_el is None:
             p_el.text = chunk
         else:
             last_el.tail = (last_el.tail or "") + chunk
-        last_el = append_xref(p_el, xref, needle)
+        if key[0] == "formula":
+            last_el = etree.SubElement(p_el, "inline-formula")
+            fid = str(payload.get("id") or "").strip()
+            if fid:
+                last_el.set("id", fid)
+            append_math(last_el, payload)
+        else:
+            last_el = append_xref(p_el, payload, needle)
         cursor = end
     tail = text[cursor:]
     if last_el is None:
@@ -270,6 +313,9 @@ def append_fig(parent, block, counters):
         title_el.text = caption
     href = str(block.get("href") or "").strip()
     alt_text = str(block.get("alt_text") or "").strip()
+    if not alt_text:
+        fig_id = str(fig.get("id") or "figure").strip()
+        alt_text = f"Graphic {fig_id}"
     if not href:
         digits = re.search(r"(\d+)", fig.get("id") or "")
         href = f"fig-{digits.group(1)}.jpg" if digits else "fig-1.jpg"
@@ -370,10 +416,7 @@ def append_block(parent, block, counters):
         if label:
             lab = etree.SubElement(formula, "label")
             lab.text = label
-        text = str(block.get("text") or "").strip()
-        if text:
-            tex = etree.SubElement(formula, "tex-math")
-            tex.text = text
+        append_math(formula, block)
     elif kind == "media":
         media = etree.SubElement(parent, "media")
         media.set("id", take_id(counters, "media", block.get("id")))
@@ -555,6 +598,105 @@ def body_section_kind(section):
     return "regular"
 
 
+def math_element(payload):
+    payload = str(payload or "").strip()
+    candidates = [payload]
+    if payload.startswith("&lt;") or payload.startswith("&amp;lt;"):
+        candidates.append(html.unescape(payload))
+    repaired = re.sub(r"<(?![A-Za-z/!?])", "&lt;", payload)
+    if repaired != payload:
+        candidates.append(repaired)
+    seen = set()
+    for candidate in candidates:
+        if candidate in seen or not candidate.startswith("<"):
+            continue
+        seen.add(candidate)
+        parsed = None
+        try:
+            parsed = etree.fromstring(candidate)
+        except etree.XMLSyntaxError:
+            parsed = None
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def promote_encoded_formulas(root):
+    if root is None:
+        return root
+    for paragraph in list(root.iter("p")):
+        text = paragraph.text or ""
+        parent = paragraph.getparent()
+        if parent is None:
+            continue
+        display = None if list(paragraph) else FORMULA_LINE_RE.match(text.strip())
+        if display:
+            kind, fid, label, payload = display.groups()
+            formula = etree.Element("disp-formula")
+            formula.set("id", fid)
+            label = label.strip()
+            if label:
+                lab = etree.SubElement(formula, "label")
+                lab.text = label
+            parsed = math_element(payload) if kind == "d" else None
+            if parsed is not None:
+                formula.append(parsed)
+            elif payload.strip() and parsed is None and kind != "d":
+                tex = etree.SubElement(formula, "tex-math")
+                tex.text = payload.strip()
+            parent.replace(paragraph, formula)
+            continue
+        pieces = [text]
+        pieces.extend(child.tail or "" for child in paragraph)
+        if not any(INLINE_FORMULA_RE.search(piece) for piece in pieces):
+            continue
+        built = etree.Element("p")
+        for key, value in paragraph.attrib.items():
+            built.set(key, value)
+        sequence = [("text", text)]
+        for child in list(paragraph):
+            sequence.append(("el", child))
+            sequence.append(("text", child.tail or ""))
+            child.tail = None
+        last = None
+        for kind, value in sequence:
+            if kind == "el":
+                built.append(value)
+                last = value
+                continue
+            cursor = 0
+            for match in INLINE_FORMULA_RE.finditer(value):
+                chunk = value[cursor : match.start()]
+                if last is None:
+                    built.text = (built.text or "") + chunk
+                else:
+                    last.tail = (last.tail or "") + chunk
+                fid, payload = match.group(1), match.group(2)
+                last = etree.SubElement(built, "inline-formula")
+                if fid:
+                    last.set("id", fid)
+                parsed = math_element(payload)
+                if parsed is not None:
+                    last.append(parsed)
+                elif payload.strip() and not payload.strip().startswith(("<", "&lt;")):
+                    tex = etree.SubElement(last, "tex-math")
+                    tex.text = payload.strip()
+                cursor = match.end()
+            rest = value[cursor:]
+            if last is None:
+                built.text = (built.text or "") + rest
+            else:
+                last.tail = (last.tail or "") + rest
+        parent.replace(paragraph, built)
+    for tex in list(root.iter("tex-math")):
+        parsed = math_element(tex.text or "")
+        parent = tex.getparent()
+        if parsed is None or parent is None:
+            continue
+        parent.replace(tex, parsed)
+    return root
+
+
 def get_body_xml(data):
     marked = data if isinstance(data, dict) else {}
     body = etree.Element("body", nsmap={"xlink": XLINK_NS})
@@ -581,6 +723,7 @@ def get_body_xml(data):
         append_sec(body, section, counters, first_level=True)
     for section in supplementary:
         append_sec(body, section, counters, first_level=True)
+    promote_encoded_formulas(body)
     return etree.tostring(body, pretty_print=True, encoding="unicode")
 
 

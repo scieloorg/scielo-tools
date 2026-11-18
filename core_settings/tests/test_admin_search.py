@@ -39,12 +39,12 @@ class AdminSearchTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(
             response,
-            'placeholder="Pesquisar por manuscritos, documentos(docx), imagens"',
+            'placeholder="Pesquisar por documentos, docx, imagens"',
         )
         self.assertContains(response, f'action="{self.search_url}"')
         self.assertNotContains(response, manuscript.title)
-        self.assertNotContains(response, "Manuscripts (")
-        self.assertNotContains(response, "No manuscripts found.")
+        self.assertNotContains(response, "Documentos (")
+        self.assertNotContains(response, "Nenhum documento encontrado.")
 
     def test_search_returns_manuscripts_images_and_documents_only(self):
         term = "UniqueSearchTerm"
@@ -111,10 +111,10 @@ class AdminSearchTests(TestCase):
         Manuscript.objects.create(title="Other manuscript")
         response = self.client.get(self.search_url, {"q": "zzznomatch"})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Manuscripts (0)")
+        self.assertContains(response, "Documentos (0)")
         self.assertContains(response, "Images (0)")
         self.assertContains(response, "Documents (0)")
-        self.assertContains(response, "No manuscripts found.")
+        self.assertContains(response, "Nenhum documento encontrado.")
         self.assertContains(response, "No images found.")
         self.assertContains(response, "No documents found.")
         self.assertNotContains(response, "Other manuscript")

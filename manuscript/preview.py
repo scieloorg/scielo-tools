@@ -9,6 +9,7 @@ from django.utils.translation import gettext
 from lxml import etree
 from lxml import html as lhtml
 
+from body.data_utils import promote_encoded_formulas
 from packtools import HTMLGenerator
 
 logger = logging.getLogger(__name__)
@@ -252,6 +253,15 @@ def render_front_preview(marked_xml):
     return _join_html(parts)
 
 
+def _html_math(math):
+    clone = etree.fromstring(etree.tostring(math))
+    for node in clone.iter():
+        if isinstance(node.tag, str) and "}" in node.tag:
+            node.tag = node.tag.split("}", 1)[1]
+    etree.cleanup_namespaces(clone)
+    return etree.tostring(clone, encoding="unicode", method="html")
+
+
 def render_body_preview(marked_xml, figure_urls=None):
     if not (marked_xml or "").strip():
         return format_html(
@@ -263,6 +273,7 @@ def render_body_preview(marked_xml, figure_urls=None):
         return format_html(
             "<p class='alert alert-danger'>{}</p>", gettext("Invalid body XML.")
         )
+    promote_encoded_formulas(root)
     parts = []
     for sec in root.findall(".//sec"):
         title = _text(sec.find("title"))
@@ -271,7 +282,31 @@ def render_body_preview(marked_xml, figure_urls=None):
             parts.append(format_html("<h2 class='articleSectionTitle'>{}</h2>", title))
         for child in sec:
             if child.tag == "p":
-                parts.append(format_html("<p class='paragraph'>{}</p>", _text(child)))
+                chunks = [html.escape(child.text or "")]
+                for node in child:
+                    math = node.find("{http://www.w3.org/1998/Math/MathML}math")
+                    if node.tag in ("inline-formula", "disp-formula") and (
+                        math is not None
+                    ):
+                        chunks.append(_html_math(math))
+                    else:
+                        chunks.append(html.escape(_text(node)))
+                    chunks.append(html.escape(node.tail or ""))
+                parts.append(
+                    _static_html("<p class='paragraph'>" + "".join(chunks) + "</p>")
+                )
+            elif child.tag == "disp-formula":
+                math = child.find("{http://www.w3.org/1998/Math/MathML}math")
+                label = html.escape(_text(child.find("label")))
+                math_html = (
+                    _html_math(math) if math is not None else html.escape(_text(child))
+                )
+                parts.append(
+                    _static_html(
+                        "<div class='formula-container'>"
+                        f"<span class='label'>{label}</span>{math_html}</div>"
+                    )
+                )
             elif child.tag in ("fig", "fig-group"):
                 figs = [child] if child.tag == "fig" else child.findall("fig")
                 for fig in figs:
@@ -524,6 +559,7 @@ def render_article_preview_packtools(assembled_xml, language=None):
         root = etree.fromstring(stripped.encode("utf-8"))
     except etree.XMLSyntaxError as exc:
         raise ManuscriptPreviewError("invalid xml") from exc
+    promote_encoded_formulas(root)
     lang = _article_language(assembled_xml, language)
     tree = etree.ElementTree(root)
     try:

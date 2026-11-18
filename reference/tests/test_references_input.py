@@ -218,6 +218,29 @@ def test_resolve_reference_result_enriches_cached_num():
 
 
 @pytest.mark.django_db
+def test_resolve_reference_result_fills_reference_without_element(monkeypatch):
+    citation = "Besouro Fernanda. Cadernos do Pilão. 2003;41(7):301-309."
+    Reference.objects.create(
+        mixed_citation=citation,
+        status=ReferenceStatus.CREATING,
+    )
+    monkeypatch.setattr(
+        "reference.data_utils.mark_reference",
+        lambda _text: iter(
+            [json.dumps({"reftype": "journal", "title": "Perda de água"})]
+        ),
+    )
+
+    result = resolve_reference_result(citation, output_type="json")
+
+    assert result is not None
+    assert result["data"]["reftype"] == "journal"
+    stored = Reference.objects.get(mixed_citation=citation)
+    assert stored.status == ReferenceStatus.READY
+    assert stored.element_citation.count() == 1
+
+
+@pytest.mark.django_db
 def test_resolve_reference_result_reuses_existing_reference():
     reference = Reference.objects.create(
         mixed_citation="Smith J. Nature. 2024.",

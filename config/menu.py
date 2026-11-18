@@ -4,6 +4,7 @@ WAGTAIL_MENU_GROUPS_ORDER = [
     "images",
     "documents",
     "celery_wagtail",
+    "journeys",
 ]
 
 

@@ -56,6 +56,11 @@ class GenerateXmlSpsTests(TestCase):
         self.assertIn("Sample title", xml)
         self.assertIn("Body paragraph.", xml)
         self.assertIn('specific-use="sps-1.10"', xml)
+        self.assertIn(
+            '<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal '
+            'Publishing DTD v1.1 20151215//EN" "JATS-journalpublishing1.dtd">',
+            xml,
+        )
 
     def test_generate_xml_sps_uses_keyword_language_when_configured_lang_is_translation(
         self,

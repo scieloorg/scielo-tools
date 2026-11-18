@@ -1,6 +1,7 @@
 from lxml import etree
 
-from body.data_utils import get_body_xml, parse_marked
+from body.data_utils import get_body_xml, parse_marked, promote_encoded_formulas
+from body.utils import FORMULA_MARK, expand_encoded_formulas
 
 SPS_BODY_TAGS = {
     "body",
@@ -471,6 +472,142 @@ def test_apply_body_rules_adds_fig_table_and_cites():
     assert wrap["rows"] == [["Arecaceae"]]
 
 
+def test_apply_body_rules_places_spanish_tabla_with_fuente():
+    from body.utils import apply_body_rules
+
+    source = "\n".join(
+        [
+            "Introducción",
+            "El portal presenta una usabilidad óptima (ver tabla 1).",
+            "Tabla 1. Confianza en shopDisney.es, dimensión Diseño y Navegación",
+            "Fuente: elaboración propia.",
+        ]
+    )
+    marked = apply_body_rules(
+        {
+            "sections": [
+                {
+                    "title": "Introducción",
+                    "sec_type": "intro",
+                    "content": [
+                        {
+                            "type": "p",
+                            "text": (
+                                "El portal presenta una usabilidad óptima "
+                                "(ver tabla 1)."
+                            ),
+                        }
+                    ],
+                    "sections": [],
+                }
+            ]
+        },
+        source,
+        tables=[
+            {
+                "number": "1",
+                "label": "Tabla 1",
+                "caption": (
+                    "Confianza en shopDisney.es, dimensión Diseño y Navegación"
+                ),
+                "headers": ["Indicadores", "Sí", "No"],
+                "rows": [["Protocolo seguro", "https", ""]],
+            }
+        ],
+    )
+    content = marked["sections"][0]["content"]
+    xref = content[0]["xrefs"][0]
+    assert xref["ref_type"] == "table"
+    assert xref["rid"] == "t1"
+    assert xref["text"] == "tabla 1"
+    wrap = content[1]
+    assert wrap["type"] == "table-wrap"
+    assert wrap["label"] == "Tabla 1"
+    assert (
+        wrap["caption"] == "Confianza en shopDisney.es, dimensión Diseño y Navegación"
+    )
+    assert wrap["attrib"] == "elaboración propia."
+    assert wrap["headers"] == ["Indicadores", "Sí", "No"]
+    assert wrap["rows"] == [["Protocolo seguro", "https", ""]]
+    xml = get_body_xml(marked)
+    root = etree.fromstring(xml.encode("utf-8"))
+    label = root.find(".//table-wrap/label")
+    attrib = root.find(".//table-wrap/attrib")
+    assert label.text == "Tabla 1"
+    assert attrib.text == "elaboración propia."
+    assert root.find(".//xref[@ref-type='table']").get("rid") == "t1"
+
+
+def test_apply_body_rules_puts_table_wrap_where_the_label_is():
+    from body.utils import apply_body_rules
+
+    source = "\n".join(
+        [
+            "Metodología",
+            "Texto antes da tabela.",
+            "Tabla 1. Confianza en shopDisney.es, dimensión Diseño y Navegación",
+            "Fuente: elaboración propia.",
+            "Texto depois da tabela.",
+        ]
+    )
+    marked = apply_body_rules(
+        {
+            "sections": [
+                {
+                    "title": "Metodología",
+                    "sec_type": "methods",
+                    "content": [
+                        {"type": "p", "text": "Texto antes da tabela."},
+                        {
+                            "type": "p",
+                            "text": (
+                                "Tabla 1. Confianza en shopDisney.es, "
+                                "dimensión Diseño y Navegación"
+                            ),
+                        },
+                        {"type": "p", "text": "Fuente: elaboración propia."},
+                        {"type": "p", "text": "Texto depois da tabela."},
+                        {
+                            "type": "table-wrap",
+                            "id": "t1",
+                            "label": "Table 1",
+                            "caption": "",
+                            "headers": ["Indicadores", "Sí", "No"],
+                            "rows": [["Protocolo seguro", "https", ""]],
+                        },
+                    ],
+                    "sections": [],
+                }
+            ]
+        },
+        source,
+        tables=[
+            {
+                "number": "1",
+                "label": "Tabla 1",
+                "caption": (
+                    "Confianza en shopDisney.es, dimensión Diseño y Navegación"
+                ),
+                "headers": ["Indicadores", "Sí", "No"],
+                "rows": [["Protocolo seguro", "https", ""]],
+            }
+        ],
+    )
+    content = marked["sections"][0]["content"]
+    assert [block["type"] for block in content] == ["p", "table-wrap", "p"]
+    assert content[0]["text"] == "Texto antes da tabela."
+    assert content[2]["text"] == "Texto depois da tabela."
+    wrap = content[1]
+    assert wrap["id"] == "t1"
+    assert wrap["label"] == "Tabla 1"
+    assert (
+        wrap["caption"] == "Confianza en shopDisney.es, dimensión Diseño y Navegación"
+    )
+    assert wrap["attrib"] == "elaboración propia."
+    assert wrap["headers"] == ["Indicadores", "Sí", "No"]
+    assert wrap["rows"] == [["Protocolo seguro", "https", ""]]
+
+
 def test_apply_body_rules_two_table_mentions_become_two_xrefs():
     from body.utils import apply_body_rules
 
@@ -709,3 +846,106 @@ def test_get_body_xml_sec_type_from_material_and_methods_title():
     )
     root = etree.fromstring(xml.encode("utf-8"))
     assert root.find("sec").get("sec-type") == "materials|methods"
+
+
+def test_encoded_formula_paragraph_becomes_mathml():
+    math = (
+        '<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="m1">'
+        "<mml:mi>a</mml:mi></mml:math>"
+    )
+    line = f"{FORMULA_MARK}d{FORMULA_MARK}e1{FORMULA_MARK}(1){FORMULA_MARK}{math}"
+    inline = (
+        f"that is, {FORMULA_MARK}i{FORMULA_MARK}e4{FORMULA_MARK}{math}{FORMULA_MARK}."
+    )
+    marked = expand_encoded_formulas(
+        {
+            "sections": [
+                {
+                    "title": "Results",
+                    "content": [
+                        {"type": "p", "text": line},
+                        {"type": "p", "text": inline},
+                    ],
+                }
+            ]
+        }
+    )
+    content = marked["sections"][0]["content"]
+    assert content[0]["type"] == "disp-formula"
+    assert content[0]["id"] == "e1"
+    assert content[0]["label"] == "(1)"
+    assert content[1]["formulas"][0]["id"] == "e4"
+    assert content[1]["text"] == f"that is, {FORMULA_MARK}e4{FORMULA_MARK}."
+    assert "mml:math" not in content[1]["text"]
+    xml = get_body_xml(marked)
+    root = etree.fromstring(xml.encode("utf-8"))
+    assert root.find(".//disp-formula").get("id") == "e1"
+    assert root.find(".//disp-formula/label").text == "(1)"
+    assert root.find(".//{http://www.w3.org/1998/Math/MathML}mi").text == "a"
+    assert root.find(".//inline-formula").get("id") == "e4"
+    assert FORMULA_MARK not in xml
+    stored = (
+        "<body><sec><title>Results</title>"
+        f"<p>{line.replace('<', '&lt;').replace('>', '&gt;')}</p>"
+        "</sec></body>"
+    )
+    repaired = promote_encoded_formulas(etree.fromstring(stored.encode("utf-8")))
+    formula = repaired.find(".//disp-formula")
+    assert formula.get("id") == "e1"
+    assert formula.find(".//{http://www.w3.org/1998/Math/MathML}mi").text == "a"
+    assert repaired.find(".//p") is None
+
+
+def test_promote_keeps_less_than_operator_in_second_formula():
+    math = etree.Element("{http://www.w3.org/1998/Math/MathML}math")
+    math.set("id", "m2")
+    mo = etree.SubElement(math, "{http://www.w3.org/1998/Math/MathML}mo")
+    mo.text = "<"
+    payload = etree.tostring(math, encoding="unicode")
+    line = f"{FORMULA_MARK}d{FORMULA_MARK}e2{FORMULA_MARK}(2){FORMULA_MARK}{payload}"
+    body = etree.Element("body")
+    paragraph = etree.SubElement(body, "p")
+    paragraph.text = line
+    repaired = promote_encoded_formulas(
+        etree.fromstring(etree.tostring(body, encoding="unicode").encode("utf-8"))
+    )
+    formula = repaired.find("disp-formula")
+    assert formula.get("id") == "e2"
+    assert formula.find("tex-math") is None
+    assert formula.find(".//{http://www.w3.org/1998/Math/MathML}mo").text == "<"
+    broken = etree.Element("disp-formula")
+    broken.set("id", "e2")
+    tex = etree.SubElement(broken, "tex-math")
+    tex.text = payload.replace("&lt;", "<")
+    host = etree.Element("body")
+    host.append(broken)
+    fixed = promote_encoded_formulas(
+        etree.fromstring(etree.tostring(host, encoding="unicode").encode("utf-8"))
+    )
+    assert fixed.find(".//tex-math") is None
+    assert fixed.find(".//{http://www.w3.org/1998/Math/MathML}mo").text == "<"
+
+
+def test_promote_inline_formula_after_xref():
+    math = (
+        '<mml:math xmlns:mml="http://www.w3.org/1998/Math/MathML" id="m5">'
+        "<mml:mi>e</mml:mi></mml:math>"
+    )
+    token = f"{FORMULA_MARK}i{FORMULA_MARK}e5{FORMULA_MARK}{math}{FORMULA_MARK}"
+    body = etree.Element("body")
+    paragraph = etree.SubElement(body, "p")
+    paragraph.text = "resident of district "
+    xref = etree.SubElement(paragraph, "xref")
+    xref.set("ref-type", "bibr")
+    xref.text = "see Bergstrom 1995"
+    xref.tail = f" or district {token}. precisely {token}, the role"
+    repaired = promote_encoded_formulas(
+        etree.fromstring(etree.tostring(body, encoding="unicode").encode("utf-8"))
+    )
+    paragraph = repaired.find("p")
+    formulas = paragraph.findall("inline-formula")
+    assert [item.get("id") for item in formulas] == ["e5", "e5"]
+    assert paragraph.find("xref").text == "see Bergstrom 1995"
+    assert FORMULA_MARK not in "".join(paragraph.itertext())
+    assert "mml:math" not in (paragraph.text or "")
+    assert "mml:math" not in (paragraph.find("xref").tail or "")

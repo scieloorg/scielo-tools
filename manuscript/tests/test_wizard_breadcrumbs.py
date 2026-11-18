@@ -26,7 +26,7 @@ class WizardBreadcrumbTests(TestCase):
         self.assertContains(response, "Toggle breadcrumbs")
         self.assertContains(response, 'data-controller="w-breadcrumbs"')
         self.assertContains(response, "Home")
-        self.assertContains(response, "Manuscripts")
+        self.assertContains(response, "Documentos")
         self.assertContains(response, self.manuscript.title)
         self.assertContains(
             response, reverse("wagtailsnippets_manuscript_manuscript:list")
@@ -39,5 +39,5 @@ class WizardBreadcrumbTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'aria-label="Breadcrumb"')
-        self.assertContains(response, "Manuscripts")
+        self.assertContains(response, "Documentos")
         self.assertContains(response, self.manuscript.title)
