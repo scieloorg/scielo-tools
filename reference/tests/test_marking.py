@@ -68,8 +68,14 @@ def test_mark_reference_texts_batches_one_request(monkeypatch, settings):
 
     from reference.marking import mark_reference_texts
 
-    result = mark_reference_texts(["Ref A", "Ref B", "Ref C"])
+    progress = []
+    result = mark_reference_texts(
+        ["Ref A", "Ref B", "Ref C"],
+        on_progress=lambda done, total: progress.append((done, total)),
+    )
 
+    assert progress[0] == (0, 3)
+    assert progress[-1] == (3, 3)
     assert len(calls) == 1
     assert "1. Ref A" in calls[0]
     assert "2. Ref B" in calls[0]
@@ -201,10 +207,13 @@ def test_prompt_instructs_skip_for_figures():
     assert "Responsibility" in system or "contribution" in system.lower()
     assert "fpage" in system and "lpage" in system
     assert "do not use pages for journal page ranges" in system
+    assert "Abbreviated end pages" in system
+    assert "Single page" in system
     assert "whole work uses source only" in system
     assert "bare id" in system.lower() or "without https://doi.org/" in system
     assert "do not emit uri" in system
     assert "2013a" in system or "letter suffix" in system.lower()
+    assert "disambiguation" in system.lower()
     assert "vol(num)" in system or "parentheses" in system.lower()
     assert ITEM_PROPERTIES["date"]["type"] == "string"
     assert RESPONSE_FORMAT["schema"].get("required") is None
@@ -223,17 +232,17 @@ def test_prompt_instructs_skip_for_figures():
     ):
         assert key in ITEM_PROPERTIES
 
-    pairs = list(zip(MESSAGES[1::2], MESSAGES[2::2]))
-    skip_examples = [
-        user["content"]
+    pairs = list(zip(MESSAGES[1::2], MESSAGES[2::2], strict=False))
+    assert len(pairs) == 7
+
+    alvares_a = next(
+        assistant["content"]
         for user, assistant in pairs
-        if assistant["content"] == '{"is_reference": false}'
-    ]
-    assert any("Figure 1" in text for text in skip_examples)
-    assert any("Figura" in text for text in skip_examples)
-    assert any("orcid.org" in text for text in skip_examples)
-    assert any("SCIENTIFIC EDITOR" in text for text in skip_examples)
-    assert any("Responsibility for" in text for text in skip_examples)
+        if "2013a" in user["content"]
+        and "monthly mean air temperature" in user["content"]
+    )
+    assert '"date":"2013a"' in alvares_a
+    assert '"doi":"10.1007/s00704-012-0796-6"' in alvares_a
 
     journal_example = next(
         assistant["content"]
@@ -244,19 +253,39 @@ def test_prompt_instructs_skip_for_figures():
     assert '"date":"2013b"' in journal_example
     assert '"num":6' in journal_example
     assert '"doi":"10.1127/0941-2948/2013/0507"' in journal_example
-    assert '"fpage":"711"' in journal_example
-    assert '"lpage":"728"' in journal_example
+    assert '"fpage":"1751"' in journal_example
+    assert '"lpage":"1752"' in journal_example
+    assert '"pages"' not in journal_example
     assert "https://doi.org/" not in journal_example
+    journal_user = next(
+        user["content"]
+        for user, assistant in pairs
+        if "1751-2" in user["content"] and "2013b" in user["content"]
+    )
+    assert "1751-2" in journal_user
 
-    zoo_example = next(
+    legal_example = next(
         assistant["content"]
         for user, assistant in pairs
-        if "ZooKeys" in assistant["content"] and '"results"' not in assistant["content"]
+        if '"reftype":"legal-doc"' in assistant["content"]
     )
-    assert '"fpage":"117"' in zoo_example
-    assert '"lpage":"126"' in zoo_example
-    assert '"pages"' not in zoo_example
-    assert "https://doi.org/" not in zoo_example
+    assert '"collab":"Brasil"' in legal_example
+    assert '"uri"' in legal_example
+
+    batch_example = next(
+        assistant["content"]
+        for user, assistant in pairs
+        if '"results"' in assistant["content"]
+    )
+    assert '"reftype":"data"' in batch_example
+    assert batch_example.count('{"is_reference": false}') == 2
+    batch_user = next(
+        user["content"]
+        for user, assistant in pairs
+        if '"results"' in assistant["content"]
+    )
+    assert "Figure 1" in batch_user
+    assert "orcid.org" in batch_user
 
 
 def test_get_xml_journal():
@@ -387,6 +416,29 @@ def test_extract_doi_from_text_and_enrich():
     assert "doi" not in web_enriched or web_enriched.get("doi") in (None, "")
 
 
+def test_enrich_conference_proceedings_source_and_year_suffix():
+    from reference.data_utils import enrich_marked_from_citation
+
+    citation = (
+        "Hess, L. L. (2003). Mapping wetlands in the Amazon Basin using SAR data. "
+        "In Proceedings of the IEEE International Geoscience and Remote Sensing "
+        "Symposium (IGARSS '03) (Vol. 2, pp. 1375–1377). IEEE."
+    )
+    enriched = enrich_marked_from_citation(
+        {"reftype": "conference", "title": "Mapping wetlands", "date": "2003"},
+        citation,
+    )
+    assert enriched["reftype"] == "confproc"
+    assert enriched["source"].startswith("Proceedings of the IEEE")
+    conference_xml = get_xml(json.dumps(enriched))
+    assert conference_xml.get("publication-type") == "confproc"
+    assert conference_xml.find("source").text.startswith("Proceedings of the IEEE")
+    suffixed = get_xml(
+        json.dumps({"reftype": "journal", "date": "2019b", "title": "A", "source": "B"})
+    )
+    assert suffixed.find("year").text == "2019"
+
+
 def test_get_xml_book():
     sample_json = json.dumps(
         {
@@ -489,7 +541,7 @@ def test_get_xml_journal_pages_and_elocation():
         )
     )
     assert single.find("fpage").text == "244"
-    assert single.find("lpage").text == "244"
+    assert single.find("lpage") is None
 
     elocation = get_xml(
         json.dumps(

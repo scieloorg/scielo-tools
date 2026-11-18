@@ -1,21 +1,26 @@
 {% extends "base.html" %}
-{% load static %}
+{% load i18n static %}
 
 {% block body_class %}template-homepage{% endblock %}
 
-{% block extra_css %}
-
-{% comment %}
-Delete the line below if you're just getting started and want to remove the welcome screen!
-{% endcomment %}
-<link rel="stylesheet" href="{% static 'css/welcome_page.css' %}">
-{% endblock extra_css %}
-
 {% block content %}
-
-{% comment %}
-Delete the line below if you're just getting started and want to remove the welcome screen!
-{% endcomment %}
-{% include 'home/welcome_page.html' %}
-
-{% endblock content %}
+<div class="scielo-home">
+    <header class="scielo-home__header">
+        <img
+            class="scielo-home__logo"
+            src="{% static 'vendor/scielo-ds/img/logo-scielo.svg' %}"
+            alt="SciELO"
+        >
+    </header>
+    <main class="scielo-home__main">
+        <div class="scielo-home__panel">
+            <h1>SciELO Tools</h1>
+            <p>{% trans "Editorial platform for marking, validating and tracking research communication objects." %}</p>
+            <a class="btn btn-primary" href="{% url 'wagtailadmin_home' %}">{% trans "Open admin" %}</a>
+        </div>
+    </main>
+    <footer class="scielo-home__footer">
+        SciELO Tools
+    </footer>
+</div>
+{% endblock %}

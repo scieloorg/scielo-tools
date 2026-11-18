@@ -18,6 +18,9 @@ node_modules/
 .vscode
 coverage
 .python-version
+.envs
+.git
+.venv
 
 # Distribution / packaging
 .Python

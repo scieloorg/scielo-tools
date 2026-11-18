@@ -8,39 +8,46 @@ services:
     image: scielo_tools_local_django
     container_name: scielo_tools_local_django
     depends_on:
-      - redis
-      - postgres
-      - mailhog
-      - ollama
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_started
+      mailhog:
+        condition: service_started
+      ollama:
+        condition: service_healthy
     volumes:
       - .:/app:z
-      # - ../packtools:/packtools:z
+      - ../packtools:/packtools:z
+    entrypoint: ["/app/compose/production/django/entrypoint"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - ./.envs/.local/.django
       - ./.envs/.local/.postgres
+    environment:
+      SCMS_WEBAPP_VERSION: ${SCMS_WEBAPP_VERSION:-v0.0.7}
     ports:
       - "8000:8000"
     command: /start
 
   ollama:
-    image: ollama/ollama:latest
+    build:
+      context: ./compose/ollama
+    image: scielo_tools_local_ollama
     container_name: scielo_tools_local_ollama
-    runtime: nvidia
-    gpus: all
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      OLLAMA_MODEL: qwen3.5:latest
     volumes:
       - ollama_data:/root/.ollama
     ports:
       - "11434:11434"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "OLLAMA_HOST=127.0.0.1:11434 ollama show \"$$OLLAMA_MODEL\" >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 900s
 
   mailhog:
     image: mailhog/mailhog:v1.0.0
@@ -73,10 +80,14 @@ services:
     image: scielo_tools_local_celeryworker
     container_name: scielo_tools_local_celeryworker
     depends_on:
-      - redis
-      - postgres
-      - mailhog
-      - ollama
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_started
+      mailhog:
+        condition: service_started
+      ollama:
+        condition: service_healthy
     ports: []
     command: /start-celeryworker
 
@@ -85,10 +96,14 @@ services:
     image: scielo_tools_local_celerybeat
     container_name: scielo_tools_local_celerybeat
     depends_on:
-      - redis
-      - postgres
-      - mailhog
-      - ollama
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_started
+      mailhog:
+        condition: service_started
+      ollama:
+        condition: service_healthy
     ports: []
     command: /start-celerybeat
 

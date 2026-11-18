@@ -23,10 +23,27 @@ _UNSET = object()
 def parse_marked_choice(choice):
     if isinstance(choice, dict):
         return choice
-    try:
-        return json.loads(choice)
-    except (TypeError, json.JSONDecodeError):
+    if not isinstance(choice, str):
         return {"raw": choice}
+    text = choice.strip()
+    if not text:
+        return {"raw": choice}
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return parsed
+    except json.JSONDecodeError:
+        parsed = None
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            parsed = json.loads(text[start : end + 1])
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            parsed = None
+    return {"raw": choice}
 
 
 def is_non_reference(marked_data):
@@ -72,11 +89,9 @@ meses = {
     "janeiro": "01",
     "fevereiro": "02",
     "março": "03",
-    "abril": "04",
     "maio": "05",
     "junho": "06",
     "julho": "07",
-    "agosto": "08",
     "setembro": "09",
     "outubro": "10",
     "novembro": "11",
@@ -106,16 +121,16 @@ def append_citation_pages(root, pages):
         etree.SubElement(root, "elocation-id").text = value
         return
     etree.SubElement(root, "fpage").text = value
-    etree.SubElement(root, "lpage").text = value
 
 
 def append_fpage_lpage(root, json_reference):
     if "fpage" in json_reference:
-        etree.SubElement(root, "fpage").text = str(json_reference["fpage"])
+        fpage = str(json_reference["fpage"])
+        etree.SubElement(root, "fpage").text = fpage
         if "lpage" in json_reference:
             etree.SubElement(root, "lpage").text = str(json_reference["lpage"])
-        else:
-            etree.SubElement(root, "lpage").text = str(json_reference["fpage"])
+        elif fpage.lower().startswith("e") or (fpage.isdigit() and len(fpage) >= 5):
+            etree.SubElement(root, "lpage").text = fpage
         return True
     if "pages" in json_reference:
         append_citation_pages(root, json_reference["pages"])
@@ -220,13 +235,26 @@ def _missing(value):
 
 
 _WEB_LIKE = ("webpage", "software", "database", "legal-doc")
+_REFTYPE_ALIASES = {
+    "conference": "confproc",
+    "conference-paper": "confproc",
+    "proceedings": "confproc",
+}
+_PROCEEDINGS_SOURCE_RE = re.compile(
+    r"\bIn\s+((?:Proceedings|Anais)\b.*?)(?:\s*\((?:Vol\.?|pp\.)|\s*\.\s|\s*$)",
+    re.IGNORECASE,
+)
 
 
 def enrich_marked_from_citation(marked_data, mixed_citation):
     if not isinstance(marked_data, dict) or is_non_reference(marked_data):
         return marked_data
     marked = dict(marked_data)
-    reftype = marked.get("reftype")
+    reftype = str(marked.get("reftype") or "").strip()
+    alias = _REFTYPE_ALIASES.get(reftype.lower())
+    if alias:
+        marked["reftype"] = alias
+        reftype = alias
 
     doi = marked.get("doi")
     if doi not in (None, ""):
@@ -269,15 +297,22 @@ def enrich_marked_from_citation(marked_data, mixed_citation):
     elif marked.get("uri"):
         marked["uri"] = normalize_uri(marked["uri"])
 
+    if reftype == "confproc" and _missing(marked.get("source")):
+        found_source = _PROCEEDINGS_SOURCE_RE.search(str(mixed_citation or ""))
+        if found_source:
+            marked["source"] = found_source.group(1).strip(" .")
+
     return marked
 
 
 def marked_gained_fields(before, after):
     if not isinstance(before, dict) or not isinstance(after, dict):
         return False
-    for key in ("doi", "num", "vol", "fpage", "lpage", "uri"):
+    for key in ("doi", "num", "vol", "fpage", "lpage", "uri", "source"):
         if not _missing(after.get(key)) and _missing(before.get(key)):
             return True
+    if str(before.get("reftype") or "") != str(after.get("reftype") or ""):
+        return True
     if before.get("uri") and "uri" not in after and after.get("doi"):
         return True
     return False
@@ -362,6 +397,11 @@ def get_xml(json_reference):
     if not reftype:
         logger.error("Missing reftype in IA JSON: %s", json_reference)
         return etree.Element("error")
+    alias = _REFTYPE_ALIASES.get(str(reftype).strip().lower())
+    if alias:
+        json_reference = dict(json_reference)
+        json_reference["reftype"] = alias
+        reftype = alias
 
     needs_xlink = reftype in (
         "webpage",
@@ -538,7 +578,11 @@ def get_xml(json_reference):
             append_ext_link(root, json_reference["uri"])
 
     if "date" in json_reference:
-        etree.SubElement(root, "year").text = str(json_reference["date"])
+        year = str(json_reference["date"]).strip()
+        suffixed = re.fullmatch(r"(\d{4})[A-Za-z]", year)
+        if suffixed:
+            year = suffixed.group(1)
+        etree.SubElement(root, "year").text = year
 
     if json_reference.get("doi") and root.find("pub-id[@pub-id-type='doi']") is None:
         append_doi(root, json_reference["doi"])
@@ -559,8 +603,13 @@ def build_ref_list(results):
 
     for index, item in enumerate(results, start=1):
         ref = etree.SubElement(root, "ref", attrib={"id": f"B{index}"})
+        mixed_text = item.get("mixed_citation") or ""
+        label_match = re.match(r"^(\d{1,3})[.)]\s*(.*)$", mixed_text.strip())
+        if label_match:
+            etree.SubElement(ref, "label").text = label_match.group(1)
+            mixed_text = label_match.group(2).strip()
         mixed = etree.SubElement(ref, "mixed-citation")
-        mixed.text = item.get("mixed_citation") or ""
+        mixed.text = mixed_text
 
         marked_xml = item.get("data") or ""
         if not marked_xml:
@@ -588,6 +637,9 @@ def resolve_reference_result(
     try:
         reference = Reference.objects.get(checksum=checksum)
     except Reference.DoesNotExist:
+        reference = None
+
+    if reference is None or not reference.element_citation.exists():
         if marked_data is _UNSET:
             marked_data = None
             for choice in mark_reference(mixed_citation):
@@ -604,18 +656,20 @@ def resolve_reference_result(
                 marked_data,
             )
             return None
-        try:
-            reference, created = Reference.objects.get_or_create(
-                checksum=checksum,
-                defaults={
-                    "mixed_citation": mixed_citation,
-                    "status": ReferenceStatus.CREATING,
-                    "creator": user,
-                },
-            )
-        except IntegrityError:
-            reference = Reference.objects.get(checksum=checksum)
-            created = False
+        created = False
+        if reference is None:
+            try:
+                reference, created = Reference.objects.get_or_create(
+                    checksum=checksum,
+                    defaults={
+                        "mixed_citation": mixed_citation,
+                        "status": ReferenceStatus.CREATING,
+                        "creator": user,
+                    },
+                )
+            except IntegrityError:
+                reference = Reference.objects.get(checksum=checksum)
+                created = False
         if created or not reference.element_citation.exists():
             ElementCitation.objects.create(
                 reference=reference,
@@ -630,10 +684,14 @@ def resolve_reference_result(
             reference.save()
 
     element = reference.element_citation.first()
-    marked = element.marked if element else {}
+    if element is None:
+        return None
+    marked = element.marked
     if isinstance(marked, dict):
         enriched = enrich_marked_from_citation(marked, reference.mixed_citation)
-        if marked_gained_fields(marked, enriched):
+        stored_xml = element.marked_xml or ""
+        year_has_suffix = re.search(r"<year>\s*\d{4}[A-Za-z]\s*</year>", stored_xml)
+        if marked_gained_fields(marked, enriched) or year_has_suffix:
             marked_xml = etree.tostring(
                 get_xml(json.dumps(enriched)),
                 pretty_print=True,
@@ -654,7 +712,9 @@ def resolve_reference_result(
     }
 
 
-def resolve_references_result(references, user=None, output_type="json"):
+def resolve_references_result(
+    references, user=None, output_type="json", on_progress=None
+):
     citations = parse_reference_list(references)
     pending = []
     pending_seen = set()
@@ -669,10 +729,16 @@ def resolve_references_result(references, user=None, output_type="json"):
 
     premarked = {}
     if pending:
-        for citation, content in zip(pending, mark_reference_texts(pending)):
+        if on_progress is None:
+            marked_pending = mark_reference_texts(pending)
+        else:
+            marked_pending = mark_reference_texts(pending, on_progress=on_progress)
+        for citation, content in zip(pending, marked_pending, strict=False):
             premarked[citation] = (
                 parse_marked_choice(content) if content is not None else None
             )
+    elif on_progress is not None and citations:
+        on_progress(len(citations), len(citations))
 
     results = []
     for citation in citations:

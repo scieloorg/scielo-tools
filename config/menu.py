@@ -1,6 +1,10 @@
 WAGTAIL_MENU_GROUPS_ORDER = [
+    "manuscript",
+    "sps_package_validation",
+    "images",
+    "documents",
     "celery_wagtail",
-    "reference",
+    "journeys",
 ]
 
 

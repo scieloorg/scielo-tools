@@ -17,6 +17,7 @@ from reference.create_forms import ReferenceCreateAdminForm
 from reference.data_utils import (
     append_access_date,
     append_citation_pages,
+    append_fpage_lpage,
     build_ref_list,
     get_number_of_month,
     get_reference,
@@ -26,7 +27,7 @@ from reference.data_utils import (
     resolve_references_result,
 )
 from reference.marking import mark_reference
-from reference.models import ElementCitation, Reference, ReferenceStatus
+from reference.models import Reference, ReferenceStatus
 from reference.providers import get_provider
 from reference.providers.http import Provider
 from reference.tests.test_docx_api import make_docx_bytes
@@ -51,6 +52,36 @@ def test_append_citation_pages_empty():
     assert list(root) == []
 
 
+def test_append_citation_pages_single_page_omits_lpage():
+    root = etree.Element("element-citation")
+    append_citation_pages(root, "244")
+    assert root.find("fpage").text == "244"
+    assert root.find("lpage") is None
+
+
+def test_append_fpage_lpage_single_fpage_omits_lpage():
+    root = etree.Element("element-citation")
+    assert append_fpage_lpage(root, {"fpage": "237"}) is True
+    assert root.find("fpage").text == "237"
+    assert root.find("lpage") is None
+
+
+def test_append_fpage_lpage_article_id_copies_lpage():
+    article_number = etree.Element("element-citation")
+    assert append_fpage_lpage(article_number, {"fpage": "e20044"}) is True
+    assert article_number.find("fpage").text == "e20044"
+    assert article_number.find("lpage").text == "e20044"
+
+    long_digits = etree.Element("element-citation")
+    assert append_fpage_lpage(long_digits, {"fpage": "1243092"}) is True
+    assert long_digits.find("fpage").text == "1243092"
+    assert long_digits.find("lpage").text == "1243092"
+
+    explicit = etree.Element("element-citation")
+    assert append_fpage_lpage(explicit, {"fpage": "e20044", "lpage": "e20050"}) is True
+    assert explicit.find("lpage").text == "e20050"
+
+
 def test_append_access_date_with_and_without_year():
     with_year = etree.Element("element-citation")
     append_access_date(with_year, "cited 2025")
@@ -71,6 +102,18 @@ def test_get_xml_malformed_json_returns_error():
 def test_parse_marked_choice_dict_passthrough():
     marked = {"reftype": "journal", "title": "T"}
     assert parse_marked_choice(marked) is marked
+
+
+def test_parse_marked_choice_empty_or_non_string():
+    assert parse_marked_choice("") == {"raw": ""}
+    assert parse_marked_choice(None) == {"raw": None}
+
+
+def test_parse_marked_choice_extracts_json_after_think():
+    marked = parse_marked_choice(
+        '<think>slow reasoning</think>\n{"reftype":"journal","title":"T"}'
+    )
+    assert marked == {"reftype": "journal", "title": "T"}
 
 
 def test_get_xml_authors_collab_variants():
@@ -198,6 +241,20 @@ def test_get_xml_confproc():
 
     titled = get_xml(json.dumps({"reftype": "confproc", "title": "Named Conference"}))
     assert titled.find("conf-name").text == "Named Conference"
+
+    conference = get_xml(
+        json.dumps(
+            {
+                "reftype": "conference",
+                "title": "Mapping wetlands",
+                "source": "Proceedings of IGARSS",
+                "date": "2013a",
+            }
+        )
+    )
+    assert conference.get("publication-type") == "confproc"
+    assert conference.find("source").text == "Proceedings of IGARSS"
+    assert conference.find("year").text == "2013"
 
 
 def test_get_xml_data_extra_fields():
@@ -417,7 +474,7 @@ def test_api_docx_read_failure(monkeypatch):
         "article.docx",
         b"PK fake",
         content_type=(
-            "application/vnd.openxmlformats-officedocument." "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
     )
     response = client.post(
@@ -435,17 +492,13 @@ def test_reference_create_view_form_valid(monkeypatch):
     user = User.objects.create_user(username="wagtail-ref", password="pass")
     resolve_calls = []
 
-    def fake_get_reference(obj_id):
-        reference = Reference.objects.get(id=obj_id)
-        ElementCitation.objects.create(
-            reference=reference,
-            marked={"reftype": "journal", "title": reference.mixed_citation},
-            marked_xml="<element-citation publication-type='journal'/>",
-        )
-        reference.status = ReferenceStatus.READY
-        reference.save()
+    def fake_mark_texts(texts):
+        return [
+            json.dumps({"reftype": "journal", "title": text, "source": "Nature"})
+            for text in texts
+        ]
 
-    monkeypatch.setattr("reference.data_utils.get_reference", fake_get_reference)
+    monkeypatch.setattr("reference.data_utils.mark_reference_texts", fake_mark_texts)
 
     original_resolve = resolve_references_result
 
@@ -465,7 +518,7 @@ def test_reference_create_view_form_valid(monkeypatch):
     view.get_success_url = lambda: "/admin/snippets/reference/reference/"
 
     citation_text = (
-        "Smith J. Nature. 2024.\n\n" "Doe A. Science. 2023.\n" "Smith J. Nature. 2024."
+        "Smith J. Nature. 2024.\n\nDoe A. Science. 2023.\nSmith J. Nature. 2024."
     )
     form = MagicMock()
     form.cleaned_data = {"mixed_citation": citation_text}
@@ -594,7 +647,7 @@ def test_reference_create_admin_form_rejects_docx_without_section():
         "article.docx",
         make_docx_bytes(["Introduction", "No refs here"]),
         content_type=(
-            "application/vnd.openxmlformats-officedocument." "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
     )
     form = ReferenceCreateAdminForm(
@@ -618,7 +671,7 @@ def test_reference_create_admin_form_docx_extracts_references():
             ]
         ),
         content_type=(
-            "application/vnd.openxmlformats-officedocument." "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
     )
     form = ReferenceCreateAdminForm(
@@ -637,17 +690,13 @@ def test_reference_create_view_form_valid_from_docx(monkeypatch):
     user = User.objects.create_user(username="wagtail-docx", password="pass")
     resolve_calls = []
 
-    def fake_get_reference(obj_id):
-        reference = Reference.objects.get(id=obj_id)
-        ElementCitation.objects.create(
-            reference=reference,
-            marked={"reftype": "journal", "title": reference.mixed_citation},
-            marked_xml="<element-citation publication-type='journal'/>",
-        )
-        reference.status = ReferenceStatus.READY
-        reference.save()
+    def fake_mark_texts(texts):
+        return [
+            json.dumps({"reftype": "journal", "title": text, "source": "Nature"})
+            for text in texts
+        ]
 
-    monkeypatch.setattr("reference.data_utils.get_reference", fake_get_reference)
+    monkeypatch.setattr("reference.data_utils.mark_reference_texts", fake_mark_texts)
 
     original_resolve = resolve_references_result
 
@@ -672,7 +721,7 @@ def test_reference_create_view_form_valid_from_docx(monkeypatch):
             ]
         ),
         content_type=(
-            "application/vnd.openxmlformats-officedocument." "wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
     )
     form = ReferenceCreateAdminForm(

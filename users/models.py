@@ -15,7 +15,7 @@ class CustomUser(AbstractUser):
     name = models.CharField(_("Name of User"), blank=True, max_length=255)
     first_name = models.CharField(max_length=150, blank=True, verbose_name="first name")
     last_name = models.CharField(max_length=150, blank=True, verbose_name="last name")
-    
+
     def get_absolute_url(self):
         """Get url for user's detail view.
 

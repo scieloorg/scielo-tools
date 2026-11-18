@@ -48,12 +48,23 @@ class SPSPackageValidationForm(WagtailAdminModelForm):
 
     @staticmethod
     def save_wagtail_document_from_path(file_path, title=None):
+        return SPSPackageValidationForm.save_or_replace_wagtail_document(
+            None, file_path, title=title
+        )
+
+    @staticmethod
+    def save_or_replace_wagtail_document(document, file_path, title=None):
         from django.core.files import File
         from wagtail.documents.models import Document
 
         basename = os.path.basename(file_path)
         document_title = title or basename
         with open(file_path, "rb") as fp:
-            document = Document(title=document_title)
+            if document is None:
+                document = Document(title=document_title)
+            else:
+                if document.file:
+                    document.file.delete(save=False)
+                document.title = document_title
             document.file.save(basename, File(fp), save=True)
         return document

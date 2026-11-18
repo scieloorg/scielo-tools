@@ -1,0 +1,138 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n static %}
+
+{% block extra_css %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'manuscript/css/wizard.css' %}">
+{% endblock %}
+
+{% block extra_js %}
+    {{ block.super }}
+    {% include "wagtailadmin/manuscript/i18n_script.html" %}
+    <script src="{% static 'manuscript/js/wizard.js' %}" defer></script>
+{% endblock %}
+
+{% block main_content %}
+    {% if step == "front" %}
+        {% url 'manuscript_preview_part' manuscript.pk 'front' as preview_src %}
+    {% elif step == "body" %}
+        {% url 'manuscript_preview_part' manuscript.pk 'body' as preview_src %}
+    {% elif step == "back" %}
+        {% url 'manuscript_preview_part' manuscript.pk 'back' as preview_src %}
+    {% else %}
+        {% url 'manuscript_preview_part' manuscript.pk 'article' as preview_src %}
+    {% endif %}
+
+    {{ marking_state|json_script:"manuscript-marking-state" }}
+    <div class="scielo-ds manuscript-wizard" data-step="{{ step }}" data-marking-status-url="{% url 'manuscript_api_marking_status' manuscript.pk %}">
+        {% if step == "front" %}
+            <div class="progress" role="progressbar" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 20%"></div>
+            </div>
+        {% elif step == "body" %}
+            <div class="progress" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 40%"></div>
+            </div>
+        {% elif step == "back" %}
+            <div class="progress" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 60%"></div>
+            </div>
+        {% elif step == "validate" %}
+            <div class="progress" role="progressbar" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 80%"></div>
+            </div>
+        {% else %}
+            <div class="progress" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+                <div class="progress-bar" style="width: 100%"></div>
+            </div>
+        {% endif %}
+
+        <div class="manuscript-wizard__layout">
+            <div class="manuscript-wizard__toolbar">
+                <nav aria-label="{% trans 'Marking steps' %}">
+                    <ul class="nav nav-pills manuscript-wizard__steps">
+                        <li class="nav-item">
+                            {% include "wagtailadmin/manuscript/step_part_link.html" with part="front" label="Front" url_name="manuscript_step_front" active=marking_active.front state=marking_state.front.status percent=marking_state.front.percent %}
+                        </li>
+                        <li class="manuscript-wizard__step-arrow" aria-hidden="true"></li>
+                        <li class="nav-item">
+                            {% include "wagtailadmin/manuscript/step_part_link.html" with part="body" label="Body" url_name="manuscript_step_body" active=marking_active.body state=marking_state.body.status percent=marking_state.body.percent %}
+                        </li>
+                        <li class="manuscript-wizard__step-arrow" aria-hidden="true"></li>
+                        <li class="nav-item">
+                            {% include "wagtailadmin/manuscript/step_part_link.html" with part="back" label="Back" url_name="manuscript_step_back" active=marking_active.back state=marking_state.back.status percent=marking_state.back.percent %}
+                        </li>
+                        <li class="manuscript-wizard__step-arrow" aria-hidden="true"></li>
+                        <li class="nav-item">
+                            {% include "wagtailadmin/manuscript/step_part_link.html" with part="validate" label="Validar" url_name="manuscript_step_validate" active=marking_active.validate state=marking_state.validate.status percent=marking_state.validate.percent is_complete=validate_is_complete has_error=validate_has_error %}
+                        </li>
+                        <li class="manuscript-wizard__step-arrow" aria-hidden="true"></li>
+                        <li class="nav-item">
+                            {% include "wagtailadmin/manuscript/step_part_link.html" with part="package" label="Pacote" url_name="manuscript_step_package" active=marking_active.package state=marking_state.package.status percent=marking_state.package.percent %}
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            <div class="manuscript-wizard__preview-title">
+                <h2>{% trans "Preview" %}</h2>
+                <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary manuscript-wizard__preview-expand-btn"
+                    data-preview-expand-open
+                >
+                    {% trans "Expand preview" %}
+                </button>
+            </div>
+            <div class="manuscript-wizard__editor">
+                {% block wizard_editor %}{% endblock %}
+            </div>
+            <aside class="manuscript-wizard__preview">
+                <iframe
+                    id="manuscript-preview-frame"
+                    class="manuscript-wizard__preview-frame"
+                    src="{{ preview_src }}"
+                    title="{% trans 'Preview' %}"
+                ></iframe>
+            </aside>
+            <div class="manuscript-wizard__editor-extra">{% block wizard_editor_extra %}{% endblock %}</div>
+        </div>
+        <dialog
+            id="manuscript-preview-modal"
+            class="manuscript-preview-modal"
+            aria-labelledby="manuscript-preview-modal-title"
+        >
+            <div class="manuscript-preview-modal__content">
+                <div class="manuscript-preview-modal__header">
+                    <h2 id="manuscript-preview-modal-title" class="manuscript-preview-modal__title">
+                        {{ manuscript.title }} — {% trans "Preview" %}
+                    </h2>
+                    <div class="manuscript-preview-modal__actions">
+                        <a
+                            id="manuscript-preview-modal-newtab"
+                            href="{{ preview_src }}"
+                            target="_blank"
+                            rel="noopener"
+                            class="btn btn-sm btn-outline-secondary"
+                        >
+                            {% trans "Open in new tab" %}
+                        </a>
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-secondary"
+                            data-preview-expand-close
+                        >
+                            {% trans "Close" %}
+                        </button>
+                    </div>
+                </div>
+                <iframe
+                    id="manuscript-preview-modal-frame"
+                    class="manuscript-preview-modal__frame"
+                    src="{{ preview_src }}"
+                    title="{% trans 'Preview' %}"
+                ></iframe>
+            </div>
+        </dialog>
+        {% block wizard_footer %}{% endblock %}
+    </div>
+{% endblock %}

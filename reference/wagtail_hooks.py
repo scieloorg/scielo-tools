@@ -5,7 +5,6 @@ from wagtail.admin.panels import FieldPanel, InlinePanel, ObjectList
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import CreateView, SnippetViewSet
 
-from config.menu import get_menu_order
 from reference.create_forms import ReferenceCreateAdminForm
 from reference.data_utils import resolve_references_result
 from reference.exceptions import (
@@ -28,7 +27,8 @@ class ReferenceCreateView(CreateView):
         ).bind_to_model(self.model)
 
     def get_form_class(self):
-        return self.panel.get_form_class()
+        panel = self.panel or self.get_panel()
+        return panel.get_form_class()
 
     def form_valid(self, form):
         try:
@@ -63,10 +63,9 @@ class ReferenceModelViewSet(SnippetViewSet):
     menu_name = "reference"
     menu_label = _("References")
     menu_icon = "openquote"
-    menu_order = get_menu_order("reference")
     exclude_from_explorer = False
     list_per_page = 20
-    add_to_admin_menu = True
+    add_to_admin_menu = False
 
 
 register_snippet(ReferenceModelViewSet)

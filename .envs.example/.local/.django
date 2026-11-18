@@ -2,6 +2,7 @@
 # ------------------------------------------------------------------------------
 USE_DOCKER=yes
 IPYTHONDIR=/app/.ipython
+SCMS_WEBAPP_VERSION=v0.0.7
 # Redis
 # ------------------------------------------------------------------------------
 REDIS_URL=redis://redis:6379/0
@@ -9,12 +10,49 @@ REDIS_URL=redis://redis:6379/0
 # Celery
 # ------------------------------------------------------------------------------
 
-# Reference (Llama via HTTP — serviço ollama no local.yml)
+# Reference (Llama via HTTP — Ollama no host)
 # ------------------------------------------------------------------------------
 REFERENCE_ENABLED=true
 REFERENCE_URL=http://ollama:11434
-REFERENCE_MODEL=llama3.2:3b
+REFERENCE_MODEL=qwen3.5:latest
 # REFERENCE_TOKEN=
-# REFERENCE_TIMEOUT=300
+# REFERENCE_TIMEOUT=600
 # REFERENCE_BATCH_SIZE=10
 # REFERENCE_NUM_CTX=8192
+# REFERENCE_KEEP_ALIVE=-1
+# Ollama do SciELO, só para referências. Convive com REFERENCE_URL.
+# Front e body não usam este endereço: não é possível saber se o texto é inédito.
+# REFERENCE_REMOTE_ENABLED=false
+# REFERENCE_REMOTE_URL=
+# REFERENCE_REMOTE_MODEL=llama3.2:3b
+# REFERENCE_REMOTE_TOKEN=
+# REFERENCE_REMOTE_TIMEOUT=300
+# REFERENCE_REMOTE_NUM_CTX=8192
+# REFERENCE_REMOTE_KEEP_ALIVE=-1
+
+# Front (Llama via HTTP — Ollama no host)
+# ------------------------------------------------------------------------------
+FRONT_ENABLED=true
+FRONT_URL=http://ollama:11434
+FRONT_MODEL=qwen3.5:latest
+# FRONT_TOKEN=
+# FRONT_TIMEOUT=600
+# FRONT_NUM_CTX=8192
+# FRONT_KEEP_ALIVE=-1
+
+# Packtools PDF (SPS package)
+# ------------------------------------------------------------------------------
+# LIBREOFFICE_BINARY=libreoffice
+# PACKTOOLS_PDF_LAYOUT=
+# Empty PACKTOOLS_PDF_LAYOUT generates SCL styles required by packtools.
+
+# Body (Llama via HTTP — Ollama no host)
+# ------------------------------------------------------------------------------
+BODY_ENABLED=true
+BODY_URL=http://ollama:11434
+BODY_MODEL=qwen3.5:latest
+# BODY_TOKEN=
+# BODY_TIMEOUT=600
+# BODY_NUM_CTX=32768
+# BODY_CHUNK_CHARS=8000
+# BODY_KEEP_ALIVE=-1

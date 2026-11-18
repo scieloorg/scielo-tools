@@ -68,8 +68,6 @@ DJANGO_APPS = [
 ]
 
 THIRD_PARTY_APPS = [
-    "compressor",
-    "wagtailautocomplete",
     "django_celery_beat",
     "rest_framework",
     "wagtail_json_widget",
@@ -80,7 +78,10 @@ LOCAL_APPS = [
     "core",
     "core_settings",
     "xml_manager",
+    "manuscript",
     "reference",
+    "front",
+    "body",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS + WAGTAIL
@@ -111,6 +112,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "wagtail.contrib.settings.context_processors.settings",
+                "core_settings.context_processors.webapp_version",
             ],
         },
     },
@@ -130,7 +132,9 @@ DATABASES["default"]["ATOMIC_REQUESTS"] = True
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+        "NAME": (
+            "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+        ),
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
@@ -161,7 +165,6 @@ LOCALE_PATHS = [
 TIME_ZONE = "UTC"
 
 USE_I18N = True
-USE_L10N = True
 USE_TZ = True
 
 
@@ -186,8 +189,6 @@ STATICFILES_FINDERS = [
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 ]
-
-STATICFILES_FINDERS += ["compressor.finders.CompressorFinder"]
 
 # MEDIA
 # ------------------------------------------------------------------------------
@@ -276,11 +277,12 @@ CELERY_TASK_SERIALIZER = "json"
 # http://docs.celeryproject.org/en/latest/userguide/configuration.html#std:setting-result_serializer
 CELERY_RESULT_SERIALIZER = "json"
 # http://docs.celeryproject.org/en/latest/userguide/configuration.html#task-time-limit
-# TODO: set to whatever value is adequate in your circumstances
 CELERY_TASK_TIME_LIMIT = 5 * 60
 # http://docs.celeryproject.org/en/latest/userguide/configuration.html#task-soft-time-limit
-# TODO: set to whatever value is adequate in your circumstances
-CELERY_TASK_SOFT_TIME_LIMIT = 36000
+CELERY_TASK_SOFT_TIME_LIMIT = 4 * 60
+# https://docs.celeryq.dev/en/stable/userguide/configuration.html#task-track-started
+CELERY_TASK_TRACK_STARTED = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
 # http://docs.celeryproject.org/en/latest/userguide/configuration.html#beat-scheduler
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 # http://docs.celeryproject.org/en/latest/userguide/configuration.html
@@ -325,3 +327,33 @@ REFERENCE_TIMEOUT = env.int("REFERENCE_TIMEOUT", default=300)
 REFERENCE_TOKEN = env("REFERENCE_TOKEN", default="")
 REFERENCE_BATCH_SIZE = env.int("REFERENCE_BATCH_SIZE", default=10)
 REFERENCE_NUM_CTX = env.int("REFERENCE_NUM_CTX", default=8192)
+REFERENCE_KEEP_ALIVE = env("REFERENCE_KEEP_ALIVE", default="-1")
+REFERENCE_REMOTE_ENABLED = env.bool("REFERENCE_REMOTE_ENABLED", default=False)
+REFERENCE_REMOTE_URL = env("REFERENCE_REMOTE_URL", default="")
+REFERENCE_REMOTE_MODEL = env("REFERENCE_REMOTE_MODEL", default="llama3.2:3b")
+REFERENCE_REMOTE_TIMEOUT = env.int("REFERENCE_REMOTE_TIMEOUT", default=300)
+REFERENCE_REMOTE_TOKEN = env("REFERENCE_REMOTE_TOKEN", default="")
+REFERENCE_REMOTE_NUM_CTX = env.int("REFERENCE_REMOTE_NUM_CTX", default=8192)
+REFERENCE_REMOTE_KEEP_ALIVE = env("REFERENCE_REMOTE_KEEP_ALIVE", default="-1")
+
+FRONT_ENABLED = env.bool("FRONT_ENABLED", default=True)
+FRONT_URL = env("FRONT_URL", default="")
+FRONT_MODEL = env("FRONT_MODEL", default="llama3.2:3b")
+FRONT_TIMEOUT = env.int("FRONT_TIMEOUT", default=300)
+FRONT_TOKEN = env("FRONT_TOKEN", default="")
+FRONT_NUM_CTX = env.int("FRONT_NUM_CTX", default=8192)
+FRONT_KEEP_ALIVE = env("FRONT_KEEP_ALIVE", default="-1")
+
+BODY_ENABLED = env.bool("BODY_ENABLED", default=True)
+BODY_URL = env("BODY_URL", default="")
+BODY_MODEL = env("BODY_MODEL", default="llama3.2:3b")
+BODY_TIMEOUT = env.int("BODY_TIMEOUT", default=300)
+BODY_TOKEN = env("BODY_TOKEN", default="")
+BODY_NUM_CTX = env.int("BODY_NUM_CTX", default=32768)
+BODY_KEEP_ALIVE = env("BODY_KEEP_ALIVE", default="-1")
+BODY_CHUNK_CHARS = env.int("BODY_CHUNK_CHARS", default=8000)
+
+LIBREOFFICE_BINARY = env("LIBREOFFICE_BINARY", default="")
+PACKTOOLS_PDF_LAYOUT = env("PACKTOOLS_PDF_LAYOUT", default="")
+
+WEBAPP_VERSION = env("SCMS_WEBAPP_VERSION", default="v0.0.7")

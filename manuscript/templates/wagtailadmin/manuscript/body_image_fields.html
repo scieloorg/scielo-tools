@@ -1,0 +1,17 @@
+{% load i18n %}
+<div class="manuscript-field">
+    {{ form.images.label_tag }}
+    {{ form.images }}
+    {% if form.images.help_text %}
+        <p class="help">{{ form.images.help_text }}</p>
+    {% endif %}
+    {{ form.images.errors }}
+</div>
+<div class="manuscript-field">
+    {{ form.images_zip.label_tag }}
+    {{ form.images_zip }}
+    {% if form.images_zip.help_text %}
+        <p class="help">{{ form.images_zip.help_text }}</p>
+    {% endif %}
+    {{ form.images_zip.errors }}
+</div>

@@ -1,0 +1,41 @@
+from celery import shared_task
+from django.contrib.auth import get_user_model
+
+from body.data_utils import resolve_body_result
+
+TASK_SOFT_TIME_LIMIT = 30 * 60
+TASK_TIME_LIMIT = 31 * 60
+
+
+@shared_task(
+    bind=True,
+    soft_time_limit=TASK_SOFT_TIME_LIMIT,
+    time_limit=TASK_TIME_LIMIT,
+)
+def mark_body_text(
+    self,
+    text,
+    language=None,
+    tables=None,
+    figures=None,
+    image_hrefs=None,
+    user_id=None,
+    output_type="json",
+):
+    def on_progress(percent):
+        self.update_state(state="PROGRESS", meta={"percent": int(percent)})
+
+    on_progress(10)
+    user = None
+    if user_id is not None:
+        user = get_user_model().objects.filter(pk=user_id).first()
+    return resolve_body_result(
+        text,
+        user=user,
+        output_type=output_type,
+        language=language,
+        tables=tables,
+        figures=figures,
+        image_hrefs=image_hrefs,
+        on_progress=on_progress,
+    )

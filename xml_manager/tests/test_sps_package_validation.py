@@ -90,10 +90,16 @@ class SPSPackageValidationDeleteTests(TestCase):
             exceptions_document=exc_doc,
             zip_size_bytes=zip_size,
         )
+        package_path = package.file.path
+        csv_path = csv_doc.file.path
+        exc_path = exc_doc.file.path
         validation.delete()
 
         self.assertFalse(SPSPackageValidation.objects.filter(pk=validation.pk).exists())
         self.assertFalse(Document.objects.filter(pk__in=document_ids).exists())
+        self.assertFalse(os.path.exists(package_path))
+        self.assertFalse(os.path.exists(csv_path))
+        self.assertFalse(os.path.exists(exc_path))
 
     def test_delete_package_only_removes_package_document(self):
         package, zip_size = make_package_document()
@@ -102,10 +108,12 @@ class SPSPackageValidationDeleteTests(TestCase):
             zip_size_bytes=zip_size,
         )
         package_id = package.pk
+        package_path = package.file.path
 
         validation.delete()
 
         self.assertFalse(Document.objects.filter(pk=package_id).exists())
+        self.assertFalse(os.path.exists(package_path))
 
     def test_delete_does_not_raise_recursion_error(self):
         package, zip_size = make_package_document()
@@ -432,9 +440,9 @@ class RunSPSPackageValidationTests(TestCase):
         self._run()
         self.validation.refresh_from_db()
 
-        self.assertFalse(Document.objects.filter(pk=old_doc_pk).exists())
-        self.assertIsNotNone(self.validation.exceptions_document)
-        self.assertNotEqual(self.validation.exceptions_document.pk, old_doc_pk)
+        self.assertTrue(Document.objects.filter(pk=old_doc_pk).exists())
+        self.assertEqual(self.validation.exceptions_document.pk, old_doc_pk)
+        self.assertTrue(os.path.exists(self.validation.exceptions_document.file.path))
 
     def test_validated_at_is_set(self):
         self._run()
@@ -471,6 +479,6 @@ class RunSPSPackageValidationTests(TestCase):
         self._run()
         self.validation.refresh_from_db()
 
-        self.assertFalse(Document.objects.filter(pk=old_doc_pk).exists())
-        self.assertIsNotNone(self.validation.validation_document)
-        self.assertNotEqual(self.validation.validation_document.pk, old_doc_pk)
+        self.assertTrue(Document.objects.filter(pk=old_doc_pk).exists())
+        self.assertEqual(self.validation.validation_document.pk, old_doc_pk)
+        self.assertTrue(os.path.exists(self.validation.validation_document.file.path))

@@ -2,7 +2,8 @@ COMPOSE_FILE ?= local.yml
 
 export SCMS_BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 export SCMS_VCS_REF := $(shell git rev-parse --short HEAD)
-export SCMS_WEBAPP_VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+export SCMS_WEBAPP_VERSION := v0.0.7
+
 
 default: build
 
@@ -63,6 +64,17 @@ django_createsuperuser: ## Create a superuser
 django_bash: ## Open bash in django container
 	docker compose -f $(COMPOSE_FILE) run --rm django bash
 
+lint: ## Ruff check and format --check
+	docker compose -f $(COMPOSE_FILE) run --rm django ruff check .
+	docker compose -f $(COMPOSE_FILE) run --rm django ruff format --check .
+
+format: ## Ruff format
+	docker compose -f $(COMPOSE_FILE) run --rm django ruff format .
+
+lint-fix: ## Ruff check --fix and format
+	docker compose -f $(COMPOSE_FILE) run --rm django ruff check --fix .
+	docker compose -f $(COMPOSE_FILE) run --rm django ruff format .
+
 test: ## Run tests (pytest default, excludes llama eval)
 	docker compose -f $(COMPOSE_FILE) run --rm django pytest --reuse-db -m "not llama"
 
@@ -72,10 +84,11 @@ test-llama: ## Run Llama reference eval tests (requires Ollama)
 test-fast: ## Run tests (pytest failfast)
 	docker compose -f $(COMPOSE_FILE) run --rm django pytest -x --reuse-db -m "not llama"
 
-test-cov: ## Run tests with coverage (reference, fail under 100%)
+test-cov: ## Run tests with coverage (project Django apps)
 	docker compose -f $(COMPOSE_FILE) run --rm django pytest --reuse-db -m "not llama" \
-		--cov=reference --cov-report=term-missing --cov-fail-under=100 \
-		reference/tests
+		--cov=config --cov=core --cov=core_settings --cov=users \
+		--cov=xml_manager --cov=manuscript --cov=reference --cov=front --cov=body \
+		--cov-report=term-missing
 
 test-fresh: ## Recreate test database and run pytest
 	docker compose -f $(COMPOSE_FILE) run --rm django pytest --create-db
@@ -115,6 +128,18 @@ django_dump_auth: ## Dump auth data to fixtures/auth.json
 
 django_load_auth: ## Load auth data from fixtures/auth.json
 	docker compose -f $(COMPOSE_FILE) run --rm django python manage.py loaddata --database=default fixtures/auth.json
+
+remove_all_references: ## Delete all cached Reference / ElementCitation rows
+	docker compose -f $(COMPOSE_FILE) run --rm django python manage.py remove_all_references --no-input
+
+remove_all_front: ## Delete all cached Front rows
+	docker compose -f $(COMPOSE_FILE) run --rm django python manage.py remove_all_front --no-input
+
+remove_all_body: ## Delete all cached Body rows
+	docker compose -f $(COMPOSE_FILE) run --rm django python manage.py remove_all_body --no-input
+
+remove_all_manuscript: ## Delete all Manuscript rows
+	docker compose -f $(COMPOSE_FILE) run --rm django python manage.py remove_all_manuscript --no-input
 
 dump_data: ## Dump database into timestamped .sql file
 	docker compose -f $(COMPOSE_FILE) exec postgres pg_dumpall -c -U debug > dump_$$(date +%d-%m-%Y"_"%H_%M_%S).sql

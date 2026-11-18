@@ -1,6 +1,9 @@
 import logging
 
 import sentry_sdk
+from django.contrib.staticfiles.storage import (
+    ManifestStaticFilesStorage as DjangoManifestStaticFilesStorage,
+)
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
@@ -8,6 +11,21 @@ from sentry_sdk.integrations.redis import RedisIntegration
 
 from .base import *  # noqa
 from .base import env
+
+
+class ForgivingManifestStaticFilesStorage(DjangoManifestStaticFilesStorage):
+    manifest_strict = False
+
+    def hashed_name(self, name, content=None, filename=None):
+        try:
+            return super().hashed_name(name, content=content, filename=filename)
+        except ValueError:
+            return name
+
+
+STORAGES["staticfiles"]["BACKEND"] = (  # noqa F405
+    "config.settings.production.ForgivingManifestStaticFilesStorage"
+)
 
 # GENERAL
 # ------------------------------------------------------------------------------
@@ -23,7 +41,7 @@ CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 DATABASES["default"] = env.db("DATABASE_URL")  # noqa F405
 DATABASES["default"]["ATOMIC_REQUESTS"] = True  # noqa F405
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)  # noqa F405
-DATABASES["default"]["ENGINE"] = 'django.db.backends.postgresql'
+DATABASES["default"]["ENGINE"] = "django.db.backends.postgresql"
 # CACHES
 # ------------------------------------------------------------------------------
 CACHES = {
@@ -76,7 +94,9 @@ EMAIL_HOST = env.str("DJANGO_EMAIL_HOST", default="mailrelay.scielo.org")
 EMAIL_PORT = env.int("DJANGO_EMAIL_PORT", default=25)
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#email-host-user
-EMAIL_HOST_USER = env.str("DJANGO_EMAIL_HOST_USER", default="suporte.aplicacao@scielo.org")
+EMAIL_HOST_USER = env.str(
+    "DJANGO_EMAIL_HOST_USER", default="suporte.aplicacao@scielo.org"
+)
 
 # https://docs.djangoproject.com/en/dev/ref/settings/#std-setting-EMAIL_HOST_PASSWORD
 EMAIL_HOST_PASSWORD = env.str("DJANGO_EMAIL_HOST_PASSWORD", default="")
@@ -91,25 +111,6 @@ EMAIL_SUBJECT_PREFIX = env(
     "DJANGO_EMAIL_SUBJECT_PREFIX",
     default="[SciELO Content Manager ]",
 )
-
-# django-compressor
-# ------------------------------------------------------------------------------
-# https://django-compressor.readthedocs.io/en/latest/settings/#django.conf.settings.COMPRESS_ENABLED
-COMPRESS_ENABLED = env.bool("COMPRESS_ENABLED", default=True)
-# https://django-compressor.readthedocs.io/en/latest/settings/#django.conf.settings.COMPRESS_STORAGE
-COMPRESS_STORAGE = "compressor.storage.GzipCompressorFileStorage"
-# https://django-compressor.readthedocs.io/en/latest/settings/#django.conf.settings.COMPRESS_URL
-COMPRESS_URL = STATIC_URL  # noqa F405
-# https://django-compressor.readthedocs.io/en/latest/settings/#django.conf.settings.COMPRESS_OFFLINE
-COMPRESS_OFFLINE = True  # Offline compression is required when using Whitenoise
-# https://django-compressor.readthedocs.io/en/latest/settings/#django.conf.settings.COMPRESS_FILTERS
-COMPRESS_FILTERS = {
-    "css": [
-        "compressor.filters.css_default.CssAbsoluteFilter",
-        "compressor.filters.cssmin.rCSSMinFilter",
-    ],
-    "js": ["compressor.filters.jsmin.JSMinFilter"],
-}
 
 # LOGGING
 # ------------------------------------------------------------------------------

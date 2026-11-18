@@ -1,0 +1,12 @@
+{% load i18n wagtailadmin_tags %}
+
+<li>
+    {% icon name="manuscript" %}
+    <a href="{% url 'wagtailsnippets_manuscript_manuscript:list' %}">
+        {% blocktrans trimmed count counter=total_manuscripts with total_manuscripts|intcomma as total %}
+            {{ total }} Documento <span class="w-sr-only">criado em {{ site_name }}</span>
+        {% plural %}
+            {{ total }} Documentos <span class="w-sr-only">criados em {{ site_name }}</span>
+        {% endblocktrans %}
+    </a>
+</li>

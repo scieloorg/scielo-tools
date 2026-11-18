@@ -1,0 +1,56 @@
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+pythonpath = ["."]
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = ["--reuse-db"]
+markers = [
+    "llama: integration tests that call local Llama/Ollama for reference marking",
+]
+filterwarnings = [
+    "ignore:pkg_resources is deprecated as an API:UserWarning:packtools.catalogs",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "dist",
+    "build",
+    "node_modules",
+    "staticfiles",
+    "*/migrations/*",
+    "docs",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S107"]
+"**/test_*.py" = ["S105", "S106", "S107"]
+"config/settings/local.py" = ["F403", "F405"]
+"config/settings/production.py" = ["F403", "F405"]
+"config/settings/test.py" = ["S105", "F403", "F405"]
+
+[tool.ruff.lint.flake8-bandit]
+check-typed-exception = true
+
+[tool.ruff.lint.isort]
+known-first-party = [
+    "config",
+    "core",
+    "core_settings",
+    "users",
+    "xml_manager",
+    "manuscript",
+    "reference",
+    "front",
+    "body",
+]
+
+[tool.ruff.format]
+quote-style = "double"

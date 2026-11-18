@@ -1,0 +1,26 @@
+{% extends "wagtailadmin/generic/base.html" %}
+{% load i18n %}
+
+{% block main_content %}
+    <div class="nice-padding scielo-ds">
+        <p>
+            {% trans "Escolha um exemplo. Cada um tem os seus documentos, para baixar ou para começar um documento." %}
+        </p>
+        {% for journey in journeys %}
+            <section class="card">
+                <div class="card-header">
+                    <h2>
+                        <a href="{{ journey.url }}">{{ journey.menu_label }}</a>
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <p><strong>{{ journey.title }}</strong></p>
+                    <p>{{ journey.summary }}</p>
+                    <p>
+                        <a href="{{ journey.url }}" class="btn btn-primary">{% trans "Abrir exemplo" %}</a>
+                    </p>
+                </div>
+            </section>
+        {% endfor %}
+    </div>
+{% endblock %}

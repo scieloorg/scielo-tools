@@ -161,6 +161,37 @@ def test_resolve_reference_result_enriches_cached_doi(monkeypatch):
 
 
 @pytest.mark.django_db
+def test_resolve_reference_result_rewrites_suffixed_year():
+    citation = (
+        "Alvares C. A. (2013a). Modeling monthly mean air temperature for Brazil. "
+        "Theoretical and Applied Climatology."
+    )
+    reference = Reference.objects.create(
+        mixed_citation=citation,
+        status=ReferenceStatus.READY,
+    )
+    ElementCitation.objects.create(
+        reference=reference,
+        marked={
+            "reftype": "journal",
+            "date": "2013a",
+            "title": "Modeling monthly mean air temperature for Brazil",
+            "source": "Theoretical and Applied Climatology",
+        },
+        marked_xml=(
+            "<element-citation publication-type='journal'>"
+            "<year>2013a</year></element-citation>"
+        ),
+    )
+
+    resolve_reference_result(citation, output_type="json")
+
+    stored = reference.element_citation.first()
+    assert "<year>2013</year>" in stored.marked_xml
+    assert "<year>2013a</year>" not in stored.marked_xml
+
+
+@pytest.mark.django_db
 def test_resolve_reference_result_enriches_cached_num():
     citation = (
         "Alvares, C. A. (2013b). Köppen’s climate classification map for Brazil. "
@@ -184,6 +215,29 @@ def test_resolve_reference_result_enriches_cached_num():
     assert stored.marked["num"] == 6
     assert "<issue>6</issue>" in stored.marked_xml
     assert "<volume>22</volume>" in stored.marked_xml
+
+
+@pytest.mark.django_db
+def test_resolve_reference_result_fills_reference_without_element(monkeypatch):
+    citation = "Besouro Fernanda. Cadernos do Pilão. 2003;41(7):301-309."
+    Reference.objects.create(
+        mixed_citation=citation,
+        status=ReferenceStatus.CREATING,
+    )
+    monkeypatch.setattr(
+        "reference.data_utils.mark_reference",
+        lambda _text: iter(
+            [json.dumps({"reftype": "journal", "title": "Perda de água"})]
+        ),
+    )
+
+    result = resolve_reference_result(citation, output_type="json")
+
+    assert result is not None
+    assert result["data"]["reftype"] == "journal"
+    stored = Reference.objects.get(mixed_citation=citation)
+    assert stored.status == ReferenceStatus.READY
+    assert stored.element_citation.count() == 1
 
 
 @pytest.mark.django_db

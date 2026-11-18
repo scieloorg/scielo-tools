@@ -36,7 +36,7 @@ class PeriodicTaskHelper(ButtonHelper):
     def run_button(self, obj):
         text = _("Run")
         return {
-            "url": reverse("celery_task_run") + "?task_id=%s" % str(obj.id),
+            "url": reverse("celery_task_run") + f"?task_id={str(obj.id)}",
             "label": text,
             "classname": self.finalise_classname(self.run_button_classnames),
             "title": text,
@@ -138,19 +138,14 @@ class PeriodicTaskAdmin(ModelAdmin):
             for task in queryset
         ]
 
-        if any(t[0] is None for t in tasks):
-            for i, t in enumerate(tasks):
-                if t[0] is None:
-                    break
-
-            not_found_task_name = queryset[i].task
-
-            self.message_user(
-                request,
-                _('task "{0}" not found'.format(not_found_task_name)),
-                level=messages.ERROR,
-            )
-            return
+        for i, t in enumerate(tasks):
+            if t[0] is None:
+                self.message_user(
+                    request,
+                    _('task "{}" not found').format(queryset[i].task),
+                    level=messages.ERROR,
+                )
+                return
 
         task_ids = [
             task.apply_async(
@@ -238,11 +233,13 @@ def task_run(request):
         has_var_keyword = any(
             p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
         )
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         has_user_id_param = False
         has_var_keyword = False
 
-    if (has_user_id_param or has_var_keyword) and getattr(request.user, "id", None) is not None:
+    if (has_user_id_param or has_var_keyword) and getattr(
+        request.user, "id", None
+    ) is not None:
         kwargs["user_id"] = request.user.id
 
     task.apply_async(
@@ -252,7 +249,9 @@ def task_run(request):
         periodic_task_name=p_task.name,
     )
 
-    wagtail_messages.success(request, _("Task {0} was successfully run").format(p_task.name))
+    wagtail_messages.success(
+        request, _("Task {0} was successfully run").format(p_task.name)
+    )
     return redirect(request.META.get("HTTP_REFERER", "/"))
 
 

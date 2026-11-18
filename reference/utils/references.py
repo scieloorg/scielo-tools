@@ -6,6 +6,13 @@ import zipfile
 
 from lxml import etree
 
+from front.utils import (
+    FIGURE_CAPTION_RE,
+    HISTORY_LINE_RE,
+    PUBLICATION_HISTORY_RE,
+    TABLE_CAPTION_RE,
+    reference_run_start_index,
+)
 from reference.exceptions import DocxReferencesError
 
 logger = logging.getLogger(__name__)
@@ -13,6 +20,10 @@ logger = logging.getLogger(__name__)
 REFERENCE_HEADING_RE = re.compile(
     r"^(?:\d+[.\)]\s*)?(?:references?|referências?|referencias?|"
     r"bibliography|bibliografia)\s*$",
+    re.IGNORECASE,
+)
+REFERENCE_TAIL_RE = re.compile(
+    r"^(?:figures?\s+captions?|legendas?(?:\s+das\s+figuras)?|figuras)\s*:?\s*$",
     re.IGNORECASE,
 )
 
@@ -42,8 +53,24 @@ def extract_references_section(text):
             start = index + 1
             break
     if start is None:
+        start = reference_run_start_index(lines)
+    if start is None:
         return ""
-    return "\n".join(line.strip() for line in lines[start:] if line.strip())
+    kept = []
+    for line in lines[start:]:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if (
+            HISTORY_LINE_RE.match(stripped)
+            or PUBLICATION_HISTORY_RE.match(stripped)
+            or FIGURE_CAPTION_RE.match(stripped)
+            or TABLE_CAPTION_RE.match(stripped)
+            or REFERENCE_TAIL_RE.match(stripped)
+        ):
+            break
+        kept.append(stripped)
+    return "\n".join(kept)
 
 
 def extract_text_from_docx(docx_path, limit_chars=30000):

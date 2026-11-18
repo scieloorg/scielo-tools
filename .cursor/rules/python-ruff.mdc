@@ -1,0 +1,26 @@
+---
+description: Python lint e formatação com Ruff (pyproject.toml)
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Ruff em todo código Python
+
+O projeto define `[tool.ruff]`, `[tool.ruff.lint]` e `[tool.ruff.format]` em `pyproject.toml` na raiz (line-length 88, target-version py314). Siga isso ao escrever ou alterar `.py`. Não use black nem isort.
+
+## Ao terminar edições em arquivos Python
+
+Rode a partir da raiz do repositório, **nesta ordem** (lint com correção, depois formatação):
+
+1. `ruff check --fix <caminhos-dos-arquivos.py>`
+2. `ruff format <caminhos-dos-arquivos.py>`
+
+No Docker: `make lint-fix` (corrige o tree) ou `make lint` (só verifica).
+
+Se o ambiente não tiver o binário no PATH, use o do container Django após `make build`.
+
+## Estilo e segurança
+
+- Linha máxima **88** caracteres.
+- Imports via Ruff (`I`), alinhados ao formatador.
+- Conjunto **S** (Bandit): sem senhas/tokens hardcoded fora de testes; `config/settings/test.py` tem `S105` ignorado para a `SECRET_KEY` fictícia. Não ignorar `S` em `config/settings/base.py` nem `production.py`.

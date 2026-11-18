@@ -1,0 +1,70 @@
+{% extends "wagtailadmin/manuscript/wizard_base.html" %}
+{% load i18n %}
+
+{% block wizard_editor %}
+    <section class="card">
+        <div class="card-header">
+            <h2>{% trans "Assembled XML" %}</h2>
+        </div>
+        <div class="card-body">
+            {% if manuscript.assembled_xml %}
+                <p class="manuscript-actions">
+                    <a href="{% url 'manuscript_preview_part' manuscript.pk 'article' %}" target="_blank" class="btn btn-sm btn-outline-primary">{% trans "Open article preview" %}</a>
+                    {% if manuscript.generated_html %}
+                        <a href="{{ manuscript.generated_html.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">{% trans "Download HTML" %}</a>
+                    {% endif %}
+                    {% if manuscript.generated_pdf %}
+                        <a href="{{ manuscript.generated_pdf.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">{% trans "Download PDF" %}</a>
+                    {% endif %}
+                </p>
+                <textarea readonly rows="12" class="form-control manuscript-xml-preview">{{ manuscript.assembled_xml }}</textarea>
+            {% else %}
+                <p class="alert alert-info">{% trans "Approve the back step to assemble XML." %}</p>
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}
+
+{% block wizard_editor_extra %}
+    <section class="card">
+        <div class="card-header">
+            <h2>Pacote</h2>
+        </div>
+        <div class="card-body">
+            <form method="post" class="manuscript-inline-form">
+                {% csrf_token %}
+                <p>
+                    <label>
+                        <input type="checkbox" name="include_pdf" value="on" checked>
+                        {% trans "Include PDF generated from the XML" %}
+                    </label>
+                </p>
+                <div class="manuscript-actions">
+                    <button type="submit" name="action" value="build" class="btn btn-primary">{% trans "Build SPS package" %}</button>
+                    {% if manuscript.sps_package %}
+                        <a href="{{ manuscript.sps_package.url }}" class="btn btn-secondary" target="_blank">{% trans "Download SPS package" %}</a>
+                    {% endif %}
+                    {% if manuscript.generated_pdf %}
+                        <a href="{{ manuscript.generated_pdf.url }}" class="btn btn-outline-secondary" target="_blank">{% trans "Download PDF" %}</a>
+                    {% endif %}
+                    {% if manuscript.generated_html %}
+                        <a href="{{ manuscript.generated_html.url }}" class="btn btn-outline-secondary" target="_blank">{% trans "Download HTML" %}</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="card-header">
+            <h2>{% trans "Publication" %}</h2>
+        </div>
+        <div class="card-body">
+            {% if publisher_enabled %}
+                <button type="button" id="manuscript-publish" class="btn btn-primary" data-url="{% url 'manuscript_api_publish' manuscript.pk %}">{% trans "Send to SciELO (stub)" %}</button>
+            {% else %}
+                <p class="alert alert-warning">{% trans "Configure SCIELO_PREVIEW_BASE_URL to enable preview and publication stubs." %}</p>
+            {% endif %}
+        </div>
+    </section>
+{% endblock %}

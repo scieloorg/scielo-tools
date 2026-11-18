@@ -1,0 +1,10 @@
+<div class="manuscript-field">
+    {{ form.non_field_errors }}
+    {{ form.source_text.as_widget }}
+    {{ form.source_text.errors }}
+</div>
+<div class="manuscript-field">
+    {{ form.docx_file.label_tag }}
+    {{ form.docx_file }}
+    {{ form.docx_file.errors }}
+</div>

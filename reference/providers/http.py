@@ -20,6 +20,7 @@ class Provider:
         temperature=0.0,
         top_p=0.1,
         max_tokens=4000,
+        origin="local",
     ):
         from django.conf import settings
 
@@ -28,20 +29,52 @@ class Provider:
         self.temperature = temperature
         self.top_p = top_p
         self.max_tokens = max_tokens
+        self.origin = "scielo" if origin == "scielo" else "local"
 
-        if not getattr(settings, "REFERENCE_ENABLED", True):
-            raise ReferenceLlamaDisabledError("Reference Llama is disabled.")
-
-        self.url = (getattr(settings, "REFERENCE_URL", "") or "").rstrip("/")
-        if not self.url:
-            raise ReferenceLlamaMisconfiguredError(
+        if self.origin == "scielo":
+            enabled = getattr(settings, "REFERENCE_REMOTE_ENABLED", False)
+            url = getattr(settings, "REFERENCE_REMOTE_URL", "") or ""
+            model = getattr(settings, "REFERENCE_REMOTE_MODEL", "") or "llama3.2:3b"
+            timeout = getattr(settings, "REFERENCE_REMOTE_TIMEOUT", 300)
+            token = getattr(settings, "REFERENCE_REMOTE_TOKEN", "") or ""
+            num_ctx = int(getattr(settings, "REFERENCE_REMOTE_NUM_CTX", 8192) or 8192)
+            raw_keep_alive = getattr(settings, "REFERENCE_REMOTE_KEEP_ALIVE", "-1")
+            disabled_message = "SciELO Ollama reference marking is disabled."
+            missing_message = (
+                "REFERENCE_REMOTE_URL is required when SciELO Ollama "
+                "reference marking is enabled."
+            )
+        else:
+            enabled = getattr(settings, "REFERENCE_ENABLED", True)
+            url = getattr(settings, "REFERENCE_URL", "") or ""
+            model = getattr(settings, "REFERENCE_MODEL", "") or "llama3.2:3b"
+            timeout = getattr(settings, "REFERENCE_TIMEOUT", 300)
+            token = getattr(settings, "REFERENCE_TOKEN", "") or ""
+            num_ctx = int(getattr(settings, "REFERENCE_NUM_CTX", 8192) or 8192)
+            raw_keep_alive = getattr(settings, "REFERENCE_KEEP_ALIVE", "-1")
+            disabled_message = "Reference Llama is disabled."
+            missing_message = (
                 "REFERENCE_URL is required when Reference Llama is enabled."
             )
 
-        self.model = getattr(settings, "REFERENCE_MODEL", "") or "llama3.2:3b"
-        self.timeout = getattr(settings, "REFERENCE_TIMEOUT", 300)
-        self.token = getattr(settings, "REFERENCE_TOKEN", "") or ""
-        self.num_ctx = int(getattr(settings, "REFERENCE_NUM_CTX", 8192) or 8192)
+        if not enabled:
+            raise ReferenceLlamaDisabledError(disabled_message)
+
+        self.url = url.rstrip("/")
+        if not self.url:
+            raise ReferenceLlamaMisconfiguredError(missing_message)
+
+        self.model = model
+        self.timeout = timeout
+        self.token = token
+        self.num_ctx = num_ctx
+        if raw_keep_alive is None or raw_keep_alive == "":
+            self.keep_alive = None
+        else:
+            try:
+                self.keep_alive = int(raw_keep_alive)
+            except TypeError, ValueError:
+                self.keep_alive = str(raw_keep_alive)
 
     def run(self, user_input):
         messages = self.messages.copy()
@@ -51,7 +84,8 @@ class Provider:
     def chat(self, messages):
         started = time.monotonic()
         logger.info(
-            "Reference Llama chat via %s model=%s. Preview: %r",
+            "Reference Llama chat origin=%s via %s model=%s. Preview: %r",
+            self.origin,
             self.url,
             self.model,
             messages[-1]["content"][:150],
@@ -70,10 +104,12 @@ class Provider:
             "messages": messages,
             "options": options,
             "stream": False,
+            "think": False,
         }
         if self.response_format and self.response_format.get("type") == "json_object":
-            schema = self.response_format.get("schema")
-            payload["format"] = schema if schema else "json"
+            payload["format"] = "json"
+        if self.keep_alive is not None:
+            payload["keep_alive"] = self.keep_alive
 
         headers = {}
         if self.token:
@@ -87,7 +123,12 @@ class Provider:
                 timeout=self.timeout,
             )
             resp.raise_for_status()
-            response_text = resp.json().get("message", {}).get("content") or ""
+            message = resp.json().get("message") or {}
+            response_text = message.get("content") or ""
+            if not str(response_text).strip():
+                raise ReferenceLlamaUnavailableError(
+                    "Reference Llama returned empty content"
+                )
         except requests.RequestException as exc:
             logger.error("Reference Llama HTTP error: %s", exc)
             raise ReferenceLlamaUnavailableError(

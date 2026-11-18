@@ -1,0 +1,7 @@
+{% load i18n %}
+{{ js_i18n|json_script:"manuscript-i18n-data" }}
+<script>
+    window.manuscriptI18n = JSON.parse(
+        document.getElementById("manuscript-i18n-data").textContent
+    );
+</script>
