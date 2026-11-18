@@ -29,6 +29,7 @@ from manuscript.models import (
     Manuscript,
     ManuscriptFigureFile,
     ManuscriptStatus,
+    manuscripts_for_user,
 )
 from manuscript.preview import (
     ManuscriptPreviewError,
@@ -91,8 +92,8 @@ from manuscript.services.workflow import (
 from xml_manager.models import SPSPackageValidationStatus
 
 
-def _manuscript_or_404(pk):
-    return get_object_or_404(Manuscript, pk=pk)
+def _manuscript_or_404(request, pk):
+    return get_object_or_404(manuscripts_for_user(request.user), pk=pk)
 
 
 def _serialize_manuscript_figures(manuscript, request=None):
@@ -305,7 +306,7 @@ def _wizard_context(request, manuscript, step, form=None):
 
 @require_admin_access
 def step_front(request, pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     if manuscript.status == ManuscriptStatus.DRAFT:
         open_step(manuscript, ManuscriptStatus.FRONT, user=request.user)
 
@@ -405,7 +406,7 @@ def step_front(request, pk):
 
 @require_admin_access
 def step_body(request, pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     form = BodyStepForm(
         request.POST or None,
         request.FILES or None,
@@ -507,7 +508,7 @@ def step_body(request, pk):
 
 @require_admin_access
 def step_back(request, pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     form = BackStepForm(
         request.POST or None,
         request.FILES or None,
@@ -588,7 +589,7 @@ def step_back(request, pk):
 
 @require_admin_access
 def step_validate(request, pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     if request.method == "POST":
         action = request.POST.get("action", "")
         if action in ("save_assembled_xml", "validate"):
@@ -633,7 +634,7 @@ def step_validate(request, pk):
 
 @require_admin_access
 def step_package(request, pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     if request.method == "POST":
         action = request.POST.get("action", "")
         if action == "build":
@@ -653,7 +654,7 @@ def step_package(request, pk):
 @require_GET
 @xframe_options_sameorigin
 def preview_part(request, pk, part):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     if part not in ("front", "body", "back", "article"):
         return HttpResponse(status=404)
     figure_urls = figure_urls_for_manuscript(manuscript)
@@ -686,7 +687,7 @@ def preview_part(request, pk, part):
 @require_admin_access
 @require_http_methods(["POST"])
 def api_save_front(request, pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except json.JSONDecodeError:
@@ -708,7 +709,7 @@ def api_save_front(request, pk):
 @require_admin_access
 @require_http_methods(["POST"])
 def api_save_body(request, pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except json.JSONDecodeError:
@@ -730,7 +731,7 @@ def api_save_body(request, pk):
 @require_admin_access
 @require_http_methods(["POST"])
 def api_save_back(request, pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except json.JSONDecodeError:
@@ -760,14 +761,14 @@ def api_save_back(request, pk):
 @require_admin_access
 @require_GET
 def api_marking_status(request, pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     return JsonResponse(marking_status_payload(manuscript))
 
 
 @require_admin_access
 @require_POST
 def api_remark_reference(request, pk, ref_pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     try:
         ref = mark_single_reference(manuscript, ref_pk, user=request.user)
     except MarkingError as exc:
@@ -785,7 +786,7 @@ def api_remark_reference(request, pk, ref_pk):
 @require_admin_access
 @require_POST
 def api_add_figure(request, pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     uploads = request.FILES.getlist("files[]") or request.FILES.getlist("images")
     images_zip = request.FILES.get("images_zip")
     if not uploads and not images_zip and request.FILES:
@@ -832,7 +833,7 @@ def api_add_figure(request, pk):
 @require_admin_access
 @require_POST
 def api_update_figure(request, pk, figure_pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     figure_file = get_object_or_404(
         ManuscriptFigureFile, pk=figure_pk, manuscript=manuscript
     )
@@ -875,7 +876,7 @@ def api_update_figure(request, pk, figure_pk):
 @require_admin_access
 @require_POST
 def api_delete_figure(request, pk, figure_pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     figure_file = get_object_or_404(
         ManuscriptFigureFile, pk=figure_pk, manuscript=manuscript
     )
@@ -897,7 +898,7 @@ def api_delete_figure(request, pk, figure_pk):
 @require_admin_access
 @require_POST
 def api_publish(request, pk):
-    manuscript = _manuscript_or_404(pk)
+    manuscript = _manuscript_or_404(request, pk)
     publisher = get_publisher()
     try:
         publication = publisher.publish(manuscript)

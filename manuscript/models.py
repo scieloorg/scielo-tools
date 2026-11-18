@@ -88,7 +88,6 @@ class Manuscript(ClusterableModel):
         max_length=64,
         null=True,
         blank=True,
-        unique=True,
     )
     article_type = models.CharField(
         _("Article type"),
@@ -197,6 +196,19 @@ class Manuscript(ClusterableModel):
         verbose_name = _("Documento")
         verbose_name_plural = _("Documentos")
         ordering = ["-updated"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["creator", "source_sha256"],
+                name="uniq_manuscript_creator_source_sha256",
+            )
+        ]
+
+
+def manuscripts_for_user(user):
+    queryset = Manuscript.objects.all()
+    if getattr(user, "is_superuser", False):
+        return queryset
+    return queryset.filter(creator=user)
 
 
 class ManuscriptFigureFile(Orderable):
