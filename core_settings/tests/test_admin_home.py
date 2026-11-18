@@ -2,6 +2,7 @@ import json
 import re
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from wagtail.admin.site_summary import PagesSummaryItem, SiteSummaryPanel
@@ -196,3 +197,23 @@ class AdminHomeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, ">0.0.0</span>")
         self.assertNotContains(response, "releases/tag/")
+
+    def test_home_counts_only_the_current_users_manuscripts(self):
+        owner = User.objects.create_user(
+            username="owner", email="owner@example.com", password="secret"
+        )
+        other = User.objects.create_user(
+            username="other", email="other@example.com", password="secret"
+        )
+        owner.user_permissions.add(
+            *Permission.objects.filter(
+                codename__in=["access_admin", "view_manuscript", "change_manuscript"]
+            )
+        )
+        Manuscript.objects.create(title="Mine", creator=owner)
+        Manuscript.objects.create(title="Theirs", creator=other)
+        self.client.force_login(owner)
+        response = self.client.get(reverse("wagtailadmin_home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "1 Documento")
+        self.assertNotContains(response, "2 Documentos")

@@ -11,7 +11,13 @@ from wagtail.admin.site_summary import SummaryItem
 from wagtail.admin.ui.tables import Column
 from wagtail.admin.widgets.button import Button, HeaderButton
 from wagtail.snippets.models import register_snippet
-from wagtail.snippets.views.snippets import CreateView, IndexView, SnippetViewSet
+from wagtail.snippets.views.snippets import (
+    CreateView,
+    DeleteView,
+    EditView,
+    IndexView,
+    SnippetViewSet,
+)
 
 from config.menu import get_menu_order
 from manuscript.forms import ManuscriptAdminForm, ManuscriptCreateForm
@@ -21,6 +27,7 @@ from manuscript.models import (
     Manuscript,
     ManuscriptStatus,
     OriginalLanguage,
+    manuscripts_for_user,
 )
 from manuscript.services.intake import (
     ManuscriptIntakeError,
@@ -74,12 +81,24 @@ class ManuscriptCreateView(CreateView):
         )
 
 
+class ManuscriptOwnerQuerysetMixin:
+    def get_queryset(self):
+        return manuscripts_for_user(self.request.user)
+
+
+class ManuscriptEditView(ManuscriptOwnerQuerysetMixin, EditView):
+    pass
+
+
+class ManuscriptDeleteView(ManuscriptOwnerQuerysetMixin, DeleteView):
+    pass
+
+
 class ManuscriptIndexView(IndexView):
     def get_base_queryset(self):
         return (
-            super()
-            .get_base_queryset()
-            .select_related("source_document", "validation", "sps_package")
+            manuscripts_for_user(self.request.user)
+            .select_related("source_document", "validation", "sps_package", "creator")
             .prefetch_related("marking_runs", "references")
         )
 
@@ -140,6 +159,15 @@ class ManuscriptProgressColumn(Column):
         )
 
 
+class ManuscriptCreatorColumn(Column):
+    def get_value(self, instance):
+        creator = instance.creator
+        if creator is None:
+            return "-"
+        label = (creator.name or "").strip() or creator.get_full_name().strip()
+        return label or creator.get_username()
+
+
 class ManuscriptSourceDocumentColumn(Column):
     def get_value(self, instance):
         doc = super().get_value(instance)
@@ -198,6 +226,8 @@ register_snippet(OriginalLanguageViewSet)
 class ManuscriptViewSet(SnippetViewSet):
     model = Manuscript
     index_view_class = ManuscriptIndexView
+    edit_view_class = ManuscriptEditView
+    delete_view_class = ManuscriptDeleteView
     add_view_class = ManuscriptCreateView
     icon = "manuscript"
     menu_name = "manuscript"
@@ -207,6 +237,7 @@ class ManuscriptViewSet(SnippetViewSet):
     add_to_admin_menu = True
     list_display = (
         "title",
+        ManuscriptCreatorColumn("creator", label=_("Creator")),
         ManuscriptWorkflowColumn("status", label=_("Status")),
         ManuscriptProgressColumn("progress", label=_("Progress")),
         ManuscriptSourceDocumentColumn("source_document", label=_("Source DOCX")),
@@ -231,7 +262,7 @@ class ManuscriptsSummaryItem(SummaryItem):
     def get_context_data(self, parent_context):
         site_name = get_site_for_user(self.request.user)["site_name"]
         return {
-            "total_manuscripts": Manuscript.objects.count(),
+            "total_manuscripts": manuscripts_for_user(self.request.user).count(),
             "site_name": site_name,
         }
 

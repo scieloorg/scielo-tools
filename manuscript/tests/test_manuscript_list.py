@@ -2,6 +2,7 @@ import hashlib
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
@@ -35,6 +36,7 @@ class ManuscriptListDisplayTests(TestCase):
         response = self.client.get(self.list_url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Status")
+        self.assertContains(response, "Creator")
         self.assertContains(response, "Progress")
         self.assertContains(response, "Source DOCX")
         self.assertContains(response, "Article type")
@@ -143,6 +145,90 @@ class ManuscriptListDisplayTests(TestCase):
             reverse("manuscript_api_marking_status", args=[partial.pk]),
             content,
         )
+
+
+class ManuscriptPerUserListTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.owner = user_model.objects.create_user(
+            username="owner",
+            email="owner@example.com",
+            password="secret",
+            first_name="Ana",
+            last_name="Silva",
+        )
+        self.other = user_model.objects.create_user(
+            username="other",
+            email="other@example.com",
+            password="secret",
+            first_name="Bruno",
+            last_name="Costa",
+        )
+        permissions = Permission.objects.filter(
+            codename__in=[
+                "access_admin",
+                "add_manuscript",
+                "change_manuscript",
+                "delete_manuscript",
+                "view_manuscript",
+            ]
+        )
+        self.owner.user_permissions.add(*permissions)
+        self.other.user_permissions.add(*permissions)
+        self.own = Manuscript.objects.create(
+            title="Documento da Ana",
+            creator=self.owner,
+        )
+        self.theirs = Manuscript.objects.create(
+            title="Documento do Bruno",
+            creator=self.other,
+        )
+        self.client.force_login(self.owner)
+        self.list_url = reverse("wagtailsnippets_manuscript_manuscript:list")
+
+    def test_list_shows_only_the_current_users_documents(self):
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.own.title)
+        self.assertContains(response, "Ana Silva")
+        self.assertNotContains(response, self.theirs.title)
+        self.assertNotContains(response, "Bruno Costa")
+
+    def test_other_users_document_is_not_opened(self):
+        wizard = self.client.get(
+            reverse("manuscript_step_front", args=[self.theirs.pk]),
+            follow=True,
+        )
+        self.assertEqual(wizard.status_code, 404)
+        edit = self.client.get(
+            reverse(
+                "wagtailsnippets_manuscript_manuscript:edit",
+                args=[self.theirs.pk],
+            ),
+            follow=True,
+        )
+        self.assertEqual(edit.status_code, 404)
+
+    def test_owner_opens_own_document(self):
+        wizard = self.client.get(
+            reverse("manuscript_step_front", args=[self.own.pk]),
+            follow=True,
+        )
+        self.assertEqual(wizard.status_code, 200)
+
+    def test_superuser_list_shows_documents_of_each_user(self):
+        admin = get_user_model().objects.create_superuser(
+            username="admin",
+            email="admin@example.com",
+            password="secret",
+        )
+        self.client.force_login(admin)
+        response = self.client.get(self.list_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.own.title)
+        self.assertContains(response, self.theirs.title)
+        self.assertContains(response, "Ana Silva")
+        self.assertContains(response, "Bruno Costa")
 
 
 class ManuscriptCreateIntakeTests(TestCase):
@@ -380,12 +466,6 @@ class ManuscriptCreateIntakeTests(TestCase):
         manuscript = Manuscript.objects.get()
         original_pk = manuscript.pk
         creator = manuscript.creator
-        other = get_user_model().objects.create_superuser(
-            username="other-creator",
-            email="other@example.com",
-            password="secret",
-        )
-        manuscript.creator = other
         manuscript.front_marked = {"titles": [{"text": "Old"}]}
         manuscript.front_marked_xml = "<front/>"
         manuscript.assembled_xml = "<article/>"
@@ -425,8 +505,7 @@ class ManuscriptCreateIntakeTests(TestCase):
         self.assertEqual(manuscript.title, "Retitled package")
         self.assertEqual(manuscript.language, "es")
         self.assertEqual(manuscript.article_type, "review-article")
-        self.assertEqual(manuscript.creator_id, other.pk)
-        self.assertNotEqual(manuscript.creator_id, creator.pk)
+        self.assertEqual(manuscript.creator_id, creator.pk)
         self.assertEqual(manuscript.source_sha256, hashlib.sha256(payload).hexdigest())
         self.assertEqual(manuscript.front_marked, {})
         self.assertEqual(manuscript.front_marked_xml, "")
@@ -449,6 +528,75 @@ class ManuscriptCreateIntakeTests(TestCase):
             "remarcado",
             " ".join(str(message) for message in get_messages(second.wsgi_request)),
         )
+
+    @patch("body.tasks.mark_body_text.apply_async")
+    @patch("front.tasks.mark_front_text.apply_async")
+    @patch("reference.tasks.mark_reference_texts_task.apply_async")
+    def test_same_docx_owned_by_another_user_creates_a_separate_manuscript(
+        self, mock_back, mock_front, mock_body
+    ):
+        mock_back.return_value = MagicMock(id="task-back")
+        payload = make_docx_bytes(
+            [
+                "Título de teste",
+                "Ana Silva",
+                "Introduction",
+                "Corpo do artigo",
+                "References",
+                "Smith J. A paper. 2020.",
+            ]
+        )
+        content_type = (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        add_url = reverse("wagtailsnippets_manuscript_manuscript:add")
+        first = self.client.post(
+            add_url,
+            {
+                "title": "Original title",
+                "article_type": "research-article",
+                "language": "en",
+                "specific_use": "sps-1.10",
+                "source_docx": SimpleUploadedFile(
+                    "bn-2025-1834.docx",
+                    payload,
+                    content_type=content_type,
+                ),
+            },
+        )
+        self.assertEqual(first.status_code, 302)
+        original = Manuscript.objects.get()
+        other = get_user_model().objects.create_superuser(
+            username="other-creator",
+            email="other@example.com",
+            password="secret",
+        )
+        original.creator = other
+        original.front_marked = {"titles": [{"text": "Old"}]}
+        original.save(update_fields=["creator", "front_marked"])
+        second = self.client.post(
+            add_url,
+            {
+                "title": "My copy",
+                "article_type": "research-article",
+                "language": "en",
+                "specific_use": "sps-1.10",
+                "source_docx": SimpleUploadedFile(
+                    "bn-2025-1834.docx",
+                    payload,
+                    content_type=content_type,
+                ),
+            },
+        )
+        self.assertEqual(second.status_code, 302)
+        self.assertEqual(Manuscript.objects.count(), 2)
+        original.refresh_from_db()
+        self.assertEqual(original.creator_id, other.pk)
+        self.assertEqual(original.front_marked, {"titles": [{"text": "Old"}]})
+        mine = Manuscript.objects.exclude(pk=original.pk).get()
+        self.assertEqual(mine.title, "My copy")
+        self.assertEqual(mine.creator.username, "creator")
+        self.assertEqual(mine.source_sha256, original.source_sha256)
 
     @patch("body.tasks.mark_body_text.apply_async")
     @patch("front.tasks.mark_front_text.apply_async")

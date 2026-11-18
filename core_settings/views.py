@@ -7,7 +7,7 @@ from wagtail.documents.permissions import (
 from wagtail.images.permissions import permission_policy as image_permission_policy
 from wagtail.permission_policies.base import ModelPermissionPolicy
 
-from manuscript.models import Manuscript
+from manuscript.models import Manuscript, manuscripts_for_user
 from manuscript.services.workflow import current_step_url_name
 
 SEARCH_RESULT_LIMIT = 50
@@ -32,9 +32,11 @@ def admin_search(request):
     )
     if query:
         if show_manuscripts:
-            for manuscript in Manuscript.objects.filter(
-                title__icontains=query
-            ).order_by("title")[:SEARCH_RESULT_LIMIT]:
+            for manuscript in (
+                manuscripts_for_user(request.user)
+                .filter(title__icontains=query)
+                .order_by("title")[:SEARCH_RESULT_LIMIT]
+            ):
                 manuscripts.append(
                     {
                         "title": manuscript.title,

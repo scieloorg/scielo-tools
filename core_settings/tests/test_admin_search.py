@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.core.files.base import ContentFile
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
@@ -137,3 +138,20 @@ class AdminSearchTests(TestCase):
         html = response.content.decode()
         self.assertIn(self.search_url, html)
         self.assertNotIn(reverse("wagtailadmin_pages:search"), html)
+
+    def test_search_hides_another_users_manuscript(self):
+        owner = User.objects.create_user(
+            username="owner", email="owner@example.com", password="secret"
+        )
+        owner.user_permissions.add(
+            *Permission.objects.filter(
+                codename__in=["access_admin", "view_manuscript", "change_manuscript"]
+            )
+        )
+        Manuscript.objects.create(title="SharedTerm mine", creator=owner)
+        Manuscript.objects.create(title="SharedTerm theirs", creator=self.user)
+        self.client.force_login(owner)
+        response = self.client.get(self.search_url, {"q": "SharedTerm"})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "SharedTerm mine")
+        self.assertNotContains(response, "SharedTerm theirs")

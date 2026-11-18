@@ -82,8 +82,12 @@ def ingest_docx_into_manuscript(manuscript, docx, user=None, sync_metadata=True)
     target = manuscript
     created = False
     with transaction.atomic():
+        owner = user if user is not None else target.creator
+        owner_id = getattr(owner, "pk", None)
         existing = (
-            Manuscript.objects.select_for_update().filter(source_sha256=digest).first()
+            Manuscript.objects.select_for_update()
+            .filter(source_sha256=digest, creator_id=owner_id)
+            .first()
         )
         if existing is None:
             was_new = target.pk is None
@@ -93,7 +97,8 @@ def ingest_docx_into_manuscript(manuscript, docx, user=None, sync_metadata=True)
                     target.save()
             except IntegrityError:
                 existing = Manuscript.objects.select_for_update().get(
-                    source_sha256=digest
+                    source_sha256=digest,
+                    creator_id=owner_id,
                 )
             else:
                 created = was_new

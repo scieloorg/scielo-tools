@@ -85,6 +85,8 @@ def hide_pages_menu_item(request, menu_items):
             continue
         if item.name in WAGTAIL_MENU_GROUPS_ORDER:
             item.order = get_menu_order(item.name)
+        if item.name == "documents":
+            item.label = _("Ativo")
         if item.name in ACCOUNT_EXTRA_MENU_NAMES:
             extra.append(item)
             continue
