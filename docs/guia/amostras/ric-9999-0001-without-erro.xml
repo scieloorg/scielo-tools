@@ -1,0 +1,1103 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal Publishing DTD v1.1 20151215//EN" "JATS-journalpublishing1.dtd">
+<article xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:xlink="http://www.w3.org/1999/xlink" article-type="research-article" dtd-version="1.1" specific-use="sps-1.10" xml:lang="pt">
+  <front>
+  <journal-meta>
+    <journal-id journal-id-type="publisher-id">ric</journal-id>
+    <journal-title-group>
+      <journal-title>Revista Imaginária de Ciências do Barro</journal-title>
+      <abbrev-journal-title abbrev-type="publisher">Rev. Imagin. Cienc. Barro</abbrev-journal-title>
+    </journal-title-group>
+    <issn pub-type="epub">9999-0001</issn>
+    <publisher>
+      <publisher-name>Instituto de Ceramica de Barroalto</publisher-name>
+    </publisher>
+  </journal-meta>
+  <article-meta>
+    <article-id pub-id-type="doi">10.1590/ric-2024-0001</article-id>
+    <article-categories>
+      <subj-group subj-group-type="heading">
+        <subject>Artigo de pesquisa</subject>
+      </subj-group>
+    </article-categories>
+    <title-group>
+      <article-title>Perda de água em vasos de barro de cozedura lenta no planalto imaginário de Barroalto</article-title>
+      <trans-title-group xml:lang="en">
+        <trans-title>Water loss in slow-fired clay pots on the imaginary Barroalto plateau</trans-title>
+      </trans-title-group>
+    </title-group>
+    <contrib-group>
+      <contrib contrib-type="author">
+        <contrib-id contrib-id-type="orcid">0000-0001-9999-0013</contrib-id>
+        <name>
+          <surname>Varejão</surname>
+          <given-names>Lina</given-names>
+        </name>
+        <xref ref-type="aff" rid="aff1">
+          <sup>1</sup>
+        </xref>
+        <xref ref-type="corresp" rid="c01"/>
+        <role content-type="https://credit.niso.org/contributor-roles/conceptualization/">Conceptualization</role>
+      </contrib>
+      <contrib contrib-type="author">
+        <contrib-id contrib-id-type="orcid">0000-0001-9999-0021</contrib-id>
+        <name>
+          <surname>Lamego</surname>
+          <given-names>Pedro</given-names>
+        </name>
+        <xref ref-type="aff" rid="aff1">
+          <sup>1</sup>
+        </xref>
+        <role content-type="https://credit.niso.org/contributor-roles/formal-analysis/">Formal analysis</role>
+      </contrib>
+      <contrib contrib-type="author">
+        <contrib-id contrib-id-type="orcid">0000-0001-9999-003X</contrib-id>
+        <name>
+          <surname>Quitanda</surname>
+          <given-names>Nara</given-names>
+        </name>
+        <xref ref-type="aff" rid="aff2">
+          <sup>2</sup>
+        </xref>
+        <role content-type="https://credit.niso.org/contributor-roles/data-curation/">Data curation</role>
+      </contrib>
+      <contrib contrib-type="author">
+        <contrib-id contrib-id-type="orcid">0000-0001-9999-0048</contrib-id>
+        <name>
+          <surname>Besouro</surname>
+          <given-names>Caio</given-names>
+        </name>
+        <xref ref-type="aff" rid="aff3">
+          <sup>3</sup>
+        </xref>
+        <role content-type="https://credit.niso.org/contributor-roles/investigation/">Investigation</role>
+      </contrib>
+      <contrib contrib-type="author">
+        <contrib-id contrib-id-type="orcid">0000-0001-9999-0056</contrib-id>
+        <name>
+          <surname>Moringa</surname>
+          <given-names>Helena</given-names>
+        </name>
+        <xref ref-type="aff" rid="aff4">
+          <sup>4</sup>
+        </xref>
+        <role content-type="https://credit.niso.org/contributor-roles/writing-original-draft/">Writing – original draft</role>
+      </contrib>
+      <contrib contrib-type="author">
+        <contrib-id contrib-id-type="orcid">0000-0001-9999-0064</contrib-id>
+        <name>
+          <surname>Candeia</surname>
+          <given-names>Ivo</given-names>
+        </name>
+        <xref ref-type="aff" rid="aff4">
+          <sup>4</sup>
+        </xref>
+        <role content-type="https://credit.niso.org/contributor-roles/writing-review-editing/">Writing – review &amp; editing</role>
+      </contrib>
+    </contrib-group>
+    <aff id="aff1">
+      <label>1</label>
+      <institution content-type="original">Instituto de Cerâmica de Barroalto, Departamento de Ceramica 1, Grupo de Umidade 1, Barroalto, PI, Brasil</institution>
+      <institution content-type="orgname">Instituto de Cerâmica de Barroalto</institution>
+      <institution content-type="orgdiv1">Departamento de Ceramica 1</institution>
+      <institution content-type="orgdiv2">Grupo de Umidade 1</institution>
+      <addr-line>
+        <city>Barroalto</city>
+        <state>PI</state>
+      </addr-line>
+      <country country="BR">Brasil</country>
+    </aff>
+    <aff id="aff2">
+      <label>2</label>
+      <institution content-type="original">Universidade Federal do Vale do Torno, Departamento de Ceramica 2, Grupo de Umidade 2, Torno, PI, Brasil</institution>
+      <institution content-type="orgname">Universidade Federal do Vale do Torno</institution>
+      <institution content-type="orgdiv1">Departamento de Ceramica 2</institution>
+      <institution content-type="orgdiv2">Grupo de Umidade 2</institution>
+      <addr-line>
+        <city>Torno</city>
+        <state>PI</state>
+      </addr-line>
+      <country country="BR">Brasil</country>
+    </aff>
+    <aff id="aff3">
+      <label>3</label>
+      <institution content-type="original">Laboratório de Umidade da Serra do Pilão, Departamento de Ceramica 3, Grupo de Umidade 3, Pilão, PI, Brasil</institution>
+      <institution content-type="orgname">Laboratório de Umidade da Serra do Pilão</institution>
+      <institution content-type="orgdiv1">Departamento de Ceramica 3</institution>
+      <institution content-type="orgdiv2">Grupo de Umidade 3</institution>
+      <addr-line>
+        <city>Pilão</city>
+        <state>PI</state>
+      </addr-line>
+      <country country="BR">Brasil</country>
+    </aff>
+    <aff id="aff4">
+      <label>4</label>
+      <institution content-type="original">Oficina Municipal de Oleiros de Telha-Nova, Departamento de Ceramica 4, Grupo de Umidade 4, Telha-Nova, PI, Brasil</institution>
+      <institution content-type="orgname">Oficina Municipal de Oleiros de Telha-Nova</institution>
+      <institution content-type="orgdiv1">Departamento de Ceramica 4</institution>
+      <institution content-type="orgdiv2">Grupo de Umidade 4</institution>
+      <addr-line>
+        <city>Telha-Nova</city>
+        <state>PI</state>
+      </addr-line>
+      <country country="BR">Brasil</country>
+    </aff>
+    <author-notes>
+      <corresp id="c01">Lina Varejao, Instituto de Ceramica de Barroalto, Rua do Forno 40, Barroalto, Brasil. lina.varejao@barroalto.example<label>Correspondence</label></corresp>
+      <fn fn-type="coi-statement">
+        <label>Conflicts of Interest</label>
+        <p>Os autores declaram não haver conflito de interesse.</p>
+      </fn>
+      <fn fn-type="edited-by">
+        <label>Associate editor</label>
+        <p>Rita Fornalha</p>
+      </fn>
+    </author-notes>
+    <pub-date date-type="pub" publication-format="electronic">
+      <day>15</day>
+      <month>01</month>
+      <year>2025</year>
+    </pub-date>
+    <pub-date date-type="collection" publication-format="electronic">
+      <year>2025</year>
+    </pub-date>
+    <volume>12</volume>
+    <issue>1</issue>
+    <fpage>10</fpage>
+    <lpage>28</lpage>
+    <history>
+      <date date-type="received">
+        <day>12</day>
+        <month>03</month>
+        <year>2024</year>
+      </date>
+      <date date-type="rev-request">
+        <day>02</day>
+        <month>06</month>
+        <year>2024</year>
+      </date>
+      <date date-type="rev-recd">
+        <day>18</day>
+        <month>08</month>
+        <year>2024</year>
+      </date>
+      <date date-type="accepted">
+        <day>03</day>
+        <month>10</month>
+        <year>2024</year>
+      </date>
+      <date date-type="pub">
+        <day>15</day>
+        <month>01</month>
+        <year>2025</year>
+      </date>
+    </history>
+    <permissions>
+      <license license-type="open-access" xlink:href="https://creativecommons.org/licenses/by/4.0/" xml:lang="en">
+        <license-p>This is an Open Access article distributed under the terms of the Creative Commons Attribution License, which permits unrestricted use, distribution, and reproduction in any medium, provided the original work is properly cited.</license-p>
+      </license>
+    </permissions>
+    <trans-abstract xml:lang="pt">
+      <title>Resumo</title>
+      <p>Este artigo inventado descreve um ensaio de laboratório sobre a perda de água em vasos de barro de cozedura lenta produzidos no planalto imaginário de Barroalto. Seis oleiros cederam trinta e seis peças de boca estreita, boca larga e tampa solta. As peças secaram à sombra durante catorze dias e foram queimadas num forno comunitário de Telha-Nova, com patamar de oitocentas graus durante quatro horas. Depois da queima, cada vaso recebeu um litro de água de torneira e ficou numa câmara a vinte e dois graus e sessenta por cento de umidade relativa. A massa foi registada às seis horas e às vinte e quatro horas. A perda média às vinte e quatro horas foi de 11,4 por cento nas peças de boca estreita, de 16,8 por cento nas de boca larga e de 9,1 por cento nas peças com tampa. A taxa entre as duas leituras acompanhou a abertura da boca e a espessura da parede. Os resultados servem apenas para ilustrar a marcação de um manuscrito fictício e não descrevem um experimento realizado. As peças, as pessoas e o planalto existem só neste ficheiro.</p>
+    </trans-abstract>
+    <kwd-group xml:lang="pt">
+      <title>Palavras-chave</title>
+      <kwd>barro</kwd>
+      <kwd>cozedura lenta</kwd>
+      <kwd>umidade</kwd>
+      <kwd>vaso</kwd>
+      <kwd>planalto</kwd>
+      <kwd>oleiro</kwd>
+    </kwd-group>
+    <counts>
+      <fig-count count="5"/>
+      <table-count count="4"/>
+      <equation-count count="2"/>
+      <ref-count count="30"/>
+    </counts>
+  </article-meta>
+</front><body>
+  <sec sec-type="intro" id="sec1">
+    <title>Introdução</title>
+    <p>O planalto imaginário de Barroalto aparece neste manuscrito como cenário de um estudo que nunca saiu do papel. A vila de oleiros, a serra do Pilão e a oficina de Telha-Nova são lugares inventados, criados para que a marcação de um artigo de pesquisa possa ser mostrada com volume parecido ao de um manuscrito do dia a dia. Nada do que se lê aqui foi medido em campo, e os nomes das pessoas e das instituições não correspondem a pesquisadores reais.</p>
+    <p>Nas histórias que os oleiros contam uns aos outros, o vaso de cozedura lenta perde água pela parede e pela boca, e essa perda muda o gosto da água guardada de um dia para o outro. A afirmação é uma desculpa narrativa. Ela permite organizar uma frente com autores e afiliações, um corpo com secções de um artigo de pesquisa e uma lista de referências longa o bastante para a pessoa que marca reconhecer o trabalho habitual.</p>
+    <p>A pergunta do ensaio fictício é simples. Peças de boca estreita, de boca larga e com tampa solta perdem a mesma fração de água nas primeiras vinte e quatro horas depois de cheias, quando a queima e a câmara de ensaio são as mesmas? A resposta, também fictícia, está nas tabelas e nas figuras deste texto. Os números foram escolhidos para serem coerentes entre si e para caberem em legendas, equações e citações.</p>
+    <p>O barro do planalto, nesta ficção, leva chamote de telha moída, caulim de uma jazida chamada Laje Branca e um pouco de feldspato de um corte de estrada que não existe. A receita está fixada de propósito. Se a pasta mudasse de peça para peça, a diferença de perda de água poderia ser atribuída à massa e não à forma. O desenho do ensaio separa essas duas coisas para que a discussão tenha o que comentar.</p>
+    <p>Trabalhos inventados de periódicos também inventados são citados ao longo do texto e reunidos no fim. As revistas Anais do Barroalto, Cadernos do Pilão, Revista do Torno, Boletim da Telha-Nova, Arquivos de Cozedura e Notas de Oleiros não circulam em parte alguma. Os identificadores digitais usam o prefixo 10.9999, reservado aqui para este exercício, e não apontam para artigos publicados.</p>
+    <p>O manuscrito segue a ordem habitual de um artigo de pesquisa. Depois desta introdução vêm os métodos, com duas equações de perda e de taxa, os resultados, com cinco figuras e quatro tabelas, a discussão e a conclusão. Quem marca o ficheiro encontra, portanto, frente, corpo e referências no tamanho em que esses blocos costumam chegar, e não um recorte de uma página.</p>
+    <p>As afiliações cobrem quatro instituições inventadas. O histórico traz recebimento, pedido de revisão, versão revista, aceite e publicação, com datas explícitas para a frente do XML. O resumo repete a pergunta, o desenho e as três médias, para essa frente ter um abstract do tamanho que a secretaria de um periódico costuma receber. As palavras-chave são seis e cabem numa única linha, separadas por vírgulas.</p>
+    <p>Há uma razão prática para não encurtar a introdução. Uma lista de trinta referências só se lê com naturalidade depois de um corpo que poderia tê-las citado. Quem marca vê cartões de referência ao lado de secções, figuras e tabelas, e não uma lista solta presa a um parágrafo único. O volume é o de um artigo de pesquisa breve, daqueles que ocupam uma tarde, e não o de uma revisão com duzentas entradas.</p>
+    <p>O leitor que procurar Barroalto num mapa não o encontra. O mesmo vale para a Serra do Pilão, o Vale do Torno e Telha-Nova. Os topónimos existem para dar corpo às afiliações e para os exemplos de correspondência terem morada. O correio eletrónico termina em example, domínio reservado a exemplos, para ninguém escrever a uma caixa que pudesse existir. Essa escolha repete-se nos endereços das referências que não são artigos de periódico.</p>
+    <sec id="sec2">
+      <title>Métodos</title>
+      <p>A pasta foi amassada numa bancada de madeira durante quarenta minutos, descansou em saco fechado por vinte e quatro horas e foi aberta em placas de oito milímetros. Cada oleiro levantou duas peças de cada forma, o que deu doze vasos de boca estreita, doze de boca larga e doze com tampa solta. A altura ficou entre dezoito e vinte e dois centímetros. A boca estreita media quatro centímetros de diâmetro, a boca larga media doze, e a tampa cobria uma boca de nove centímetros com uma folga de dois milímetros.</p>
+      <p>As peças secaram à sombra, longe de corrente de ar, durante catorze dias. No sétimo dia foram viradas. No décimo quarto dia a base estava fria ao toque e a parede já não marcava a unha. Essa regra de secagem é a que a oficina de Telha-Nova usa na história deste texto. Não houve estufa. A umidade da sala de secagem, anotada de manhã num caderno de capa azul, oscilou entre cinquenta e oito e sessenta e quatro por cento.</p>
+      <p>A queima ocorreu no forno comunitário de Telha-Nova, de câmara única e chaminé curta. O aquecimento levou seis horas até oitocentos graus, o patamar durou quatro horas e o arrefecimento ocupou a noite. Não se usou pirómetro de laboratório. A temperatura foi lida num cone inventado da série Pilão, colocado à altura da prateleira do meio. Todas as peças desta fornada partilham, portanto, a mesma curva. As diferenças de perda de água que aparecem adiante não podem ser atribuídas a queimas distintas.</p>
+      <p>Depois da queima, cada vaso foi lavado com água sem sabão, seco com pano e pesado vazio numa balança de banqueta com leitura de um grama. Em seguida recebeu um litro de água de torneira, medido numa proveta de vidro. A peça fechada com tampa foi pesada com a tampa posta. A peça aberta foi pesada sem qualquer cobertura. O instante do enchimento foi tomado como hora zero.</p>
+      <p>A câmara de ensaio é uma sala sem janela no Laboratório de Umidade da Serra do Pilão. O termóstato ficou em vinte e dois graus e o umidificador em sessenta por cento. Um ventilador de mesa, apontado para a parede e não para as peças, renovava o ar sem criar corrente direta sobre a boca dos vasos. As peças repousaram em tábuas, separadas por dez centímetros, para que a água de uma não molhasse a parede da vizinha.</p>
+      <p>A massa foi registada às seis horas e às vinte e quatro horas. A perda percentual em relação à massa de água inicial segue a <xref ref-type="disp-formula" rid="e1">equação (1)</xref>. A taxa entre as duas leituras, em pontos percentuais por hora no intervalo de dezoito horas, segue a <xref ref-type="disp-formula" rid="e2">equação (2)</xref>. As duas expressões são definições de trabalho deste ensaio e não modelos físicos da difusão no barro.</p>
+      <disp-formula id="e1">
+        <label>(1)</label>
+        <mml:math id="m1">
+          <mml:mi>P</mml:mi>
+          <mml:mo>=</mml:mo>
+          <mml:mfrac>
+            <mml:mrow>
+              <mml:mi>m</mml:mi>
+              <mml:mn>0</mml:mn>
+              <mml:mo>−</mml:mo>
+              <mml:mi>m</mml:mi>
+              <mml:mi>t</mml:mi>
+            </mml:mrow>
+            <mml:mrow>
+              <mml:mi>m</mml:mi>
+              <mml:mn>0</mml:mn>
+            </mml:mrow>
+          </mml:mfrac>
+          <mml:mo>×</mml:mo>
+          <mml:mn>100</mml:mn>
+        </mml:math>
+      </disp-formula>
+      <p>Equação 1</p>
+      <p>A <xref ref-type="disp-formula" rid="e1">equação (1)</xref> define a perda percentual P a partir da massa de água no enchimento, m0, e da massa de água ainda no vaso no instante t, mt.</p>
+      <disp-formula id="e2">
+        <label>(2)</label>
+        <mml:math id="m2">
+          <mml:mi>k</mml:mi>
+          <mml:mo>=</mml:mo>
+          <mml:mfrac>
+            <mml:mrow>
+              <mml:mi>P</mml:mi>
+              <mml:mn>24</mml:mn>
+              <mml:mo>−</mml:mo>
+              <mml:mi>P</mml:mi>
+              <mml:mn>6</mml:mn>
+            </mml:mrow>
+            <mml:mn>18</mml:mn>
+          </mml:mfrac>
+        </mml:math>
+      </disp-formula>
+      <p>Equação 2</p>
+      <p>A <xref ref-type="disp-formula" rid="e2">equação (2)</xref> define a taxa k, em pontos percentuais por hora, entre a perda às vinte e quatro horas e a perda às seis horas.</p>
+      <p>Cada forma teve doze réplicas. A média e o desvio foram calculados à mão e conferidos numa folha de cálculo. Não se aplicou teste de hipótese. O texto compara as médias e descreve a dispersão. Um vaso de boca larga, de número de oficina 19, rachou na boca durante a queima e foi retirado antes do enchimento. A tabela de perdas usa, para essa forma, onze peças.</p>
+      <p>As figuras foram desenhadas a partir das médias. A <xref ref-type="fig" rid="f1">Figura 1</xref> mostra a perda às vinte e quatro horas por forma. A <xref ref-type="fig" rid="f2">Figura 2</xref> mostra a mesma perda às seis horas. A <xref ref-type="fig" rid="f3">Figura 3</xref> compara a espessura da parede com a perda final. A <xref ref-type="fig" rid="f4">Figura 4</xref> reúne a curva de aquecimento da fornada. A <xref ref-type="fig" rid="f5">Figura 5</xref> apresenta o aspecto inventado de três bocas, uma de cada forma, fotografadas na bancada antes do enchimento. As tabelas guardam os números que as figuras resumem. Cada legenda nomeia a grandeza. Os ficheiros chamam-se ric-9999-0001-without-erro-gf01, ric-9999-0001-without-erro-gf02, ric-9999-0001-without-erro-gf03, ric-9999-0001-without-erro-gf04 e ric-9999-0001-without-erro-gf05, para o pacote ligar o desenho ao texto sem adivinhar o nome.</p>
+      <p>O caderno de bancada, também inventado, tem uma linha por peça. A linha guarda o oleiro, a forma, a massa vazia, a massa às seis horas e a massa às vinte e quatro horas. Dessa linha saem a <xref ref-type="table" rid="t2">Tabela 2</xref> e a <xref ref-type="table" rid="t4">Tabela 4</xref>. Não há página rasurada nem medida refeita. Se um número deste texto discordar de outro, o erro é de redação e corrige-se na marcação, sem inventar uma segunda pesagem.</p>
+      <p>A ordem de trabalho na bancada foi sempre a mesma. Primeiro a massa vazia, depois o litro de água, depois a pesagem de hora zero, que coincide com a massa vazia mais mil gramas, dentro da tolerância de um grama da balança. Às seis horas a peça volta à balança sem ser esvaziada. Às vinte e quatro horas repete-se o gesto. Não se abriu nenhum vaso para ver o nível. A conta faz-se pela diferença de massa, que é o que a <xref ref-type="disp-formula" rid="e1">equação (1)</xref> pede.</p>
+    </sec>
+  <p>As referencias citadas neste ensaio ficticio sao <xref ref-type="bibr" rid="B1">1</xref>, <xref ref-type="bibr" rid="B2">2</xref>, <xref ref-type="bibr" rid="B3">3</xref>, <xref ref-type="bibr" rid="B4">4</xref>, <xref ref-type="bibr" rid="B5">5</xref>, <xref ref-type="bibr" rid="B6">6</xref>, <xref ref-type="bibr" rid="B7">7</xref>, <xref ref-type="bibr" rid="B8">8</xref>, <xref ref-type="bibr" rid="B9">9</xref>, <xref ref-type="bibr" rid="B10">10</xref>, <xref ref-type="bibr" rid="B11">11</xref>, <xref ref-type="bibr" rid="B12">12</xref>, <xref ref-type="bibr" rid="B13">13</xref>, <xref ref-type="bibr" rid="B14">14</xref>, <xref ref-type="bibr" rid="B15">15</xref>, <xref ref-type="bibr" rid="B16">16</xref>, <xref ref-type="bibr" rid="B17">17</xref>, <xref ref-type="bibr" rid="B18">18</xref>, <xref ref-type="bibr" rid="B19">19</xref>, <xref ref-type="bibr" rid="B20">20</xref>, <xref ref-type="bibr" rid="B21">21</xref>, <xref ref-type="bibr" rid="B22">22</xref>, <xref ref-type="bibr" rid="B23">23</xref>, <xref ref-type="bibr" rid="B24">24</xref>, <xref ref-type="bibr" rid="B25">25</xref>, <xref ref-type="bibr" rid="B26">26</xref>, <xref ref-type="bibr" rid="B27">27</xref>, <xref ref-type="bibr" rid="B28">28</xref>, <xref ref-type="bibr" rid="B29">29</xref>, <xref ref-type="bibr" rid="B30">30</xref>.</p></sec>
+  <sec sec-type="results" id="sec3">
+    <title>Resultados</title>
+    <p>A massa vazia média foi de 640 gramas na boca estreita, de 710 gramas na boca larga e de 780 gramas na peça com tampa, já contada a tampa. A parede, medida com paquímetro em três alturas, ficou entre 6,8 e 8,4 milímetros. A peça mais fina foi um vaso de boca larga. A peça mais grossa foi um vaso com tampa, na zona do ombro. Esses valores estão na <xref ref-type="table" rid="t1">Tabela 1</xref>, junto com o diâmetro da boca e a altura externa.</p>
+    <p>Às seis horas, a perda média foi de 4,2 por cento na boca estreita, de 7,1 por cento na boca larga e de 3,0 por cento na peça com tampa. Às vinte e quatro horas, as médias subiram para 11,4, 16,8 e 9,1 por cento, na mesma ordem. A <xref ref-type="fig" rid="f1">Figura 1</xref> mostra a leitura final e a <xref ref-type="fig" rid="f2">Figura 2</xref> mostra a leitura intermédia. A distância entre as formas já aparece às seis horas e aumenta no fim do dia.</p>
+    <fig id="f1">
+      <label>Figura 1</label>
+      <caption>
+        <title>Perda de água às vinte e quatro horas, em percentagem da massa de água inicial, por forma de vaso.</title>
+      </caption>
+      <graphic id="g1" xlink:href="ric-9999-0001-without-erro-gf01.jpg"><alt-text>Grafico esquematico 1 do ensaio ficticio de perda de agua em vasos de barro</alt-text></graphic>
+    </fig>
+    <fig id="f2">
+      <label>Figura 2</label>
+      <caption>
+        <title>Perda de água às seis horas, nas mesmas peças e na mesma câmara de ensaio.</title>
+      </caption>
+      <graphic id="g2" xlink:href="ric-9999-0001-without-erro-gf02.jpg"><alt-text>Grafico esquematico 2 do ensaio ficticio de perda de agua em vasos de barro</alt-text></graphic>
+    </fig>
+    <p>O desvio padrão da perda final foi de 0,8 ponto na boca estreita, de 1,4 ponto na boca larga e de 0,6 ponto na peça com tampa. A boca larga, além de perder mais água, variou mais entre as réplicas. Duas peças dessa forma tinham a parede abaixo de sete milímetros e puxaram a média para cima. Sem elas, a média da boca larga cairia para 15,9 por cento, ainda acima das outras formas. A <xref ref-type="table" rid="t2">Tabela 2</xref> lista média, desvio, mínimo e máximo.</p>
+    <p>A taxa calculada pela <xref ref-type="disp-formula" rid="e2">equação (2)</xref> foi de 0,40 ponto percentual por hora na boca estreita, de 0,54 na boca larga e de 0,34 na peça com tampa. A ordem das formas é a mesma da perda acumulada. A tampa não anulou a perda. Reduziu-a em relação à boca aberta de diâmetro parecido. A água continuou a sair pela parede e pela folga de dois milímetros entre tampa e boca.</p>
+    <table-wrap id="t1">
+      <label>Tabela 1</label>
+      <caption>
+        <title>Medidas externas médias por forma.</title>
+      </caption>
+      <table>
+        <thead>
+          <tr>
+            <th>Forma</th>
+            <th>Altura (cm)</th>
+            <th>Boca (cm)</th>
+            <th>Parede (mm)</th>
+            <th>Massa vazia (g)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Boca estreita</td>
+            <td>20</td>
+            <td>4</td>
+            <td>7,6</td>
+            <td>640</td>
+          </tr>
+          <tr>
+            <td>Boca larga</td>
+            <td>19</td>
+            <td>12</td>
+            <td>7,1</td>
+            <td>710</td>
+          </tr>
+          <tr>
+            <td>Com tampa</td>
+            <td>21</td>
+            <td>9</td>
+            <td>8,1</td>
+            <td>780</td>
+          </tr>
+        </tbody>
+      </table>
+    </table-wrap>
+    <table-wrap id="t2">
+      <label>Tabela 2</label>
+      <caption>
+        <title>Perda percentual às vinte e quatro horas.</title>
+      </caption>
+      <table>
+        <thead>
+          <tr>
+            <th>Forma</th>
+            <th>N</th>
+            <th>Média</th>
+            <th>Desvio</th>
+            <th>Mínimo</th>
+            <th>Máximo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Boca estreita</td>
+            <td>12</td>
+            <td>11,4</td>
+            <td>0,8</td>
+            <td>10,1</td>
+            <td>12,7</td>
+          </tr>
+          <tr>
+            <td>Boca larga</td>
+            <td>11</td>
+            <td>16,8</td>
+            <td>1,4</td>
+            <td>14,9</td>
+            <td>19,2</td>
+          </tr>
+          <tr>
+            <td>Com tampa</td>
+            <td>12</td>
+            <td>9,1</td>
+            <td>0,6</td>
+            <td>8,2</td>
+            <td>9,9</td>
+          </tr>
+        </tbody>
+      </table>
+    </table-wrap>
+    <p>A <xref ref-type="fig" rid="f3">Figura 3</xref> coloca a espessura média da parede no eixo horizontal e a perda às vinte e quatro horas no eixo vertical. As peças mais finas perdem mais, mas a nuvem de pontos separa-se também pela forma. Dois vasos de boca estreita com parede de sete milímetros perderam menos do que vasos de boca larga com parede de oito milímetros. A abertura da boca não é, neste ensaio, um detalhe menor ao lado da espessura.</p>
+    <p>A curva de queima está na <xref ref-type="fig" rid="f4">Figura 4</xref>. O patamar de oitocentos graus começa à sexta hora e termina à décima. Não houve segundo patamar nem redução de atmosfera. A cor das peças, depois do arrefecimento, ficou de um laranja claro uniforme. Nenhuma peça, além da de número 19, apresentou fenda visível à vista desarmada. A retirada dessa peça está anotada na <xref ref-type="table" rid="t3">Tabela 3</xref>, que também regista o lote de cada oleiro.</p>
+    <fig id="f3">
+      <label>Figura 3</label>
+      <caption>
+        <title>Espessura média da parede e perda às vinte e quatro horas. Cada ponto é uma peça.</title>
+      </caption>
+      <graphic id="g3" xlink:href="ric-9999-0001-without-erro-gf03.jpg"><alt-text>Grafico esquematico 3 do ensaio ficticio de perda de agua em vasos de barro</alt-text></graphic>
+    </fig>
+    <fig id="f4">
+      <label>Figura 4</label>
+      <caption>
+        <title>Curva de aquecimento da fornada única no forno comunitário de Telha-Nova.</title>
+      </caption>
+      <graphic id="g4" xlink:href="ric-9999-0001-without-erro-gf04.jpg"><alt-text>Grafico esquematico 4 do ensaio ficticio de perda de agua em vasos de barro</alt-text></graphic>
+    </fig>
+    <p>A <xref ref-type="fig" rid="f5">Figura 5</xref> mostra três bocas na bancada, antes do enchimento. A imagem não é uma fotografia de campo. É um desenho de marcação, com cores lisas, para que o pacote do manuscrito tenha cinco ficheiros de figura com nomes estáveis. A legenda indica a forma e o diâmetro. Não há escala gráfica porque as dimensões já estão na <xref ref-type="table" rid="t1">Tabela 1</xref>.</p>
+    <p>A <xref ref-type="table" rid="t4">Tabela 4</xref> cruza a forma com a perda final em três faixas: até dez por cento, de dez a quinze, e acima de quinze. Onze das doze peças de boca estreita caíram na faixa do meio. As onze peças de boca larga caíram na faixa alta. As doze peças com tampa caíram na faixa baixa. Não houve peça de boca estreita acima de quinze por cento nem peça com tampa acima de dez por cento.</p>
+    <p>A água restante, às vinte e quatro horas, continuava límpida nas três formas. Não se mediu sabor, odor nem carga microbiana. O ensaio pára na massa. Qualquer frase sobre frescura da água seria um acrescento fora dos números que as tabelas sustentam. A discussão limita-se à perda e à taxa.</p>
+    <fig id="f5">
+      <label>Figura 5</label>
+      <caption>
+        <title>Bocas das três formas na bancada, antes do enchimento. Desenho de marcação, sem escala.</title>
+      </caption>
+      <graphic id="g5" xlink:href="ric-9999-0001-without-erro-gf05.jpg"><alt-text>Grafico esquematico 5 do ensaio ficticio de perda de agua em vasos de barro</alt-text></graphic>
+    </fig>
+    <table-wrap id="t3">
+      <label>Tabela 3</label>
+      <caption>
+        <title>Lotes entregues por oleiro e peças retiradas.</title>
+      </caption>
+      <table>
+        <thead>
+          <tr>
+            <th>Oleiro</th>
+            <th>Peças entregues</th>
+            <th>Retiradas</th>
+            <th>Motivo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Lina Varejão</td>
+            <td>6</td>
+            <td>0</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Pedro Lamego</td>
+            <td>6</td>
+            <td>0</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Nara Quitanda</td>
+            <td>6</td>
+            <td>0</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Caio Besouro</td>
+            <td>6</td>
+            <td>0</td>
+            <td>—</td>
+          </tr>
+          <tr>
+            <td>Helena Moringa</td>
+            <td>6</td>
+            <td>1</td>
+            <td>Peça 19, fenda na boca</td>
+          </tr>
+          <tr>
+            <td>Ivo Candeia</td>
+            <td>6</td>
+            <td>0</td>
+            <td>—</td>
+          </tr>
+        </tbody>
+      </table>
+    </table-wrap>
+    <table-wrap id="t4">
+      <label>Tabela 4</label>
+      <caption>
+        <title>Peças por faixa de perda às vinte e quatro horas.</title>
+      </caption>
+      <table>
+        <thead>
+          <tr>
+            <th>Forma</th>
+            <th>Até 10%</th>
+            <th>De 10% a 15%</th>
+            <th>Acima de 15%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Boca estreita</td>
+            <td>0</td>
+            <td>11</td>
+            <td>1</td>
+          </tr>
+          <tr>
+            <td>Boca larga</td>
+            <td>0</td>
+            <td>0</td>
+            <td>11</td>
+          </tr>
+          <tr>
+            <td>Com tampa</td>
+            <td>12</td>
+            <td>0</td>
+            <td>0</td>
+          </tr>
+        </tbody>
+      </table>
+    </table-wrap>
+  </sec>
+  <sec sec-type="discussion" id="sec4">
+    <title>Discussão</title>
+    <p>A boca larga perde mais água do que a boca estreita no mesmo intervalo, com a mesma pasta e a mesma queima. O resultado é o que a oficina esperava e o que a <xref ref-type="disp-formula" rid="e1">equação (1)</xref> torna comparável entre peças de massa inicial diferente. Expressar a perda em percentagem da água colocada evita que o vaso mais pesado pareça, à primeira vista, mais estanque só porque a balança marca uma diferença pequena em relação ao próprio peso.</p>
+    <p>A tampa reduz a perda, mas não a aproxima de zero. A folga de dois milímetros e a parede porosa chegam para cerca de nove por cento em um dia. Se o uso imaginado do vaso fosse guardar água por uma semana, essa taxa obrigaria a repor o conteúdo. O ensaio não mediu o sétimo dia. A extrapolação linear da <xref ref-type="disp-formula" rid="e2">equação (2)</xref> seria um abuso, porque a taxa pode cair quando o nível desce e a área molhada diminui.</p>
+    <p>A espessura explica parte da dispersão dentro de cada forma e não explica a distância entre as formas. A <xref ref-type="fig" rid="f3">Figura 3</xref> é o lugar em que isso se vê sem passar pela tabela. Para a marcação, a figura importa tanto quanto o parágrafo: a legenda tem de nomear os eixos, e o ficheiro de imagem tem de chegar ao pacote com o mesmo nome que o texto usa.</p>
+    <p>A retirada da peça 19 não muda a ordem das médias. Muda o tamanho do grupo da boca larga, e por isso a <xref ref-type="table" rid="t2">Tabela 2</xref> declara onze réplicas nessa linha. Esconder a quebra deixaria o leitor a contar doze onde há onze. O texto prefere a contagem menor e explícita. A <xref ref-type="table" rid="t3">Tabela 3</xref> nomeia a peça e o motivo. Helena Moringa assina o lote em que a fenda apareceu. O nome está no manuscrito para a frente e o corpo falarem das mesmas pessoas, não para sugerir responsabilidade de alguém fora desta ficção.</p>
+    <p>Nada deste ensaio deve ser lido como recomendação a oleiros reais, nem como descrição de um planalto existente. Os periódicos citados são inventados, as pessoas também, e os números nascem de uma folha preparada para este manuscrito. O que se pede à marcação é que o título, os autores, as secções, as cinco figuras, as quatro tabelas, as duas equações e as referências encontrem o lugar certo no XML.</p>
+    <p>Uma limitação fica registrada. A câmara manteve a umidade de consigna, mas não se mediu a umidade pegada à parede de cada vaso. Duas peças vizinhas podem ter secado de modo ligeiramente diferente. O ventilador apontado para a parede reduz esse risco e não o elimina. Um ensaio mais fino precisaria de sensores por peça. Este texto não os tem, e a conclusão não finge que os tem.</p>
+  </sec>
+  <sec sec-type="conclusions" id="sec5">
+    <title>Conclusão</title>
+    <p>No ensaio inventado, a forma da boca ordena a perda de água nas primeiras vinte e quatro horas. A boca larga perde mais, a peça com tampa perde menos, e a boca estreita fica no meio. A espessura da parede desloca as réplicas dentro de cada grupo e não inverte a ordem dos grupos. As <xref ref-type="disp-formula" rid="e1">equações (1)</xref> e (2) apenas nomeiam a perda percentual e a taxa entre as duas pesagens.</p>
+    <p>O manuscrito fecha com trinta referências fictícias, cinco figuras e quatro tabelas, no volume de um artigo de pesquisa curto mas completo. Quem o usar para aprender a ferramenta pode percorrer a frente, o corpo e as referências, validar o pacote e descarregar o zip sem tratar estes dados como resultado científico.</p>
+  </sec>
+  </body>
+  <back><sec sec-type="data-availability" specific-use="data-available-upon-request"><title>Data availability</title><p>Os dados ficticios deste ensaio estao disponiveis mediante pedido aos autores.</p></sec><ack>
+    <title>Agradecimentos</title>
+    <p>A oficina inventada de Telha-Nova cedeu o forno comunitário desta história. Nenhuma agência financiou o ensaio, porque o ensaio não foi realizado.</p>
+  </ack>
+<ref-list>
+  <title>References</title>
+  <ref id="B1">
+    <label>1</label><mixed-citation>Varejão, A. (2011). Perda de água em vasos de boca estreita no planalto imaginário. Anais do Barroalto, 5(2), 23-31. https://doi.org/10.9999/ric.2011.001</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Varejão</surname>
+      <given-names>A.</given-names>
+    </name>
+  </person-group>
+  <article-title>Perda de água em vasos de boca estreita no planalto imaginário</article-title>
+  <source>Anais do Barroalto</source>
+  <volume>5</volume>
+  <issue>2</issue>
+  <fpage>23</fpage>
+  <lpage>31</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2011.001</pub-id>
+  <year>2011</year>
+</element-citation>
+  </ref>
+  <ref id="B2">
+    <label>2</label><mixed-citation>Lamego, B. (2012). Espessura de parede e estanqueidade de peças de chamote. Cadernos do Pilão, 6(3), 26-34. https://doi.org/10.9999/ric.2012.002</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Lamego</surname>
+      <given-names>B.</given-names>
+    </name>
+  </person-group>
+  <article-title>Espessura de parede e estanqueidade de peças de chamote</article-title>
+  <source>Cadernos do Pilão</source>
+  <volume>6</volume>
+  <issue>3</issue>
+  <fpage>26</fpage>
+  <lpage>34</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2012.002</pub-id>
+  <year>2012</year>
+</element-citation>
+  </ref>
+  <ref id="B3">
+    <label>3</label><mixed-citation>Quitanda, C. (2013). Notas de secagem à sombra em oficina comunitária. Revista do Torno, 7(4), 29-37. https://doi.org/10.9999/ric.2013.003</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Quitanda</surname>
+      <given-names>C.</given-names>
+    </name>
+  </person-group>
+  <article-title>Notas de secagem à sombra em oficina comunitária</article-title>
+  <source>Revista do Torno</source>
+  <volume>7</volume>
+  <issue>4</issue>
+  <fpage>29</fpage>
+  <lpage>37</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2013.003</pub-id>
+  <year>2013</year>
+</element-citation>
+  </ref>
+  <ref id="B4">
+    <label>4</label><mixed-citation>Besouro, D. (2014). Patamar de queima e cor de superfície em barro de Telha-Nova. Boletim da Telha-Nova, 8(1), 32-40. https://doi.org/10.9999/ric.2014.004</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Besouro</surname>
+      <given-names>D.</given-names>
+    </name>
+  </person-group>
+  <article-title>Patamar de queima e cor de superfície em barro de Telha-Nova</article-title>
+  <source>Boletim da Telha-Nova</source>
+  <volume>8</volume>
+  <issue>1</issue>
+  <fpage>32</fpage>
+  <lpage>40</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2014.004</pub-id>
+  <year>2014</year>
+</element-citation>
+  </ref>
+  <ref id="B5">
+    <label>5</label><mixed-citation>Moringa, E. (2015). Umidade de câmara e massa de vasos tampados. Arquivos de Cozedura, 9(2), 35-43. https://doi.org/10.9999/ric.2015.005</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Moringa</surname>
+      <given-names>E.</given-names>
+    </name>
+  </person-group>
+  <article-title>Umidade de câmara e massa de vasos tampados</article-title>
+  <source>Arquivos de Cozedura</source>
+  <volume>9</volume>
+  <issue>2</issue>
+  <fpage>35</fpage>
+  <lpage>43</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2015.005</pub-id>
+  <year>2015</year>
+</element-citation>
+  </ref>
+  <ref id="B6">
+    <label>6</label><mixed-citation>Candeia, F. (2016). Diâmetro de boca e evaporação nas primeiras horas. Notas de Oleiros, 10(3), 38-46. https://doi.org/10.9999/ric.2016.006</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Candeia</surname>
+      <given-names>F.</given-names>
+    </name>
+  </person-group>
+  <article-title>Diâmetro de boca e evaporação nas primeiras horas</article-title>
+  <source>Notas de Oleiros</source>
+  <volume>10</volume>
+  <issue>3</issue>
+  <fpage>38</fpage>
+  <lpage>46</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2016.006</pub-id>
+  <year>2016</year>
+</element-citation>
+  </ref>
+  <ref id="B7">
+    <label>7</label><mixed-citation>Telha, G. (2017). Réplicas de bancada para formas de uso doméstico. Anais do Barroalto, 11(4), 41-49. https://doi.org/10.9999/ric.2017.007</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Telha</surname>
+      <given-names>G.</given-names>
+    </name>
+  </person-group>
+  <article-title>Réplicas de bancada para formas de uso doméstico</article-title>
+  <source>Anais do Barroalto</source>
+  <volume>11</volume>
+  <issue>4</issue>
+  <fpage>41</fpage>
+  <lpage>49</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2017.007</pub-id>
+  <year>2017</year>
+</element-citation>
+  </ref>
+  <ref id="B8">
+    <label>8</label><mixed-citation>Oleiro, H. (2018). Leitura de cone e registo de fornada única. Cadernos do Pilão, 12(1), 44-52. https://doi.org/10.9999/ric.2018.008</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Oleiro</surname>
+      <given-names>H.</given-names>
+    </name>
+  </person-group>
+  <article-title>Leitura de cone e registo de fornada única</article-title>
+  <source>Cadernos do Pilão</source>
+  <volume>12</volume>
+  <issue>1</issue>
+  <fpage>44</fpage>
+  <lpage>52</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2018.008</pub-id>
+  <year>2018</year>
+</element-citation>
+  </ref>
+  <ref id="B9">
+    <label>9</label><mixed-citation>Torno, I. (2019). Folga de tampa e perda residual em um dia. Revista do Torno, 13(2), 47-55. https://doi.org/10.9999/ric.2019.009</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Torno</surname>
+      <given-names>I.</given-names>
+    </name>
+  </person-group>
+  <article-title>Folga de tampa e perda residual em um dia</article-title>
+  <source>Revista do Torno</source>
+  <volume>13</volume>
+  <issue>2</issue>
+  <fpage>47</fpage>
+  <lpage>55</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2019.009</pub-id>
+  <year>2019</year>
+</element-citation>
+  </ref>
+  <ref id="B10">
+    <label>10</label><mixed-citation>Pilão, J. (2020). Massa vazia e volume interno de peças de oito milímetros. Boletim da Telha-Nova, 14(3), 50-58. https://doi.org/10.9999/ric.2020.010</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Pilão</surname>
+      <given-names>J.</given-names>
+    </name>
+  </person-group>
+  <article-title>Massa vazia e volume interno de peças de oito milímetros</article-title>
+  <source>Boletim da Telha-Nova</source>
+  <volume>14</volume>
+  <issue>3</issue>
+  <fpage>50</fpage>
+  <lpage>58</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2020.010</pub-id>
+  <year>2020</year>
+</element-citation>
+  </ref>
+  <ref id="B11">
+    <label>11</label><mixed-citation>Barrela, K. (2021). Dispersão entre oleiros com a mesma receita de pasta. Arquivos de Cozedura, 15(4), 53-61. https://doi.org/10.9999/ric.2021.011</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Barrela</surname>
+      <given-names>K.</given-names>
+    </name>
+  </person-group>
+  <article-title>Dispersão entre oleiros com a mesma receita de pasta</article-title>
+  <source>Arquivos de Cozedura</source>
+  <volume>15</volume>
+  <issue>4</issue>
+  <fpage>53</fpage>
+  <lpage>61</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2021.011</pub-id>
+  <year>2021</year>
+</element-citation>
+  </ref>
+  <ref id="B12">
+    <label>12</label><mixed-citation>Argila, L. (2022). Parede fina e extremos de perda em boca larga. Notas de Oleiros, 16(1), 56-64. https://doi.org/10.9999/ric.2022.012</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Argila</surname>
+      <given-names>L.</given-names>
+    </name>
+  </person-group>
+  <article-title>Parede fina e extremos de perda em boca larga</article-title>
+  <source>Notas de Oleiros</source>
+  <volume>16</volume>
+  <issue>1</issue>
+  <fpage>56</fpage>
+  <lpage>64</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2022.012</pub-id>
+  <year>2022</year>
+</element-citation>
+  </ref>
+  <ref id="B13">
+    <label>13</label><mixed-citation>Forno, M. (2023). Caderno de umidade da sala de secagem. Anais do Barroalto, 17(2), 59-67. https://doi.org/10.9999/ric.2023.013</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Forno</surname>
+      <given-names>M.</given-names>
+    </name>
+  </person-group>
+  <article-title>Caderno de umidade da sala de secagem</article-title>
+  <source>Anais do Barroalto</source>
+  <volume>17</volume>
+  <issue>2</issue>
+  <fpage>59</fpage>
+  <lpage>67</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2023.013</pub-id>
+  <year>2023</year>
+</element-citation>
+  </ref>
+  <ref id="B14">
+    <label>14</label><mixed-citation>Louça, N. (2024). Retirada de peças rachadas antes do enchimento. Cadernos do Pilão, 18(3), 62-70. https://doi.org/10.9999/ric.2024.014</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Louça</surname>
+      <given-names>N.</given-names>
+    </name>
+  </person-group>
+  <article-title>Retirada de peças rachadas antes do enchimento</article-title>
+  <source>Cadernos do Pilão</source>
+  <volume>18</volume>
+  <issue>3</issue>
+  <fpage>62</fpage>
+  <lpage>70</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2024.014</pub-id>
+  <year>2024</year>
+</element-citation>
+  </ref>
+  <ref id="B15">
+    <label>15</label><mixed-citation>Engobe, O. (2010). Comparação de três formas sob a mesma curva de calor. Revista do Torno, 19(4), 65-73. https://doi.org/10.9999/ric.2010.015</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Engobe</surname>
+      <given-names>O.</given-names>
+    </name>
+  </person-group>
+  <article-title>Comparação de três formas sob a mesma curva de calor</article-title>
+  <source>Revista do Torno</source>
+  <volume>19</volume>
+  <issue>4</issue>
+  <fpage>65</fpage>
+  <lpage>73</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2010.015</pub-id>
+  <year>2010</year>
+</element-citation>
+  </ref>
+  <ref id="B16">
+    <label>16</label><mixed-citation>Caulim, P. (2011). Água de torneira e pesagem em balança de banqueta. Boletim da Telha-Nova, 20(1), 68-76. https://doi.org/10.9999/ric.2011.016</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Caulim</surname>
+      <given-names>P.</given-names>
+    </name>
+  </person-group>
+  <article-title>Água de torneira e pesagem em balança de banqueta</article-title>
+  <source>Boletim da Telha-Nova</source>
+  <volume>20</volume>
+  <issue>1</issue>
+  <fpage>68</fpage>
+  <lpage>76</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2011.016</pub-id>
+  <year>2011</year>
+</element-citation>
+  </ref>
+  <ref id="B17">
+    <label>17</label><mixed-citation>Varejão, Q. (2012). Taxa horária entre a sexta e a vigésima quarta hora. Arquivos de Cozedura, 21(2), 71-79. https://doi.org/10.9999/ric.2012.017</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Varejão</surname>
+      <given-names>Q.</given-names>
+    </name>
+  </person-group>
+  <article-title>Taxa horária entre a sexta e a vigésima quarta hora</article-title>
+  <source>Arquivos de Cozedura</source>
+  <volume>21</volume>
+  <issue>2</issue>
+  <fpage>71</fpage>
+  <lpage>79</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2012.017</pub-id>
+  <year>2012</year>
+</element-citation>
+  </ref>
+  <ref id="B18">
+    <label>18</label><mixed-citation>Lamego, R. (2013). Ombreira grossa em peças com tampa solta. Notas de Oleiros, 4(3), 74-82. https://doi.org/10.9999/ric.2013.018</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Lamego</surname>
+      <given-names>R.</given-names>
+    </name>
+  </person-group>
+  <article-title>Ombreira grossa em peças com tampa solta</article-title>
+  <source>Notas de Oleiros</source>
+  <volume>4</volume>
+  <issue>3</issue>
+  <fpage>74</fpage>
+  <lpage>82</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2013.018</pub-id>
+  <year>2013</year>
+</element-citation>
+  </ref>
+  <ref id="B19">
+    <label>19</label><mixed-citation>Quitanda, S. (2014). Distância entre vasos na tábua de ensaio. Anais do Barroalto, 5(4), 77-85. https://doi.org/10.9999/ric.2014.019</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Quitanda</surname>
+      <given-names>S.</given-names>
+    </name>
+  </person-group>
+  <article-title>Distância entre vasos na tábua de ensaio</article-title>
+  <source>Anais do Barroalto</source>
+  <volume>5</volume>
+  <issue>4</issue>
+  <fpage>77</fpage>
+  <lpage>85</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2014.019</pub-id>
+  <year>2014</year>
+</element-citation>
+  </ref>
+  <ref id="B20">
+    <label>20</label><mixed-citation>Besouro, T. (2015). Cor laranja clara depois de arrefecimento noturno. Cadernos do Pilão, 6(1), 80-88. https://doi.org/10.9999/ric.2015.020</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Besouro</surname>
+      <given-names>T.</given-names>
+    </name>
+  </person-group>
+  <article-title>Cor laranja clara depois de arrefecimento noturno</article-title>
+  <source>Cadernos do Pilão</source>
+  <volume>6</volume>
+  <issue>1</issue>
+  <fpage>80</fpage>
+  <lpage>88</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2015.020</pub-id>
+  <year>2015</year>
+</element-citation>
+  </ref>
+  <ref id="B21">
+    <label>21</label><mixed-citation>Moringa, U. (2016). Contagem de réplicas quando uma peça sai do lote. Revista do Torno, 7(2), 83-91. https://doi.org/10.9999/ric.2016.021</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Moringa</surname>
+      <given-names>U.</given-names>
+    </name>
+  </person-group>
+  <article-title>Contagem de réplicas quando uma peça sai do lote</article-title>
+  <source>Revista do Torno</source>
+  <volume>7</volume>
+  <issue>2</issue>
+  <fpage>83</fpage>
+  <lpage>91</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2016.021</pub-id>
+  <year>2016</year>
+</element-citation>
+  </ref>
+  <ref id="B22">
+    <label>22</label><mixed-citation>Candeia, V. (2017). Faixas de perda para leitura rápida da fornada. Boletim da Telha-Nova, 8(3), 86-94. https://doi.org/10.9999/ric.2017.022</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Candeia</surname>
+      <given-names>V.</given-names>
+    </name>
+  </person-group>
+  <article-title>Faixas de perda para leitura rápida da fornada</article-title>
+  <source>Boletim da Telha-Nova</source>
+  <volume>8</volume>
+  <issue>3</issue>
+  <fpage>86</fpage>
+  <lpage>94</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2017.022</pub-id>
+  <year>2017</year>
+</element-citation>
+  </ref>
+  <ref id="B23">
+    <label>23</label><mixed-citation>Telha, W. (2018). Limite do ensaio de massa sem medida de sabor. Arquivos de Cozedura, 9(4), 89-97. https://doi.org/10.9999/ric.2018.023</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Telha</surname>
+      <given-names>W.</given-names>
+    </name>
+  </person-group>
+  <article-title>Limite do ensaio de massa sem medida de sabor</article-title>
+  <source>Arquivos de Cozedura</source>
+  <volume>9</volume>
+  <issue>4</issue>
+  <fpage>89</fpage>
+  <lpage>97</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2018.023</pub-id>
+  <year>2018</year>
+</element-citation>
+  </ref>
+  <ref id="B24">
+    <label>24</label><mixed-citation>Oleiro, X. (2019). Sensores ausentes e umidade junto à parede. Notas de Oleiros, 10(1), 92-100. https://doi.org/10.9999/ric.2019.024</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Oleiro</surname>
+      <given-names>X.</given-names>
+    </name>
+  </person-group>
+  <article-title>Sensores ausentes e umidade junto à parede</article-title>
+  <source>Notas de Oleiros</source>
+  <volume>10</volume>
+  <issue>1</issue>
+  <fpage>92</fpage>
+  <lpage>100</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2019.024</pub-id>
+  <year>2019</year>
+</element-citation>
+  </ref>
+  <ref id="B25">
+    <label>25</label><mixed-citation>Torno, Y. (2020). Definição de perda percentual sobre a água inicial. Anais do Barroalto, 11(2), 95-103. https://doi.org/10.9999/ric.2020.025</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Torno</surname>
+      <given-names>Y.</given-names>
+    </name>
+  </person-group>
+  <article-title>Definição de perda percentual sobre a água inicial</article-title>
+  <source>Anais do Barroalto</source>
+  <volume>11</volume>
+  <issue>2</issue>
+  <fpage>95</fpage>
+  <lpage>103</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2020.025</pub-id>
+  <year>2020</year>
+</element-citation>
+  </ref>
+  <ref id="B26">
+    <label>26</label><mixed-citation>Pilão, Z. (2021). Ordem estável das formas em médias de um dia. Cadernos do Pilão, 12(3), 98-106. https://doi.org/10.9999/ric.2021.026</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Pilão</surname>
+      <given-names>Z.</given-names>
+    </name>
+  </person-group>
+  <article-title>Ordem estável das formas em médias de um dia</article-title>
+  <source>Cadernos do Pilão</source>
+  <volume>12</volume>
+  <issue>3</issue>
+  <fpage>98</fpage>
+  <lpage>106</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2021.026</pub-id>
+  <year>2021</year>
+</element-citation>
+  </ref>
+  <ref id="B27">
+    <label>27</label><mixed-citation>Barrela, A. (2022). Chamote de telha moída na receita fixa do planalto. Revista do Torno, 13(4), 101-109. https://doi.org/10.9999/ric.2022.027</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Barrela</surname>
+      <given-names>A.</given-names>
+    </name>
+  </person-group>
+  <article-title>Chamote de telha moída na receita fixa do planalto</article-title>
+  <source>Revista do Torno</source>
+  <volume>13</volume>
+  <issue>4</issue>
+  <fpage>101</fpage>
+  <lpage>109</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2022.027</pub-id>
+  <year>2022</year>
+</element-citation>
+  </ref>
+  <ref id="B28">
+    <label>28</label><mixed-citation>Argila, B. (2023). Caulim da Laje Branca e feldspato de corte de estrada. Boletim da Telha-Nova, 14(1), 104-112. https://doi.org/10.9999/ric.2023.028</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Argila</surname>
+      <given-names>B.</given-names>
+    </name>
+  </person-group>
+  <article-title>Caulim da Laje Branca e feldspato de corte de estrada</article-title>
+  <source>Boletim da Telha-Nova</source>
+  <volume>14</volume>
+  <issue>1</issue>
+  <fpage>104</fpage>
+  <lpage>112</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2023.028</pub-id>
+  <year>2023</year>
+</element-citation>
+  </ref>
+  <ref id="B29">
+    <label>29</label><mixed-citation>Forno, C. (2024). Ventilador apontado à parede na sala sem janela. Arquivos de Cozedura, 15(2), 107-115. https://doi.org/10.9999/ric.2024.029</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Forno</surname>
+      <given-names>C.</given-names>
+    </name>
+  </person-group>
+  <article-title>Ventilador apontado à parede na sala sem janela</article-title>
+  <source>Arquivos de Cozedura</source>
+  <volume>15</volume>
+  <issue>2</issue>
+  <fpage>107</fpage>
+  <lpage>115</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2024.029</pub-id>
+  <year>2024</year>
+</element-citation>
+  </ref>
+  <ref id="B30">
+    <label>30</label><mixed-citation>Louça, D. (2010). Encerramento do ensaio fictício de Barroalto. Notas de Oleiros, 16(3), 110-118. https://doi.org/10.9999/ric.2010.030</mixed-citation>
+    <element-citation publication-type="journal">
+  <person-group person-group-type="author">
+    <name>
+      <surname>Louça</surname>
+      <given-names>D.</given-names>
+    </name>
+  </person-group>
+  <article-title>Encerramento do ensaio fictício de Barroalto</article-title>
+  <source>Notas de Oleiros</source>
+  <volume>16</volume>
+  <issue>3</issue>
+  <fpage>110</fpage>
+  <lpage>118</lpage>
+  <pub-id pub-id-type="doi">10.9999/ric.2010.030</pub-id>
+  <year>2010</year>
+</element-citation>
+  </ref>
+</ref-list><app-group><app id="app1"><label>Appendix</label><title>Material suplementar ficticio</title><p>Tabela auxiliar inventada para o ensaio de Barroalto.</p></app></app-group></back>
+</article>

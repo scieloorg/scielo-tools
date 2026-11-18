@@ -1,0 +1,30 @@
+1. Varejão, A. (2011). Perda de água em vasos de boca estreita no planalto imaginário. Anais do Barroalto, 5(2), 23-31. https://doi.org/10.9999/ric.2011.001
+2. Lamego, B. (2012). Espessura de parede e estanqueidade de peças de chamote. Cadernos do Pilão, 6(3), 26-34. https://doi.org/10.9999/ric.2012.002
+3. Quitanda, C. (2013). Notas de secagem à sombra em oficina comunitária. Revista do Torno, 7(4), 29-37. https://doi.org/10.9999/ric.2013.003
+4. Besouro, D. (2014). Patamar de queima e cor de superfície em barro de Telha-Nova. Boletim da Telha-Nova, 8(1), 32-40. https://doi.org/10.9999/ric.2014.004
+5. Moringa, E. (2015). Umidade de câmara e massa de vasos tampados. Arquivos de Cozedura, 9(2), 35-43. https://doi.org/10.9999/ric.2015.005
+6. Candeia, F. (2016). Diâmetro de boca e evaporação nas primeiras horas. Notas de Oleiros, 10(3), 38-46. https://doi.org/10.9999/ric.2016.006
+7. Telha, G. (2017). Réplicas de bancada para formas de uso doméstico. Anais do Barroalto, 11(4), 41-49. https://doi.org/10.9999/ric.2017.007
+8. Oleiro, H. (2018). Leitura de cone e registo de fornada única. Cadernos do Pilão, 12(1), 44-52. https://doi.org/10.9999/ric.2018.008
+9. Torno, I. (2019). Folga de tampa e perda residual em um dia. Revista do Torno, 13(2), 47-55. https://doi.org/10.9999/ric.2019.009
+10. Pilão, J. (2020). Massa vazia e volume interno de peças de oito milímetros. Boletim da Telha-Nova, 14(3), 50-58. https://doi.org/10.9999/ric.2020.010
+11. Barrela, K. (2021). Dispersão entre oleiros com a mesma receita de pasta. Arquivos de Cozedura, 15(4), 53-61. https://doi.org/10.9999/ric.2021.011
+12. Argila, L. (2022). Parede fina e extremos de perda em boca larga. Notas de Oleiros, 16(1), 56-64. https://doi.org/10.9999/ric.2022.012
+13. Forno, M. (2023). Caderno de umidade da sala de secagem. Anais do Barroalto, 17(2), 59-67. https://doi.org/10.9999/ric.2023.013
+14. Louça, N. (2024). Retirada de peças rachadas antes do enchimento. Cadernos do Pilão, 18(3), 62-70. https://doi.org/10.9999/ric.2024.014
+15. Engobe, O. (2010). Comparação de três formas sob a mesma curva de calor. Revista do Torno, 19(4), 65-73. https://doi.org/10.9999/ric.2010.015
+16. Caulim, P. (2011). Água de torneira e pesagem em balança de banqueta. Boletim da Telha-Nova, 20(1), 68-76. https://doi.org/10.9999/ric.2011.016
+17. Varejão, Q. (2012). Taxa horária entre a sexta e a vigésima quarta hora. Arquivos de Cozedura, 21(2), 71-79. https://doi.org/10.9999/ric.2012.017
+18. Lamego, R. (2013). Ombreira grossa em peças com tampa solta. Notas de Oleiros, 4(3), 74-82. https://doi.org/10.9999/ric.2013.018
+19. Quitanda, S. (2014). Distância entre vasos na tábua de ensaio. Anais do Barroalto, 5(4), 77-85. https://doi.org/10.9999/ric.2014.019
+20. Besouro, T. (2015). Cor laranja clara depois de arrefecimento noturno. Cadernos do Pilão, 6(1), 80-88. https://doi.org/10.9999/ric.2015.020
+21. Moringa, U. (2016). Contagem de réplicas quando uma peça sai do lote. Revista do Torno, 7(2), 83-91. https://doi.org/10.9999/ric.2016.021
+22. Candeia, V. (2017). Faixas de perda para leitura rápida da fornada. Boletim da Telha-Nova, 8(3), 86-94. https://doi.org/10.9999/ric.2017.022
+23. Telha, W. (2018). Limite do ensaio de massa sem medida de sabor. Arquivos de Cozedura, 9(4), 89-97. https://doi.org/10.9999/ric.2018.023
+24. Oleiro, X. (2019). Sensores ausentes e umidade junto à parede. Notas de Oleiros, 10(1), 92-100. https://doi.org/10.9999/ric.2019.024
+25. Torno, Y. (2020). Definição de perda percentual sobre a água inicial. Anais do Barroalto, 11(2), 95-103. https://doi.org/10.9999/ric.2020.025
+26. Pilão, Z. (2021). Ordem estável das formas em médias de um dia. Cadernos do Pilão, 12(3), 98-106. https://doi.org/10.9999/ric.2021.026
+27. Barrela, A. (2022). Chamote de telha moída na receita fixa do planalto. Revista do Torno, 13(4), 101-109. https://doi.org/10.9999/ric.2022.027
+28. Argila, B. (2023). Caulim da Laje Branca e feldspato de corte de estrada. Boletim da Telha-Nova, 14(1), 104-112. https://doi.org/10.9999/ric.2023.028
+29. Forno, C. (2024). Ventilador apontado à parede na sala sem janela. Arquivos de Cozedura, 15(2), 107-115. https://doi.org/10.9999/ric.2024.029
+30. Louça, D. (2010). Encerramento do ensaio fictício de Barroalto. Notas de Oleiros, 16(3), 110-118. https://doi.org/10.9999/ric.2010.030

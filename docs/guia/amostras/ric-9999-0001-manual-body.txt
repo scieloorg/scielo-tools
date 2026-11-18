@@ -1,0 +1,159 @@
+Introdução
+
+O planalto imaginário de Barroalto aparece neste manuscrito como cenário de um estudo que nunca saiu do papel. A vila de oleiros, a serra do Pilão e a oficina de Telha-Nova são lugares inventados, criados para que a marcação de um artigo de pesquisa possa ser mostrada com volume parecido ao de um manuscrito do dia a dia. Nada do que se lê aqui foi medido em campo, e os nomes das pessoas e das instituições não correspondem a pesquisadores reais.
+
+Nas histórias que os oleiros contam uns aos outros, o vaso de cozedura lenta perde água pela parede e pela boca, e essa perda muda o gosto da água guardada de um dia para o outro. A afirmação é uma desculpa narrativa. Ela permite organizar uma frente com autores e afiliações, um corpo com secções de um artigo de pesquisa e uma lista de referências longa o bastante para a pessoa que marca reconhecer o trabalho habitual.
+
+A pergunta do ensaio fictício é simples. Peças de boca estreita, de boca larga e com tampa solta perdem a mesma fração de água nas primeiras vinte e quatro horas depois de cheias, quando a queima e a câmara de ensaio são as mesmas? A resposta, também fictícia, está nas tabelas e nas figuras deste texto. Os números foram escolhidos para serem coerentes entre si e para caberem em legendas, equações e citações.
+
+O barro do planalto, nesta ficção, leva chamote de telha moída, caulim de uma jazida chamada Laje Branca e um pouco de feldspato de um corte de estrada que não existe. A receita está fixada de propósito. Se a pasta mudasse de peça para peça, a diferença de perda de água poderia ser atribuída à massa e não à forma. O desenho do ensaio separa essas duas coisas para que a discussão tenha o que comentar.
+
+Trabalhos inventados de periódicos também inventados são citados ao longo do texto e reunidos no fim. As revistas Anais do Barroalto, Cadernos do Pilão, Revista do Torno, Boletim da Telha-Nova, Arquivos de Cozedura e Notas de Oleiros não circulam em parte alguma. Os identificadores digitais usam o prefixo 10.9999, reservado aqui para este exercício, e não apontam para artigos publicados. As referências citadas neste ensaio fictício são [1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13], [14], [15], [16], [17], [18], [19], [20], [21], [22], [23], [24], [25], [26], [27], [28], [29], [30].
+
+O manuscrito segue a ordem habitual de um artigo de pesquisa. Depois desta introdução vêm os métodos, com duas equações de perda e de taxa, os resultados, com cinco figuras e quatro tabelas, a discussão e a conclusão. Quem marca o ficheiro encontra, portanto, frente, corpo e referências no tamanho em que esses blocos costumam chegar, e não um recorte de uma página.
+
+As afiliações cobrem quatro instituições inventadas. O histórico traz recebimento, pedido de revisão, versão revista, aceite e publicação, com datas explícitas para a frente do XML. O resumo repete a pergunta, o desenho e as três médias, para essa frente ter um abstract do tamanho que a secretaria de um periódico costuma receber. As palavras-chave são seis e cabem numa única linha, separadas por vírgulas.
+
+Há uma razão prática para não encurtar a introdução. Uma lista de trinta referências só se lê com naturalidade depois de um corpo que poderia tê-las citado. Quem marca vê cartões de referência ao lado de secções, figuras e tabelas, e não uma lista solta presa a um parágrafo único. O volume é o de um artigo de pesquisa breve, daqueles que ocupam uma tarde, e não o de uma revisão com duzentas entradas.
+
+O leitor que procurar Barroalto num mapa não o encontra. O mesmo vale para a Serra do Pilão, o Vale do Torno e Telha-Nova. Os topónimos existem para dar corpo às afiliações e para os exemplos de correspondência terem morada. O correio eletrónico termina em example, domínio reservado a exemplos, para ninguém escrever a uma caixa que pudesse existir. Essa escolha repete-se nos endereços das referências que não são artigos de periódico.
+
+Métodos
+
+A pasta foi amassada numa bancada de madeira durante quarenta minutos, descansou em saco fechado por vinte e quatro horas e foi aberta em placas de oito milímetros. Cada oleiro levantou duas peças de cada forma, o que deu doze vasos de boca estreita, doze de boca larga e doze com tampa solta. A altura ficou entre dezoito e vinte e dois centímetros. A boca estreita media quatro centímetros de diâmetro, a boca larga media doze, e a tampa cobria uma boca de nove centímetros com uma folga de dois milímetros.
+
+As peças secaram à sombra, longe de corrente de ar, durante catorze dias. No sétimo dia foram viradas. No décimo quarto dia a base estava fria ao toque e a parede já não marcava a unha. Essa regra de secagem é a que a oficina de Telha-Nova usa na história deste texto. Não houve estufa. A umidade da sala de secagem, anotada de manhã num caderno de capa azul, oscilou entre cinquenta e oito e sessenta e quatro por cento.
+
+A queima ocorreu no forno comunitário de Telha-Nova, de câmara única e chaminé curta. O aquecimento levou seis horas até oitocentos graus, o patamar durou quatro horas e o arrefecimento ocupou a noite. Não se usou pirómetro de laboratório. A temperatura foi lida num cone inventado da série Pilão, colocado à altura da prateleira do meio. Todas as peças desta fornada partilham, portanto, a mesma curva. As diferenças de perda de água que aparecem adiante não podem ser atribuídas a queimas distintas.
+
+Depois da queima, cada vaso foi lavado com água sem sabão, seco com pano e pesado vazio numa balança de banqueta com leitura de um grama. Em seguida recebeu um litro de água de torneira, medido numa proveta de vidro. A peça fechada com tampa foi pesada com a tampa posta. A peça aberta foi pesada sem qualquer cobertura. O instante do enchimento foi tomado como hora zero.
+
+A câmara de ensaio é uma sala sem janela no Laboratório de Umidade da Serra do Pilão. O termóstato ficou em vinte e dois graus e o umidificador em sessenta por cento. Um ventilador de mesa, apontado para a parede e não para as peças, renovava o ar sem criar corrente direta sobre a boca dos vasos. As peças repousaram em tábuas, separadas por dez centímetros, para que a água de uma não molhasse a parede da vizinha.
+
+A massa foi registada às seis horas e às vinte e quatro horas. A perda percentual em relação à massa de água inicial segue a equação (1). A taxa entre as duas leituras, em pontos percentuais por hora no intervalo de dezoito horas, segue a equação (2). As duas expressões são definições de trabalho deste ensaio e não modelos físicos da difusão no barro.
+
+Equação (1): P = ((m0 − mt) / m0) × 100
+
+A equação (1) define a perda percentual P a partir da massa de água no enchimento, m0, e da massa de água ainda no vaso no instante t, mt.
+
+Equação (2): k = (P24 − P6) / 18
+
+A equação (2) define a taxa k, em pontos percentuais por hora, entre a perda às vinte e quatro horas e a perda às seis horas.
+
+Cada forma teve doze réplicas. A média e o desvio foram calculados à mão e conferidos numa folha de cálculo. Não se aplicou teste de hipótese. O texto compara as médias e descreve a dispersão. Um vaso de boca larga, de número de oficina 19, rachou na boca durante a queima e foi retirado antes do enchimento. A tabela de perdas usa, para essa forma, onze peças.
+
+As figuras foram desenhadas a partir das médias. A Figura 1 mostra a perda às vinte e quatro horas por forma. A Figura 2 mostra a mesma perda às seis horas. A Figura 3 compara a espessura da parede com a perda final. A Figura 4 reúne a curva de aquecimento da fornada. A Figura 5 apresenta o aspecto inventado de três bocas, uma de cada forma, fotografadas na bancada antes do enchimento. As tabelas guardam os números que as figuras resumem. Cada legenda nomeia a grandeza. Os ficheiros chamam-se ric-9999-0001-without-erro-gf01, ric-9999-0001-without-erro-gf02, ric-9999-0001-without-erro-gf03, ric-9999-0001-without-erro-gf04 e ric-9999-0001-without-erro-gf05, para o pacote ligar o desenho ao texto sem adivinhar o nome.
+
+O caderno de bancada, também inventado, tem uma linha por peça. A linha guarda o oleiro, a forma, a massa vazia, a massa às seis horas e a massa às vinte e quatro horas. Dessa linha saem a Tabela 2 e a Tabela 4. Não há página rasurada nem medida refeita. Se um número deste texto discordar de outro, o erro é de redação e corrige-se na marcação, sem inventar uma segunda pesagem.
+
+A ordem de trabalho na bancada foi sempre a mesma. Primeiro a massa vazia, depois o litro de água, depois a pesagem de hora zero, que coincide com a massa vazia mais mil gramas, dentro da tolerância de um grama da balança. Às seis horas a peça volta à balança sem ser esvaziada. Às vinte e quatro horas repete-se o gesto. Não se abriu nenhum vaso para ver o nível. A conta faz-se pela diferença de massa, que é o que a equação (1) pede.
+
+Resultados
+
+A massa vazia média foi de 640 gramas na boca estreita, de 710 gramas na boca larga e de 780 gramas na peça com tampa, já contada a tampa. A parede, medida com paquímetro em três alturas, ficou entre 6,8 e 8,4 milímetros. A peça mais fina foi um vaso de boca larga. A peça mais grossa foi um vaso com tampa, na zona do ombro. Esses valores estão na Tabela 1, junto com o diâmetro da boca e a altura externa.
+
+Às seis horas, a perda média foi de 4,2 por cento na boca estreita, de 7,1 por cento na boca larga e de 3,0 por cento na peça com tampa. Às vinte e quatro horas, as médias subiram para 11,4, 16,8 e 9,1 por cento, na mesma ordem. A Figura 1 mostra a leitura final e a Figura 2 mostra a leitura intermédia. A distância entre as formas já aparece às seis horas e aumenta no fim do dia.
+
+Figura 1. Perda de água às vinte e quatro horas, em percentagem da massa de água inicial, por forma de vaso.
+
+Figura 2. Perda de água às seis horas, nas mesmas peças e na mesma câmara de ensaio.
+
+O desvio padrão da perda final foi de 0,8 ponto na boca estreita, de 1,4 ponto na boca larga e de 0,6 ponto na peça com tampa. A boca larga, além de perder mais água, variou mais entre as réplicas. Duas peças dessa forma tinham a parede abaixo de sete milímetros e puxaram a média para cima. Sem elas, a média da boca larga cairia para 15,9 por cento, ainda acima das outras formas. A Tabela 2 lista média, desvio, mínimo e máximo.
+
+A taxa calculada pela equação (2) foi de 0,40 ponto percentual por hora na boca estreita, de 0,54 na boca larga e de 0,34 na peça com tampa. A ordem das formas é a mesma da perda acumulada. A tampa não anulou a perda. Reduziu-a em relação à boca aberta de diâmetro parecido. A água continuou a sair pela parede e pela folga de dois milímetros entre tampa e boca.
+
+Tabela 1. Medidas externas médias por forma.
+
+Forma | Altura (cm) | Boca (cm) | Parede (mm) | Massa vazia (g)
+
+Boca estreita | 20 | 4 | 7,6 | 640
+
+Boca larga | 19 | 12 | 7,1 | 710
+
+Com tampa | 21 | 9 | 8,1 | 780
+
+Tabela 2. Perda percentual às vinte e quatro horas.
+
+Forma | N | Média | Desvio | Mínimo | Máximo
+
+Boca estreita | 12 | 11,4 | 0,8 | 10,1 | 12,7
+
+Boca larga | 11 | 16,8 | 1,4 | 14,9 | 19,2
+
+Com tampa | 12 | 9,1 | 0,6 | 8,2 | 9,9
+
+A Figura 3 coloca a espessura média da parede no eixo horizontal e a perda às vinte e quatro horas no eixo vertical. As peças mais finas perdem mais, mas a nuvem de pontos separa-se também pela forma. Dois vasos de boca estreita com parede de sete milímetros perderam menos do que vasos de boca larga com parede de oito milímetros. A abertura da boca não é, neste ensaio, um detalhe menor ao lado da espessura.
+
+A curva de queima está na Figura 4. O patamar de oitocentos graus começa à sexta hora e termina à décima. Não houve segundo patamar nem redução de atmosfera. A cor das peças, depois do arrefecimento, ficou de um laranja claro uniforme. Nenhuma peça, além da de número 19, apresentou fenda visível à vista desarmada. A retirada dessa peça está anotada na Tabela 3, que também regista o lote de cada oleiro.
+
+Figura 3. Espessura média da parede e perda às vinte e quatro horas. Cada ponto é uma peça.
+
+Figura 4. Curva de aquecimento da fornada única no forno comunitário de Telha-Nova.
+
+A Figura 5 mostra três bocas na bancada, antes do enchimento. A imagem não é uma fotografia de campo. É um desenho de marcação, com cores lisas, para que o pacote do manuscrito tenha cinco ficheiros de figura com nomes estáveis. A legenda indica a forma e o diâmetro. Não há escala gráfica porque as dimensões já estão na Tabela 1.
+
+A Tabela 4 cruza a forma com a perda final em três faixas: até dez por cento, de dez a quinze, e acima de quinze. Onze das doze peças de boca estreita caíram na faixa do meio. As onze peças de boca larga caíram na faixa alta. As doze peças com tampa caíram na faixa baixa. Não houve peça de boca estreita acima de quinze por cento nem peça com tampa acima de dez por cento.
+
+A água restante, às vinte e quatro horas, continuava límpida nas três formas. Não se mediu sabor, odor nem carga microbiana. O ensaio pára na massa. Qualquer frase sobre frescura da água seria um acrescento fora dos números que as tabelas sustentam. A discussão limita-se à perda e à taxa.
+
+Figura 5. Bocas das três formas na bancada, antes do enchimento. Desenho de marcação, sem escala.
+
+Tabela 3. Lotes entregues por oleiro e peças retiradas.
+
+Oleiro | Peças entregues | Retiradas | Motivo
+
+Lina Varejão | 6 | 0 | —
+
+Pedro Lamego | 6 | 0 | —
+
+Nara Quitanda | 6 | 0 | —
+
+Caio Besouro | 6 | 0 | —
+
+Helena Moringa | 6 | 1 | Peça 19, fenda na boca
+
+Ivo Candeia | 6 | 0 | —
+
+Tabela 4. Peças por faixa de perda às vinte e quatro horas.
+
+Forma | Até 10% | De 10% a 15% | Acima de 15%
+
+Boca estreita | 0 | 11 | 1
+
+Boca larga | 0 | 0 | 11
+
+Com tampa | 12 | 0 | 0
+
+Discussão
+
+A boca larga perde mais água do que a boca estreita no mesmo intervalo, com a mesma pasta e a mesma queima. O resultado é o que a oficina esperava e o que a equação (1) torna comparável entre peças de massa inicial diferente. Expressar a perda em percentagem da água colocada evita que o vaso mais pesado pareça, à primeira vista, mais estanque só porque a balança marca uma diferença pequena em relação ao próprio peso.
+
+A tampa reduz a perda, mas não a aproxima de zero. A folga de dois milímetros e a parede porosa chegam para cerca de nove por cento em um dia. Se o uso imaginado do vaso fosse guardar água por uma semana, essa taxa obrigaria a repor o conteúdo. O ensaio não mediu o sétimo dia. A extrapolação linear da equação (2) seria um abuso, porque a taxa pode cair quando o nível desce e a área molhada diminui.
+
+A espessura explica parte da dispersão dentro de cada forma e não explica a distância entre as formas. A Figura 3 é o lugar em que isso se vê sem passar pela tabela. Para a marcação, a figura importa tanto quanto o parágrafo: a legenda tem de nomear os eixos, e o ficheiro de imagem tem de chegar ao pacote com o mesmo nome que o texto usa.
+
+A retirada da peça 19 não muda a ordem das médias. Muda o tamanho do grupo da boca larga, e por isso a Tabela 2 declara onze réplicas nessa linha. Esconder a quebra deixaria o leitor a contar doze onde há onze. O texto prefere a contagem menor e explícita. A Tabela 3 nomeia a peça e o motivo. Helena Moringa assina o lote em que a fenda apareceu. O nome está no manuscrito para a frente e o corpo falarem das mesmas pessoas, não para sugerir responsabilidade de alguém fora desta ficção.
+
+Nada deste ensaio deve ser lido como recomendação a oleiros reais, nem como descrição de um planalto existente. Os periódicos citados são inventados, as pessoas também, e os números nascem de uma folha preparada para este manuscrito. O que se pede à marcação é que o título, os autores, as secções, as cinco figuras, as quatro tabelas, as duas equações e as referências encontrem o lugar certo no XML.
+
+Uma limitação fica registrada. A câmara manteve a umidade de consigna, mas não se mediu a umidade pegada à parede de cada vaso. Duas peças vizinhas podem ter secado de modo ligeiramente diferente. O ventilador apontado para a parede reduz esse risco e não o elimina. Um ensaio mais fino precisaria de sensores por peça. Este texto não os tem, e a conclusão não finge que os tem.
+
+Conclusão
+
+No ensaio inventado, a forma da boca ordena a perda de água nas primeiras vinte e quatro horas. A boca larga perde mais, a peça com tampa perde menos, e a boca estreita fica no meio. A espessura da parede desloca as réplicas dentro de cada grupo e não inverte a ordem dos grupos. As equações (1) e (2) apenas nomeiam a perda percentual e a taxa entre as duas pesagens.
+
+O manuscrito fecha com trinta referências fictícias, cinco figuras e quatro tabelas, no volume de um artigo de pesquisa curto mas completo. Quem o usar para aprender a ferramenta pode percorrer a frente, o corpo e as referências, validar o pacote e descarregar o zip sem tratar estes dados como resultado científico.
+
+Agradecimentos
+A oficina inventada de Telha-Nova cedeu o forno comunitário desta história. Nenhuma agência financiou o ensaio, porque o ensaio não foi real.
+
+Contribuição dos autores
+Lina Varejão: Conceptualization. Pedro Lamego: Formal analysis. Nara Quitanda: Data curation. Caio Besouro: Investigation. Helena Moringa: Writing – original draft. Ivo Candeia: Writing – review & editing.
+
+Conflitos de interesse
+Os autores declaram não haver conflito de interesse.
+
+Associate editor: Rita Fornalha
+
+Data availability
+Os dados fictícios deste ensaio estão disponíveis mediante pedido aos autores.
