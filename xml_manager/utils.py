@@ -72,6 +72,12 @@ def _extract_journal_data(xmltree):
         return {}
 
 
+def is_unresolved_doi_check(result):
+    return result.get("title") == "registered DOI" and str(
+        result.get("advice") or ""
+    ).startswith("Unable to check if ")
+
+
 def validate_zip(zip_path: str) -> tuple[list, list]:
     rows = []
     exceptions = []
@@ -89,6 +95,9 @@ def validate_zip(zip_path: str) -> tuple[list, list]:
         app_rules = dict(rules.get("app_group_rules") or {})
         app_rules["app_existence_error_level"] = None
         rules["app_group_rules"] = app_rules
+        article_doi_rules = rules.get("article_doi_rules") or {}
+        if article_doi_rules.get("skip_doi_check") and not rules.get("doi_api_get"):
+            rules["doi_api_get"] = lambda doi_data: {"valid": True}
         for result in get_validation_results(xmltree, rules):
             if not result:
                 continue
@@ -97,6 +106,19 @@ def validate_zip(zip_path: str) -> tuple[list, list]:
                 continue
             response = result.get("response")
             if response is None or str(response).upper() in ("", "OK", "NONE"):
+                continue
+            data = result.get("data") if isinstance(result.get("data"), dict) else {}
+            has_aff_xref = (
+                result.get("title") == "affiliation"
+                and result.get("sub_item") == "xref"
+                and any(
+                    isinstance(xref, dict)
+                    and xref.get("ref_type") == "aff"
+                    and xref.get("rid")
+                    for xref in (data.get("contrib_xref") or [])
+                )
+            )
+            if has_aff_xref or is_unresolved_doi_check(result):
                 continue
             group = result.get("group", "")
             item = result.get("item") or ""

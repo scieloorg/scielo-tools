@@ -237,6 +237,89 @@ class ValidateZipTests(TestCase):
         )
         return patcher_xmlwithpre, patcher_validator, patcher_journal
 
+    def test_packtools_4183_aff_xref_is_not_reported_as_missing(self):
+        present = {
+            "title": "affiliation",
+            "parent": "article",
+            "parent_id": None,
+            "parent_article_type": "research-article",
+            "item": "contrib",
+            "sub_item": "xref",
+            "validation_type": "exist",
+            "response": "CRITICAL",
+            "expected_value": "affiliation",
+            "got_value": None,
+            "advice": 'Lina Varejão : Add <xref ref-type="aff" rid=""> in <contrib>',
+            "data": {
+                "contrib_full_name": "Lina Varejão",
+                "contrib_xref": [{"rid": "aff1", "ref_type": "aff"}],
+            },
+        }
+        missing = {
+            "title": "affiliation",
+            "parent": "article",
+            "parent_id": None,
+            "parent_article_type": "research-article",
+            "item": "contrib",
+            "sub_item": "xref",
+            "validation_type": "exist",
+            "response": "CRITICAL",
+            "expected_value": "affiliation",
+            "got_value": None,
+            "advice": 'Ana Souza : Add <xref ref-type="aff" rid=""> in <contrib>',
+            "data": {"contrib_full_name": "Ana Souza", "contrib_xref": []},
+        }
+        p1, p2, p3 = self._patch_packtools([present, missing])
+        with p1, p2, p3:
+            rows, exceptions = validate_zip("fake.zip")
+        self.assertEqual(exceptions, [])
+        self.assertEqual(
+            [row["advice"] for row in rows],
+            ['Ana Souza : Add <xref ref-type="aff" rid=""> in <contrib>'],
+        )
+
+    def test_unresolved_doi_registration_check_is_not_reported(self):
+        unresolved = {
+            "title": "registered DOI",
+            "parent": "article",
+            "parent_id": None,
+            "parent_article_type": "research-article",
+            "item": "article-id",
+            "sub_item": '@pub-id-type="doi"',
+            "validation_type": "registered",
+            "response": "WARNING",
+            "expected_value": "DOI registered",
+            "got_value": "10.1590/ric-2024-0001",
+            "advice": (
+                "Unable to check if 10.1590/ric-2024-0001 is registered for "
+                "{'article title': 'Perda de água', 'authors': []}"
+            ),
+        }
+        mismatch = {
+            "title": "registered DOI",
+            "parent": "article",
+            "parent_id": None,
+            "parent_article_type": "research-article",
+            "item": "article-id",
+            "sub_item": '@pub-id-type="doi"',
+            "validation_type": "registered",
+            "response": "ERROR",
+            "expected_value": "DOI registered",
+            "got_value": "10.1590/ric-2024-0001",
+            "advice": (
+                'Check doi (<article-id pub-id-type="doi">10.1590/ric-2024-0001'
+                "</article-id>) is not registered for the article"
+            ),
+        }
+        p1, p2, p3 = self._patch_packtools([unresolved, mismatch])
+        with p1, p2, p3:
+            rows, exceptions = validate_zip("fake.zip")
+        self.assertEqual(exceptions, [])
+        self.assertEqual(
+            [row["advice"] for row in rows],
+            [mismatch["advice"]],
+        )
+
     def test_returns_list_of_dicts(self):
         item = {
             "title": "t",

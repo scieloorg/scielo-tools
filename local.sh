@@ -62,11 +62,6 @@ export REFERENCE_URL="http://${LLAMA_HOST}"
 export FRONT_URL="http://${LLAMA_HOST}"
 export BODY_URL="http://${LLAMA_HOST}"
 
-PACKTOOLS_DIR="$(cd "${ROOT}/.." && pwd)/packtools"
-if [ -f "${PACKTOOLS_DIR}/pyproject.toml" ] || [ -f "${PACKTOOLS_DIR}/setup.py" ]; then
-  "$PYTHON" -m pip install -e "${PACKTOOLS_DIR}" --quiet --no-build-isolation
-fi
-
 postgres_ready() {
   "$PYTHON" <<END
 import sys

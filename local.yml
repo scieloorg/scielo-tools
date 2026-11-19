@@ -18,7 +18,6 @@ services:
         condition: service_healthy
     volumes:
       - .:/app:z
-      - ../packtools:/packtools:z
     entrypoint: ["/app/compose/production/django/entrypoint"]
     extra_hosts:
       - "host.docker.internal:host-gateway"

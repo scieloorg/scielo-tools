@@ -9,6 +9,7 @@ from manuscript.services.assembly import build_sps_zip
 from manuscript.services.workflow import mark_validated
 from xml_manager.models import SPSPackageValidation, SPSPackageValidationStatus
 from xml_manager.services import run_sps_package_validation
+from xml_manager.utils import is_unresolved_doi_check
 
 csv.field_size_limit(10 * 1024 * 1024)
 
@@ -142,6 +143,7 @@ def validation_summary(manuscript):
             "report_unreadable": False,
         }
     rows, report_unreadable = read_validation_csv(validation.validation_document)
+    rows = [row for row in rows if not is_unresolved_doi_check(row)]
     exceptions = parse_validation_exceptions(validation.exceptions_document)
     return {
         "status": validation.status,
