@@ -5,6 +5,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 
+from front.data_utils import resolve_front_result
 from front.exceptions import FrontLlamaUnavailableError
 from front.models import Front
 
@@ -202,6 +203,35 @@ def test_api_reuses_checksum_cache(monkeypatch):
     assert second.status_code == 200
     assert calls.call_count == 1
     assert Front.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_cache_rewrites_xml_without_corresp():
+    text = "Título de teste\nAna Silva"
+    Front.objects.create(
+        source_text=text,
+        marked={
+            "titles": [{"kind": "main", "text": "Título de teste"}],
+            "authors": [
+                {
+                    "given_names": "Ana",
+                    "surname": "Silva",
+                    "corresp": True,
+                }
+            ],
+            "author_notes": {"corresp": "Ana Silva, ana@example.com"},
+        },
+        marked_xml=(
+            "<front><article-meta><author-notes>"
+            '<corresp id="c01">Ana Silva</corresp>'
+            "</author-notes></article-meta></front>"
+        ),
+    )
+    result = resolve_front_result(text, output_type="xml")
+    assert "<corresp" not in result["data"]
+    record = Front.objects.get()
+    assert "<corresp" not in (record.marked_xml or "")
+    assert "corresp" not in (record.marked.get("author_notes") or {})
 
 
 @pytest.mark.django_db

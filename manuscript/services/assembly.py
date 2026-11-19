@@ -16,7 +16,7 @@ from wagtail.documents.models import Document
 
 from body.data_utils import promote_encoded_formulas
 from manuscript.services.marking import build_manuscript_ref_list_xml
-from xml_manager.assembly import JATS_DOCTYPE, generate_xml_sps
+from xml_manager.assembly import JATS_DOCTYPE, drop_corresp, generate_xml_sps
 
 
 class AssemblyError(Exception):
@@ -169,6 +169,7 @@ def _figure_extension(href):
 def package_xml_with_sps_names(xml_text, acronym="", fallback_stem=""):
     stem = sps_package_stem(xml_text, acronym=acronym, fallback_stem=fallback_stem)
     root = etree.fromstring(xml_text.encode("utf-8"))
+    drop_corresp(root)
     renames = []
     graphics = root.xpath(".//*[local-name()='fig']/*[local-name()='graphic']")
     for index, graphic in enumerate(graphics, start=1):

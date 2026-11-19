@@ -6,9 +6,10 @@ MESSAGES = [
             "Respond ONLY with one JSON object. Omit keys that are not in the text. "
             "Never write the strings null, None, or undefined; omit the key instead. "
             "Never invent DOI, ISSN, ORCID, dates, volume, issue, pages, funding, "
-            "license, counts, publisher_name, keywords, or journal identifiers. Do "
-            "not copy names, ORCID, DOI, ISSN, dates, or keywords from the "
-            "example; use only this input. "
+            "license, counts, publisher_name, keywords, journal identifiers, "
+            "emails, or correspondence. Do "
+            "not copy names, ORCID, DOI, ISSN, dates, keywords, emails, or "
+            "correspondence from the example; use only this input. "
             "JSON keys: journal, article_ids, categories, titles, authors, "
             "affiliations, author_notes, pub_dates, volume, issue, fpage, lpage, "
             "elocation_id, abstracts, keywords, history, counts, funding. "
@@ -32,7 +33,6 @@ MESSAGES = [
             "authors: [{contrib_type (default author), given_names, surname, "
             "collab, "
             "orcid (bare 0000-0000-0000-0000), affiliations [aff ids], "
-            "corresp bool, "
             "roles [free text or CRediT terms]}]. Every author must include "
             "affiliations ids "
             "(aff1) that match affiliations.id. Roles may appear under "
@@ -48,7 +48,6 @@ MESSAGES = [
             "Portuguese/Spanish particles (de, da, do, dos, das, del) go in "
             "given_names, never in surname: Dimas M. do Carmo -> given_names "
             '"Dimas M. do", surname "Carmo". '
-            "corresp true only for the corresponding author marked in the text. "
             "ORCID belongs to the name it appears next to; copy every ORCID URL "
             "(http or https) from the ORCID list onto that author; omit only if "
             "that name has no ORCID. "
@@ -56,7 +55,9 @@ MESSAGES = [
             "state, postal_code, country, country_code (ISO 3166-1 alpha-2), email}]. "
             "city is the municipality, not campus, highway, or neighborhood; put "
             "campus or center in orgdiv1 or orgdiv2. "
-            "author_notes: {corresp, fns:[{text}]}. "
+            "author_notes: {fns:[{text}]}; omit corresp, emails, and "
+            "author.corresp unless a correspondence heading is written in this "
+            "input; never invent an email. "
             "pub_dates: [{type: pub|collection, day, month, year, season}]. "
             "Omit pub_dates unless a complete publication date is written "
             "(year and month 01-12 and day 01-31); never emit month or day 00. "
@@ -108,7 +109,6 @@ MESSAGES = [
             "SP, Brasil.\n"
             "2 Universidade Estadual de Sample, Campus do Interior, Rod. ABC km 4, "
             "Itirapina, SP, Brasil.\n"
-            "* Correspondence: ana@example.com\n"
             "Received: 07/03/2024. Accepted: 18/11/2024.\n"
             "DOI: 10.1590/rec-2024-0099\n"
             "Abstract\nBird counts increased after late rains.\n"
@@ -133,7 +133,7 @@ MESSAGES = [
             '"text":"Chuva sazonal e aves florestais no Cerrado"}],'
             '"authors":[{"contrib_type":"author","given_names":"Ana P. da",'
             '"surname":"Silva","orcid":"0000-0001-1111-1111",'
-            '"affiliations":["aff1"],"corresp":true},'
+            '"affiliations":["aff1"]},'
             '{"contrib_type":"author","given_names":"Carlos R. do",'
             '"surname":"Nascimento","orcid":"0000-0002-2222-2222",'
             '"affiliations":["aff2"]}],'
@@ -145,7 +145,6 @@ MESSAGES = [
             '"orgname":"Universidade Estadual de Sample",'
             '"orgdiv1":"Campus do Interior",'
             '"city":"Itirapina","state":"SP","country":"Brasil","country_code":"BR"}],'
-            '"author_notes":{"corresp":"* Correspondence: ana@example.com"},'
             '"history":[{"type":"received","day":"07","month":"03","year":"2024"},'
             '{"type":"accepted","day":"18","month":"11","year":"2024"}],'
             '"keywords":[{"language":"en","title":"Keywords",'

@@ -23,7 +23,8 @@ def test_prompt_instructs_particles_dates_city_and_no_default_subject():
     assert "23 de setembro de 2025" in system
     assert "Submitted" in system
     assert "Aprovado" in system
-    assert "corresp true only for the corresponding author" in system
+    assert "never invent an email" in system
+    assert "emails, or correspondence" in system
     assert "ORCID belongs to the name it appears next to" in system
     assert "Never write the strings null" in system
     assert "Articles/Artigos" in system
@@ -109,11 +110,14 @@ def test_few_shot_shows_particles_two_authors_city_and_funding():
     authors = marked["authors"]
     assert authors[0]["given_names"] == "Ana P. da"
     assert authors[0]["surname"] == "Silva"
-    assert authors[0]["corresp"] is True
+    assert "corresp" not in authors[0]
     assert "roles" not in authors[0]
     assert authors[1]["given_names"] == "Carlos R. do"
     assert authors[1]["surname"] == "Nascimento"
     assert "corresp" not in authors[1]
+    assert "author_notes" not in marked
+    assert "ana@example.com" not in user
+    assert "ana@example.com" not in assistant
 
     aff2 = marked["affiliations"][1]
     assert aff2["city"] == "Itirapina"

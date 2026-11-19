@@ -23,3 +23,10 @@ Revision requested: 2 June 2024
 Revised: 18 August 2024
 Accepted: 3 October 2024
 Published: 15 January 2025
+Author Contributions
+Lina Varejão: conceptualization
+Pedro Lamego: formal analysis
+Nara Quitanda: data curation
+Caio Besouro: investigation
+Helena Moringa: writing original draft
+Ivo Candeia: writing review and editing

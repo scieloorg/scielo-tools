@@ -3,28 +3,32 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand, CommandError
 from wagtail.users.models import UserProfile
 
-EMAILS = (
-    "anderson.santos@scielo.org",
-    "anna.kobayashi@scielo.org",
-    "felipe.esteves@scielo.org",
-    "francine.curivil@scielo.org",
-    "gabriel.flores@scielo.org",
-    "gabriela.alfonso@scielo.org",
-    "gabriela.carvalho@scielo.org",
-    "gestao.editorial@scielo.org",
-    "isabela.fonseca@scielo.org",
-    "jessica.nascimento@scielo.org",
-    "joyce.souza@scielo.org",
-    "luzia.saeko@scielo.org",
-    "marianie.moreira@scielo.org",
-    "marina.chagas@scielo.org",
-    "publicacao@scielo.org",
-    "renata.almeida@scielo.org",
-    "roberta.takenaka@scielo.org",
-    "solange.santos@scielo.org",
-    "suely.lucena@scielo.org",
-    "taina.carneiro@scielo.org",
-)
+EMAILS = [
+    "alexandre.teixeira",
+    "aline.silveira",
+    "alvaro.bussab",
+    "assis.benedetti",
+    "cacildo.ribeiro",
+    "camila.estrela",
+    "carlos.silva",
+    "cecilia.soster",
+    "cibelle.formiga",
+    "daniel.kantek",
+    "danuzia.paula",
+    "deborah.junqueira",
+    "eli.silva",
+    "ellen.silva",
+    "fhillipe.campos",
+    "francyne.franca",
+    "gilmar.barros",
+    "iury.accordi",
+    "karina.silva",
+    "kelma.souza",
+    "keyti.rezende",
+    "leticia.quesado",
+    "luciano.panepucci",
+    "maria.silveira",
+]
 
 GROUP_NAME = "Mini-curso JATS"
 ADMIN_LANGUAGE = "pt-br"

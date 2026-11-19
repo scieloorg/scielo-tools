@@ -59,9 +59,8 @@ JOURNEYS = (
         "title": _("Artigo com erros na validação"),
         "zip_name": "ric-9999-0001-with-erro.zip",
         "summary": _(
-            "O mesmo artigo com três falhas plantadas: sem a data Accepted, "
-            "a figura 3 sem legenda e a referência 17 sem ano nem páginas. "
-            "O XML e o zip SPS são o gabarito depois de corrigir essas falhas."
+            "O mesmo artigo com uma falha plantada: sem a data Accepted. "
+            "O XML e o zip SPS são o gabarito depois de corrigir essa falha."
         ),
         "files": (
             {

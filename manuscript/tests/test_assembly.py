@@ -153,3 +153,21 @@ class GenerateXmlSpsTests(TestCase):
         assert children[:3] == ["ack", "sec", "ref-list"]
         assert back_el.find("sec").get("sec-type") == "data-availability"
         assert back_el.find("sec").get("specific-use") == "data-in-article"
+
+    def test_generate_xml_sps_drops_corresp(self):
+        front = (
+            "<front><article-meta><title-group>"
+            "<article-title>Sample title</article-title></title-group>"
+            '<contrib-group><contrib contrib-type="author">'
+            "<name><surname>Varejao</surname><given-names>Lina</given-names></name>"
+            '<xref ref-type="corresp" rid="c01"/>'
+            "</contrib></contrib-group>"
+            "<author-notes>"
+            '<corresp id="c01">Lina Varejao<label>Correspondence</label></corresp>'
+            "</author-notes></article-meta></front>"
+        )
+        xml = generate_xml_sps(front, MINIMAL_BODY, MINIMAL_BACK)
+        root = etree.fromstring(xml.encode())
+        assert root.find(".//corresp") is None
+        assert root.find('.//xref[@ref-type="corresp"]') is None
+        assert root.find(".//author-notes") is None

@@ -1411,15 +1411,53 @@ def apply_text_fields(data, front_text):
         notes["fns"] = existing + editorial_fns
         marked["author_notes"] = notes
     corresp_text = " ".join(corresp_lines).strip()
+    notes = (
+        dict(marked["author_notes"])
+        if isinstance(marked.get("author_notes"), dict)
+        else {}
+    )
     if corresp_text:
-        notes = (
-            dict(marked["author_notes"])
-            if isinstance(marked.get("author_notes"), dict)
-            else {}
-        )
-        if _blank(notes.get("corresp")):
-            notes["corresp"] = corresp_text
+        notes["corresp"] = corresp_text
+        marked["author_notes"] = notes
+    elif notes.get("corresp"):
+        notes.pop("corresp", None)
+        if notes:
             marked["author_notes"] = notes
+        else:
+            marked.pop("author_notes", None)
+        cleaned_authors = []
+        for author in marked.get("authors") or []:
+            if isinstance(author, dict) and author.get("corresp"):
+                author = dict(author)
+                author.pop("corresp", None)
+            cleaned_authors.append(author)
+        if cleaned_authors:
+            marked["authors"] = cleaned_authors
+    source_lower = str(front_text or "").lower()
+    affiliations = []
+    for affiliation in marked.get("affiliations") or []:
+        if not isinstance(affiliation, dict):
+            affiliations.append(affiliation)
+            continue
+        item = dict(affiliation)
+        email = str(item.get("email") or "").strip()
+        if email and email.lower() not in source_lower:
+            item.pop("email", None)
+        affiliations.append(item)
+    if affiliations:
+        marked["affiliations"] = affiliations
+    authors = []
+    for author in marked.get("authors") or []:
+        if not isinstance(author, dict):
+            authors.append(author)
+            continue
+        item = dict(author)
+        email = str(item.get("email") or "").strip()
+        if email and email.lower() not in source_lower:
+            item.pop("email", None)
+        authors.append(item)
+    if authors:
+        marked["authors"] = authors
     for line in lines:
         match = PUBLISHER_LINE_RE.match(line)
         if match:
@@ -1657,10 +1695,6 @@ def get_front_xml(data):
                 label = affiliation.get("label") if affiliation else None
                 if not _blank(label):
                     _text_el(xref, "sup", label)
-            if author.get("corresp"):
-                etree.SubElement(
-                    contrib, "xref", attrib={"ref-type": "corresp", "rid": "c01"}
-                )
             role_texts = []
             for role in author.get("roles") or []:
                 if _blank(role):
@@ -1745,33 +1779,6 @@ def get_front_xml(data):
     if not isinstance(author_notes, dict):
         author_notes = {}
     notes = etree.Element("author-notes")
-    corresp = author_notes.get("corresp")
-    if _blank(corresp):
-        for author in data.get("authors") or []:
-            if not isinstance(author, dict) or not author.get("corresp"):
-                continue
-            parts = [
-                " ".join(
-                    part
-                    for part in (
-                        str(author.get("given_names") or "").strip(),
-                        str(author.get("surname") or "").strip(),
-                    )
-                    if part
-                ).strip()
-            ]
-            email = str(author.get("email") or "").strip()
-            if email:
-                parts.append(email)
-            built = ", ".join(part for part in parts if part)
-            if built:
-                corresp = built
-                break
-    if not _blank(corresp):
-        corresp_el = etree.SubElement(notes, "corresp", attrib={"id": "c01"})
-        corresp_el.text = str(corresp).strip()
-        label_el = etree.SubElement(corresp_el, "label")
-        label_el.text = "Correspondence"
     for fn_item in author_notes.get("fns") or []:
         if not isinstance(fn_item, dict):
             continue
@@ -2038,12 +2045,15 @@ def resolve_front_result(
             record.marked_xml = xml
             record.save(update_fields=["marked", "marked_xml", "updated"])
 
-    marked = record.marked
-    xml = record.marked_xml
+    marked = apply_text_fields(record.marked or {}, front_text)
     if isinstance(counts, dict) and any(not _blank(value) for value in counts.values()):
-        marked = dict(marked or {})
+        marked = dict(marked)
         marked["counts"] = counts
-        xml = get_front_xml(marked)
+    xml = get_front_xml(marked)
+    if xml != (record.marked_xml or "") or marked != record.marked:
+        record.marked = marked
+        record.marked_xml = xml
+        record.save(update_fields=["marked", "marked_xml", "updated"])
     if on_progress is not None:
         on_progress(95)
     if output_type == "xml":

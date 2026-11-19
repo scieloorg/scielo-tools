@@ -328,6 +328,34 @@ class ManuscriptAssemblyTests(TestCase):
                 self.assertIn(' "JATS-journalpublishing1.dtd">', packed)
                 self.assertNotIn("https://jats.nlm.nih.gov/", packed)
 
+    def test_build_sps_zip_drops_corresp(self):
+        self.manuscript.assembled_xml = (
+            "<?xml version='1.0' encoding='UTF-8'?>\n"
+            "<article>"
+            "<front><journal-meta>"
+            '<journal-id journal-id-type="publisher-id">scie</journal-id>'
+            '<issn pub-type="epub">0124-4567</issn>'
+            "</journal-meta><article-meta>"
+            "<volume>10</volume><issue>3</issue><fpage>365</fpage>"
+            '<contrib-group><contrib contrib-type="author">'
+            '<xref ref-type="corresp" rid="c01"/>'
+            "</contrib></contrib-group>"
+            "<author-notes>"
+            '<corresp id="c01">Lina Varejao</corresp>'
+            "</author-notes>"
+            "</article-meta></front></article>"
+        )
+        self.manuscript.save(update_fields=["assembled_xml"])
+        document = build_sps_zip(self.manuscript)
+        with document.file.open("rb") as fh:
+            with zipfile.ZipFile(fh) as archive:
+                xml_names = [
+                    name for name in archive.namelist() if name.endswith(".xml")
+                ]
+                packed = archive.read(xml_names[0]).decode("utf-8")
+        self.assertNotIn("<corresp", packed)
+        self.assertNotIn('ref-type="corresp"', packed)
+
     def test_build_sps_zip_omits_pdf_by_default(self):
         with patch("manuscript.services.assembly.generate_packtools_pdf") as mock_pdf:
             document = build_sps_zip(self.manuscript)

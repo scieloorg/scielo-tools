@@ -1159,6 +1159,42 @@ def test_apply_text_fields_extracts_simple_grant_line():
     ]
 
 
+def test_apply_text_fields_maps_barroalto_credit_roles():
+    text = (
+        "Title\n"
+        "Author Contributions\n"
+        "Lina Varejão: conceptualization\n"
+        "Pedro Lamego: formal analysis\n"
+        "Nara Quitanda: data curation\n"
+        "Caio Besouro: investigation\n"
+        "Helena Moringa: writing original draft\n"
+        "Ivo Candeia: writing review and editing\n"
+    )
+    authors = [
+        {"given_names": "Lina", "surname": "Varejão"},
+        {"given_names": "Pedro", "surname": "Lamego"},
+        {"given_names": "Nara", "surname": "Quitanda"},
+        {"given_names": "Caio", "surname": "Besouro"},
+        {"given_names": "Helena", "surname": "Moringa"},
+        {"given_names": "Ivo", "surname": "Candeia"},
+    ]
+    marked = apply_text_fields({"authors": authors}, text)
+    xml = get_front_xml(marked)
+    root = etree.fromstring(xml.encode("utf-8"))
+    roles = [
+        contrib.find("role").get("content-type")
+        for contrib in root.findall(".//contrib")
+    ]
+    assert roles == [
+        "https://credit.niso.org/contributor-roles/conceptualization/",
+        "https://credit.niso.org/contributor-roles/formal-analysis/",
+        "https://credit.niso.org/contributor-roles/data-curation/",
+        "https://credit.niso.org/contributor-roles/investigation/",
+        "https://credit.niso.org/contributor-roles/writing-original-draft/",
+        "https://credit.niso.org/contributor-roles/writing-review-editing/",
+    ]
+
+
 def test_apply_text_fields_reads_author_contributions_and_editorial_notes():
     text = (
         "Biota Neotropica\n"
@@ -1227,6 +1263,57 @@ def test_apply_text_fields_reads_inline_editor_and_correspondence():
     assert marked["author_notes"]["fns"][0]["text"].startswith("Bruno Araujo")
 
 
+def test_apply_text_fields_replaces_invented_corresp_with_source():
+    marked = apply_text_fields(
+        {"author_notes": {"corresp": "* Correspondence: lina@example.com"}},
+        "Title\nCorrespondence to\nBelém, PA\ne-mail: author@example.com\n",
+    )
+    assert marked["author_notes"]["corresp"] == "Belém, PA e-mail: author@example.com"
+    assert "lina@example.com" not in marked["author_notes"]["corresp"]
+
+
+def test_apply_text_fields_drops_corresp_absent_from_text():
+    marked = apply_text_fields(
+        {
+            "authors": [
+                {
+                    "given_names": "Lina",
+                    "surname": "Varejão",
+                    "corresp": True,
+                }
+            ],
+            "author_notes": {"corresp": "Lina Varejão, Rua do Forno 40."},
+        },
+        "Title\nResumo: Texto do resumo.\n",
+    )
+    assert "corresp" not in (marked.get("author_notes") or {})
+    assert not marked["authors"][0].get("corresp")
+
+
+def test_apply_text_fields_drops_invented_email_absent_from_text():
+    marked = apply_text_fields(
+        {
+            "authors": [
+                {
+                    "given_names": "Lina",
+                    "surname": "Varejão",
+                    "email": "lina@example.com",
+                }
+            ],
+            "affiliations": [
+                {
+                    "id": "aff1",
+                    "orgname": "Instituto",
+                    "email": "lina@example.com",
+                }
+            ],
+        },
+        "Title\nLina Varejão\n1 Instituto de Cerâmica de Barroalto.\n",
+    )
+    assert "email" not in marked["authors"][0]
+    assert "email" not in marked["affiliations"][0]
+
+
 def test_apply_text_fields_reads_correspondence_on_same_line():
     text = (
         "Title\n"
@@ -1255,6 +1342,37 @@ def test_apply_text_fields_reads_volume_issue_and_pages():
     assert marked["lpage"] == "28"
 
 
+def test_get_front_xml_omits_invented_corresp():
+    xml = get_front_xml(
+        {
+            "titles": [{"kind": "main", "text": "Title"}],
+            "authors": [
+                {
+                    "given_names": "Lina",
+                    "surname": "Varejão",
+                    "affiliations": ["aff1"],
+                    "corresp": True,
+                    "email": "lina@example.com",
+                },
+                {
+                    "given_names": "Pedro",
+                    "surname": "Lamego",
+                    "affiliations": ["aff1"],
+                },
+            ],
+            "affiliations": [{"id": "aff1", "label": "1", "orgname": "Instituto"}],
+            "author_notes": {
+                "corresp": "* Correspondence: lina@example.com",
+            },
+        }
+    )
+    root = etree.fromstring(xml.encode("utf-8"))
+    assert root.find(".//corresp") is None
+    assert root.find('.//xref[@ref-type="corresp"]') is None
+    assert "lina@example.com" not in xml
+    assert "Correspondence" not in xml
+
+
 def test_get_front_xml_renders_structured_author_notes():
     xml = get_front_xml(
         {
@@ -1278,10 +1396,8 @@ def test_get_front_xml_renders_structured_author_notes():
     )
     root = etree.fromstring(xml.encode("utf-8"))
     notes = root.find(".//author-notes")
-    corresp = notes.find("corresp")
-    assert corresp.get("id") == "c01"
-    assert corresp.find("label").text == "Correspondence"
-    assert "ana@example.com" in (corresp.text or "")
+    assert notes.find("corresp") is None
+    assert "ana@example.com" not in xml
     edited = notes.find('fn[@fn-type="edited-by"]')
     assert edited.find("label").text == "Associate Editor"
     assert edited.find("p").text == "Alexander Vibrans"
@@ -1468,10 +1584,7 @@ def test_apply_text_fields_orcid_en_title_state_and_editor():
     )
     assert marked["affiliations"][0]["state"] == "SP"
     assert marked["affiliations"][0]["orgdiv1"] == "Departamento de Economia"
-    assert any(
-        fn.get("fn_type") == "edited-by"
-        for fn in marked["author_notes"]["fns"]
-    )
+    assert any(fn.get("fn_type") == "edited-by" for fn in marked["author_notes"]["fns"])
     root = etree.fromstring(get_front_xml(marked).encode("utf-8"))
     assert len(root.xpath(".//contrib-id[@contrib-id-type='orcid']")) == 2
     assert root.xpath(".//trans-title-group[@xml:lang='en']/trans-title")

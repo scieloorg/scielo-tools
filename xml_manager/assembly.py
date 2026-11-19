@@ -10,6 +10,24 @@ JATS_DOCTYPE = (
 )
 
 
+def drop_corresp(root):
+    for node in list(root.xpath(".//*[local-name()='corresp']")):
+        parent = node.getparent()
+        if parent is not None:
+            parent.remove(node)
+    for xref in list(
+        root.xpath(".//*[local-name()='xref' and @ref-type='corresp']")
+    ):
+        parent = xref.getparent()
+        if parent is not None:
+            parent.remove(xref)
+    for notes in list(root.xpath(".//*[local-name()='author-notes']")):
+        if len(notes) == 0 and not (notes.text or "").strip():
+            parent = notes.getparent()
+            if parent is not None:
+                parent.remove(notes)
+
+
 def parse_fragment(xml, expected_tags):
     if xml is None or not str(xml).strip():
         raise ValueError("Empty XML fragment")
@@ -101,6 +119,7 @@ def generate_xml_sps(
     article.append(front)
     article.append(body)
     article.append(back)
+    drop_corresp(article)
     xml_bytes = etree.tostring(
         article,
         xml_declaration=True,

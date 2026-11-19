@@ -8,6 +8,9 @@ from django.contrib.auth.models import Permission
 from django.test import TestCase
 from django.urls import reverse
 
+from front.utils import extract_text_from_docx
+from manuscript.journeys import SAMPLES_DIR
+
 
 class JourneyMenuTests(TestCase):
     def setUp(self):
@@ -57,6 +60,10 @@ class JourneyMenuTests(TestCase):
         self.assertContains(response, "Exemplo 1")
         self.assertContains(response, "Exemplo 5")
         self.assertContains(response, "Artigo completo")
+        self.assertContains(response, "Artigo com erros na validação")
+        self.assertContains(response, "sem a data Accepted")
+        self.assertNotContains(response, "três falhas plantadas")
+        self.assertNotContains(response, "figura 3 sem legenda")
         self.assertContains(response, "Equações, tabelas e imagens")
         self.assertContains(response, "Abrir exemplo")
         self.assertNotContains(response, "Criar manuscrito")
@@ -170,6 +177,11 @@ class JourneyMenuTests(TestCase):
         )
         self.assertContains(findings, "ric-9999-0001-with-erro.xml")
         self.assertContains(findings, "ric-9999-0001-with-erro-sps.zip")
+        self.assertContains(findings, "Artigo com erros na validação")
+        self.assertContains(findings, "sem a data Accepted")
+        self.assertNotContains(findings, "três falhas plantadas")
+        self.assertNotContains(findings, "figura 3 sem legenda")
+        self.assertNotContains(findings, "referência 17")
         references = self.client.get(
             reverse("manuscript_journey_detail", args=["references"])
         )
@@ -215,6 +227,20 @@ class JourneyMenuTests(TestCase):
         self.assertEqual(sps_response["Content-Type"], "application/zip")
         sps_body = b"".join(sps_response.streaming_content)
         self.assertTrue(sps_body.startswith(b"PK"))
+
+    def test_findings_docx_has_credit_roles_and_no_accepted(self):
+        findings = extract_text_from_docx(
+            SAMPLES_DIR / "ric-9999-0001-with-erro.docx"
+        )
+        complete = extract_text_from_docx(
+            SAMPLES_DIR / "ric-9999-0001-without-erro.docx"
+        )
+        for text in (findings, complete):
+            self.assertIn("Author Contributions", text)
+            self.assertIn("Lina Varejão: conceptualization", text)
+            self.assertIn("Ivo Candeia: writing review and editing", text)
+        self.assertNotIn("Accepted:", findings)
+        self.assertIn("Accepted: 3 October 2024", complete)
 
     def test_unknown_sample_is_not_served(self):
         url = reverse(
